@@ -240,14 +240,14 @@ def has_review_comments_from_author(pr_url: str, repo_dir: Path, author_login: s
     Returns:
         True if there are review comments from the author, False otherwise
     """
-    # Extract PR number from URL
-    match = re.search(r"/pull/(\d+)$", pr_url)
+    # Extract PR number from URL (handle query params and fragments)
+    match = re.search(r"/pull/(\d+)(?:[?#]|$)", pr_url)
     if not match:
         return False
 
     pr_number = match.group(1)
 
-    # Extract owner and repo from URL
+    # Extract owner and repo from URL (handle various protocols)
     match = re.search(r"github\.com/([^/]+)/([^/]+)/pull/", pr_url)
     if not match:
         return False

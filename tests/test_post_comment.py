@@ -454,7 +454,7 @@ class TestPostPhase3Comment:
         assert result is False
 
 
-class TestMarkPrReady:
+class TestMarkPRReady:
     """Test the mark_pr_ready function"""
 
     @patch("gh_pr_phase_monitor.subprocess.run")

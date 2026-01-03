@@ -8,7 +8,7 @@ Tests cover the following scenarios:
 - LLM working: No reviews or unknown reviewers
 """
 
-from gh_pr_phase_monitor import determine_phase
+from src.gh_pr_phase_monitor import determine_phase
 
 
 class TestDeterminePhase:

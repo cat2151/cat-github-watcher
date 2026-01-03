@@ -506,4 +506,31 @@ class TestPostPhase3CommentWithCustomMessage:
         cmd = call_args[0][0]
         assert cmd[5] == "@testuser and testuser - please review!"
 
+    @patch("gh_pr_phase_monitor.get_current_user")
+    @patch("gh_pr_phase_monitor.get_existing_comments")
+    @patch("gh_pr_phase_monitor.subprocess.run")
+    def test_custom_message_removes_mention_with_various_punctuation(self, mock_run, mock_get_comments, mock_get_user):
+        """Test that @{user} with various punctuation is removed when user unavailable"""
+        mock_get_comments.return_value = []
+        mock_get_user.return_value = ""
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {"url": "https://github.com/user/repo/pull/123"}
+        repo_dir = Path("/tmp/test-repo")
+
+        # Test with different punctuation patterns
+        test_cases = [
+            ("@{user} Please review!", "Please review!"),
+            ("@{user}, please check this", ", please check this"),
+            ("@{user}: ready for review", ": ready for review"),
+            ("@{user}.Thanks", ".Thanks"),
+        ]
+
+        for input_msg, expected_output in test_cases:
+            result = post_phase3_comment(pr, repo_dir, input_msg)
+            assert result is True
+            call_args = mock_run.call_args
+            cmd = call_args[0][0]
+            assert cmd[5] == expected_output, f"Failed for input: {input_msg}"
+
 

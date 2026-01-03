@@ -314,7 +314,8 @@ def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path, comment_message: str
             comment_body = comment_message.replace("{user}", current_user)
         else:
             # Remove @{user} mention if user is unavailable
-            comment_body = comment_message.replace("@{user} ", "").replace("@{user}", "")
+            # Use regex to handle various punctuation patterns after @{user}
+            comment_body = re.sub(r"@\{user\}\s*", "", comment_message)
     else:
         comment_body = comment_message
 

@@ -280,12 +280,15 @@ def post_phase2_comment(pr: Dict[str, Any], repo_dir: Path) -> bool:
         return False
 
 
-def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path) -> bool:
+def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path, comment_message: str = None) -> bool:
     """Post a comment to PR when phase3 is detected
 
     Args:
         pr: PR data dictionary containing url
         repo_dir: Repository directory
+        comment_message: Custom comment message template (optional).
+                        Use {user} placeholder for current user mention.
+                        If None, uses default message.
 
     Returns:
         True if comment was posted successfully, False otherwise
@@ -300,14 +303,20 @@ def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path) -> bool:
         print("    Comment already exists, skipping")
         return True
 
-    # Get the current authenticated user
-    current_user = get_current_user()
-    if current_user:
-        comment_body = f"@{current_user} 🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."
+    # Use default message if not provided
+    if comment_message is None:
+        comment_message = "@{user} 🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."
+
+    # Get the current authenticated user and substitute in message
+    if "{user}" in comment_message:
+        current_user = get_current_user()
+        if current_user:
+            comment_body = comment_message.replace("{user}", current_user)
+        else:
+            # Remove @{user} mention if user is unavailable
+            comment_body = comment_message.replace("@{user} ", "").replace("@{user}", "")
     else:
-        comment_body = (
-            "🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."
-        )
+        comment_body = comment_message
 
     cmd = ["gh", "pr", "comment", pr_url, "--body", comment_body]
 
@@ -328,8 +337,13 @@ def open_browser(url: str) -> None:
     webbrowser.open(url)
 
 
-def process_repository(repo_dir: Path) -> None:
-    """Process a single repository"""
+def process_repository(repo_dir: Path, config: Dict[str, Any] = None) -> None:
+    """Process a single repository
+
+    Args:
+        repo_dir: Repository directory
+        config: Configuration dictionary (optional)
+    """
     print(f"\n=== Processing: {repo_dir} ===")
 
     try:
@@ -365,7 +379,10 @@ def process_repository(repo_dir: Path) -> None:
                 # Post comment when in phase 3
                 if phase == "phase3":
                     print("    Posting comment for phase3...")
-                    if post_phase3_comment(pr, repo_dir):
+                    phase3_message = None
+                    if config:
+                        phase3_message = config.get("phase3_comment_message")
+                    if post_phase3_comment(pr, repo_dir, phase3_message):
                         print("    Comment posted successfully")
                     else:
                         print("    Failed to post comment")
@@ -436,7 +453,7 @@ def main():
                 print(f"\nWarning: Directory does not exist: {repo_dir}")
                 continue
 
-            process_repository(repo_dir)
+            process_repository(repo_dir, config)
 
         print(f"\n{'=' * 50}")
         print(f"Waiting {interval_str} until next check...")

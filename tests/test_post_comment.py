@@ -421,3 +421,89 @@ class TestPostPhase3Comment:
 
         assert result is False
 
+
+class TestPostPhase3CommentWithCustomMessage:
+    """Test the post_phase3_comment function with custom message"""
+
+    @patch("gh_pr_phase_monitor.get_current_user")
+    @patch("gh_pr_phase_monitor.get_existing_comments")
+    @patch("gh_pr_phase_monitor.subprocess.run")
+    def test_custom_message_with_user_placeholder(self, mock_run, mock_get_comments, mock_get_user):
+        """Test custom message with {user} placeholder"""
+        mock_get_comments.return_value = []
+        mock_get_user.return_value = "testuser"
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {"url": "https://github.com/user/repo/pull/123"}
+        repo_dir = Path("/tmp/test-repo")
+        custom_message = "@{user} Please review this PR!"
+
+        result = post_phase3_comment(pr, repo_dir, custom_message)
+
+        assert result is True
+        call_args = mock_run.call_args
+        cmd = call_args[0][0]
+        assert cmd[5] == "@testuser Please review this PR!"
+
+    @patch("gh_pr_phase_monitor.get_current_user")
+    @patch("gh_pr_phase_monitor.get_existing_comments")
+    @patch("gh_pr_phase_monitor.subprocess.run")
+    def test_custom_message_without_user_when_unavailable(self, mock_run, mock_get_comments, mock_get_user):
+        """Test custom message with {user} placeholder when user is unavailable"""
+        mock_get_comments.return_value = []
+        mock_get_user.return_value = ""
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {"url": "https://github.com/user/repo/pull/123"}
+        repo_dir = Path("/tmp/test-repo")
+        custom_message = "@{user} Please review this PR!"
+
+        result = post_phase3_comment(pr, repo_dir, custom_message)
+
+        assert result is True
+        call_args = mock_run.call_args
+        cmd = call_args[0][0]
+        assert cmd[5] == "Please review this PR!"
+
+    @patch("gh_pr_phase_monitor.get_current_user")
+    @patch("gh_pr_phase_monitor.get_existing_comments")
+    @patch("gh_pr_phase_monitor.subprocess.run")
+    def test_custom_message_without_placeholder(self, mock_run, mock_get_comments, mock_get_user):
+        """Test custom message without {user} placeholder"""
+        mock_get_comments.return_value = []
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {"url": "https://github.com/user/repo/pull/123"}
+        repo_dir = Path("/tmp/test-repo")
+        custom_message = "Ready for review!"
+
+        result = post_phase3_comment(pr, repo_dir, custom_message)
+
+        assert result is True
+        call_args = mock_run.call_args
+        cmd = call_args[0][0]
+        assert cmd[5] == "Ready for review!"
+        # get_current_user should not be called when no {user} placeholder
+        mock_get_user.assert_not_called()
+
+    @patch("gh_pr_phase_monitor.get_current_user")
+    @patch("gh_pr_phase_monitor.get_existing_comments")
+    @patch("gh_pr_phase_monitor.subprocess.run")
+    def test_custom_message_with_multiple_user_placeholders(self, mock_run, mock_get_comments, mock_get_user):
+        """Test custom message with multiple {user} placeholders"""
+        mock_get_comments.return_value = []
+        mock_get_user.return_value = "testuser"
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {"url": "https://github.com/user/repo/pull/123"}
+        repo_dir = Path("/tmp/test-repo")
+        custom_message = "@{user} and {user} - please review!"
+
+        result = post_phase3_comment(pr, repo_dir, custom_message)
+
+        assert result is True
+        call_args = mock_run.call_args
+        cmd = call_args[0][0]
+        assert cmd[5] == "@testuser and testuser - please review!"
+
+

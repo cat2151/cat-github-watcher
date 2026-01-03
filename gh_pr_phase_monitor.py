@@ -12,7 +12,7 @@ import sys
 import time
 import webbrowser
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import tomli
 
@@ -143,7 +143,7 @@ def get_pr_data(repo_dir: Path) -> List[Dict[str, Any]]:
     return json.loads(result.stdout)
 
 
-def determine_phase(pr: Dict[str, Any], repo_dir: Path = None) -> str:
+def determine_phase(pr: Dict[str, Any], repo_dir: Optional[Path] = None) -> str:
     """Determine which phase the PR is in
 
     Args:
@@ -252,15 +252,19 @@ def has_review_comments_from_author(pr_url: str, repo_dir: Path, author_login: s
     repo_name = match.group(2)
 
     # Use GitHub API to get review comments (inline code comments)
-    cmd = ["gh", "api", f"repos/{owner}/{repo_name}/pulls/{pr_number}/comments", "--jq", f"[.[] | select(.user.login == \"{author_login}\")] | length"]
+    # Fetch all comments and filter in Python to avoid command injection
+    cmd = ["gh", "api", f"repos/{owner}/{repo_name}/pulls/{pr_number}/comments"]
 
     try:
         result = subprocess.run(
             cmd, cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
         )
-        count = int(result.stdout.strip())
+        comments = json.loads(result.stdout)
+
+        # Count comments from the specific author
+        count = sum(1 for comment in comments if comment.get("user", {}).get("login") == author_login)
         return count > 0
-    except (subprocess.CalledProcessError, ValueError):
+    except (subprocess.CalledProcessError, json.JSONDecodeError, ValueError):
         return False
 
 

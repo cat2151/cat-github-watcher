@@ -5,8 +5,11 @@ Monitors PR phases and opens browser for actionable phases
 """
 
 import json
+import re
+import signal
 import subprocess
 import sys
+import time
 import webbrowser
 from pathlib import Path
 from typing import Any, Dict, List
@@ -36,6 +39,49 @@ def colorize_phase(phase: str) -> str:
         return f"{Colors.BOLD}{Colors.GREEN}[{phase}]{Colors.RESET}"
     else:  # LLM working
         return f"{Colors.BOLD}{Colors.MAGENTA}[{phase}]{Colors.RESET}"
+
+
+def parse_interval(interval_str: str) -> int:
+    """Parse interval string like '1m', '30s', '2h' to seconds
+
+    Args:
+        interval_str: String like '1m', '30s', '2h', '1d'
+
+    Returns:
+        Number of seconds
+
+    Raises:
+        ValueError: If the interval string format is invalid
+    """
+    # Type validation for common misconfiguration
+    if not isinstance(interval_str, str):
+        raise ValueError(
+            f"Interval must be a string (e.g., '1m', '30s'), got {type(interval_str).__name__}: {interval_str}"
+        )
+
+    interval_str = interval_str.strip().lower()
+
+    # Match pattern like "30s", "1m", "2h", "1d"
+    match = re.match(r"^(\d+)([smhd])$", interval_str)
+
+    if not match:
+        raise ValueError(
+            f"Invalid interval format: '{interval_str}'. "
+            "Expected format: <number><unit> (e.g., '30s', '1m', '2h', '1d')"
+        )
+
+    value = int(match.group(1))
+    unit = match.group(2)
+
+    # Convert to seconds
+    if unit == "s":
+        return value
+    elif unit == "m":
+        return value * 60
+    elif unit == "h":
+        return value * 3600
+    else:  # unit == "d"
+        return value * 86400
 
 
 def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
@@ -226,7 +272,9 @@ def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path) -> bool:
     if pr_author:
         comment_body = f"@{pr_author} 🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."
     else:
-        comment_body = "🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."
+        comment_body = (
+            "🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."
+        )
 
     cmd = ["gh", "pr", "comment", pr_url, "--body", comment_body]
 
@@ -309,6 +357,7 @@ def main():
         print(f"Error: Config file '{config_path}' not found")
         print("\nExpected format:")
         print('dirs = ["/path/to/repo1", "/path/to/repo2"]')
+        print('interval = "1m"  # Check interval (e.g., "30s", "1m", "5m")')
         sys.exit(1)
 
     dirs = config.get("dirs", [])
@@ -317,20 +366,49 @@ def main():
         print("Error: No directories specified in config")
         sys.exit(1)
 
+    # Get interval setting (default to 1 minute if not specified)
+    interval_str = config.get("interval", "1m")
+    try:
+        interval_seconds = parse_interval(interval_str)
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
     print("GitHub PR Phase Monitor")
     print("=" * 50)
+    print(f"Monitoring interval: {interval_str} ({interval_seconds} seconds)")
+    print("Press CTRL+C to stop monitoring")
+    print("=" * 50)
 
-    for dir_path in dirs:
-        repo_dir = Path(dir_path).expanduser()
+    # Set up signal handler for graceful interruption
+    def signal_handler(_signum, _frame):
+        print("\n\nMonitoring interrupted by user (CTRL+C)")
+        print("Exiting...")
+        sys.exit(0)
 
-        if not repo_dir.exists():
-            print(f"\nWarning: Directory does not exist: {repo_dir}")
-            continue
+    signal.signal(signal.SIGINT, signal_handler)
 
-        process_repository(repo_dir)
+    # Infinite monitoring loop
+    iteration = 0
+    while True:
+        iteration += 1
+        print(f"\n{'=' * 50}")
+        print(f"Check #{iteration} - {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"{'=' * 50}")
 
-    print("\n" + "=" * 50)
-    print("Monitoring complete")
+        for dir_path in dirs:
+            repo_dir = Path(dir_path).expanduser()
+
+            if not repo_dir.exists():
+                print(f"\nWarning: Directory does not exist: {repo_dir}")
+                continue
+
+            process_repository(repo_dir)
+
+        print(f"\n{'=' * 50}")
+        print(f"Waiting {interval_str} until next check...")
+        print(f"{'=' * 50}")
+        time.sleep(interval_seconds)
 
 
 if __name__ == "__main__":

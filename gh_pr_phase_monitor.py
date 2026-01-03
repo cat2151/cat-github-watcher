@@ -373,7 +373,8 @@ def process_repository(repo_dir: Path, config: Dict[str, Any] = None) -> None:
                 # Post comment when in phase 3
                 if phase == "phase3":
                     print("    Posting comment for phase3...")
-                    phase3_text = config.get("phase3_comment_message")
+                    # phase3_comment_message is required and validated in main()
+                    phase3_text = config["phase3_comment_message"]
                     if post_phase3_comment(pr, repo_dir, phase3_text):
                         print("    Comment posted successfully")
                     else:

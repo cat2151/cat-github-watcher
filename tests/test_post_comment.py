@@ -333,7 +333,7 @@ class TestPostPhase3Comment:
         call_args = mock_run.call_args
         cmd = call_args[0][0]
         # Should be just custom_text without "@user " prefix
-        assert cmd[5] == "🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."
+        assert cmd[5] == custom_text
         assert not cmd[5].startswith("@")
 
     @patch("gh_pr_phase_monitor.get_current_user")

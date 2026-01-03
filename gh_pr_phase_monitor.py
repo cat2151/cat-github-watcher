@@ -16,6 +16,9 @@ from typing import Any, Dict, List
 
 import tomli
 
+# Cache for current user to avoid repeated subprocess calls
+_current_user_cache = None
+
 
 # ANSI Color codes
 class Colors:
@@ -96,14 +99,27 @@ def get_current_user() -> str:
     Returns:
         The login name of the current authenticated user, or empty string if unavailable
     """
+    global _current_user_cache
+
+    # Return cached value if available
+    if _current_user_cache is not None:
+        return _current_user_cache
+
     cmd = ["gh", "api", "user", "--jq", ".login"]
 
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
         )
-        return result.stdout.strip()
+        _current_user_cache = result.stdout.strip()
+        return _current_user_cache
     except subprocess.CalledProcessError:
+        print(
+            "[gh-pr-phase-monitor] Warning: Failed to retrieve current GitHub user via "
+            "`gh api user`. You may not be mentioned in phase3 comments. "
+            "Check your GitHub CLI authentication (e.g., run `gh auth status`)."
+        )
+        _current_user_cache = ""
         return ""
 
 

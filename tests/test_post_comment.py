@@ -76,6 +76,10 @@ class TestGetCurrentUser:
     @patch("gh_pr_phase_monitor.subprocess.run")
     def test_get_current_user_success(self, mock_run):
         """Test successful retrieval of current user"""
+        # Reset cache before test
+        import gh_pr_phase_monitor
+        gh_pr_phase_monitor._current_user_cache = None
+
         mock_run.return_value = MagicMock(returncode=0, stdout="testuser\n")
 
         result = get_current_user()
@@ -88,11 +92,34 @@ class TestGetCurrentUser:
     @patch("gh_pr_phase_monitor.subprocess.run")
     def test_get_current_user_failure(self, mock_run):
         """Test handling of failure to retrieve current user"""
+        # Reset cache before test
+        import gh_pr_phase_monitor
+        gh_pr_phase_monitor._current_user_cache = None
+
         mock_run.side_effect = subprocess.CalledProcessError(returncode=1, cmd=["gh", "api", "user"])
 
         result = get_current_user()
 
         assert result == ""
+
+    @patch("gh_pr_phase_monitor.subprocess.run")
+    def test_get_current_user_uses_cache(self, mock_run):
+        """Test that get_current_user uses cached value on subsequent calls"""
+        # Reset cache before test
+        import gh_pr_phase_monitor
+        gh_pr_phase_monitor._current_user_cache = None
+
+        mock_run.return_value = MagicMock(returncode=0, stdout="testuser\n")
+
+        # First call should execute subprocess
+        result1 = get_current_user()
+        assert result1 == "testuser"
+        assert mock_run.call_count == 1
+
+        # Second call should use cache, no additional subprocess call
+        result2 = get_current_user()
+        assert result2 == "testuser"
+        assert mock_run.call_count == 1  # Still only called once
 
 
 class TestPostPhase2Comment:

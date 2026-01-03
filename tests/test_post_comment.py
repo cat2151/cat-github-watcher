@@ -7,6 +7,8 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from gh_pr_phase_monitor import (
     get_current_user,
     get_existing_comments,
@@ -98,9 +100,8 @@ class TestGetCurrentUser:
 
         mock_run.side_effect = subprocess.CalledProcessError(returncode=1, cmd=["gh", "api", "user"])
 
-        result = get_current_user()
-
-        assert result == ""
+        with pytest.raises(RuntimeError, match="Failed to retrieve current GitHub user"):
+            get_current_user()
 
     @patch("gh_pr_phase_monitor.subprocess.run")
     def test_get_current_user_uses_cache(self, mock_run):
@@ -130,8 +131,8 @@ class TestGetCurrentUser:
 
         # First call fails
         mock_run.side_effect = subprocess.CalledProcessError(returncode=1, cmd=["gh", "api", "user"])
-        result1 = get_current_user()
-        assert result1 == ""
+        with pytest.raises(RuntimeError):
+            get_current_user()
         assert mock_run.call_count == 1
 
         # Second call should retry (not use cached failure)
@@ -314,27 +315,21 @@ class TestPostPhase3Comment:
     @patch("gh_pr_phase_monitor.get_current_user")
     @patch("gh_pr_phase_monitor.get_existing_comments")
     @patch("gh_pr_phase_monitor.subprocess.run")
-    def test_post_comment_without_current_user(self, mock_run, mock_get_comments, mock_get_user):
-        """Test comment posting without current user"""
+    def test_post_comment_without_current_user_raises_error(self, mock_run, mock_get_comments, mock_get_user):
+        """Test comment posting fails when current user cannot be determined"""
         mock_get_comments.return_value = []
-        mock_get_user.return_value = ""
+        mock_get_user.side_effect = RuntimeError("Failed to retrieve current GitHub user")
         mock_run.return_value = MagicMock(returncode=0)
 
         pr = {"url": "https://github.com/user/repo/pull/123"}
         repo_dir = Path("/tmp/test-repo")
         custom_text = "🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."
 
-        result = post_phase3_comment(pr, repo_dir, custom_text)
+        with pytest.raises(RuntimeError, match="Failed to retrieve current GitHub user"):
+            post_phase3_comment(pr, repo_dir, custom_text)
 
-        assert result is True
-        assert mock_run.call_count == 1
-
-        # Verify command arguments
-        call_args = mock_run.call_args
-        cmd = call_args[0][0]
-        # Should be just custom_text without "@user " prefix
-        assert cmd[5] == custom_text
-        assert not cmd[5].startswith("@")
+        # Should not have attempted to post comment
+        mock_run.assert_not_called()
 
     @patch("gh_pr_phase_monitor.get_current_user")
     @patch("gh_pr_phase_monitor.get_existing_comments")

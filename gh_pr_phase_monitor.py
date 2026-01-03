@@ -97,7 +97,10 @@ def get_current_user() -> str:
     """Get the current authenticated GitHub user's login
 
     Returns:
-        The login name of the current authenticated user, or empty string if unavailable
+        The login name of the current authenticated user
+
+    Raises:
+        RuntimeError: If unable to retrieve the current user (authentication failure)
     """
     global _current_user_cache
 
@@ -113,14 +116,16 @@ def get_current_user() -> str:
         )
         _current_user_cache = result.stdout.strip()
         return _current_user_cache
-    except subprocess.CalledProcessError:
-        print(
-            "[gh-pr-phase-monitor] Warning: Failed to retrieve current GitHub user via "
-            "`gh api user`. You may not be mentioned in phase3 comments. "
-            "Check your GitHub CLI authentication (e.g., run `gh auth status`)."
+    except subprocess.CalledProcessError as e:
+        error_msg = (
+            "Failed to retrieve current GitHub user via `gh api user`. "
+            "GitHub CLI authentication is required for phase3 comments. "
+            "Please run `gh auth login` or `gh auth status` to check your authentication."
         )
-        # Don't cache authentication failures to allow retry on next call
-        return ""
+        print(f"\n[ERROR] {error_msg}")
+        if e.stderr:
+            print(f"Details: {e.stderr}")
+        raise RuntimeError(error_msg) from e
 
 
 def get_pr_data(repo_dir: Path) -> List[Dict[str, Any]]:
@@ -291,6 +296,9 @@ def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path, custom_text: str) ->
 
     Returns:
         True if comment was posted successfully, False otherwise
+
+    Raises:
+        RuntimeError: If unable to get current GitHub user (authentication failure)
     """
     pr_url = pr.get("url", "")
     if not pr_url:
@@ -302,15 +310,11 @@ def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path, custom_text: str) ->
         print("    Comment already exists, skipping")
         return True
 
-    # Get the current authenticated user
+    # Get the current authenticated user (will raise RuntimeError if unavailable)
     current_user = get_current_user()
 
     # Build comment body with hardcoded "@{user} " prefix
-    if current_user:
-        comment_body = f"@{current_user} {custom_text}"
-    else:
-        # If user unavailable, just use the custom text without mention
-        comment_body = custom_text
+    comment_body = f"@{current_user} {custom_text}"
 
     cmd = ["gh", "pr", "comment", pr_url, "--body", comment_body]
 

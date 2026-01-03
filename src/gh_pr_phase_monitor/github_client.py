@@ -308,7 +308,7 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                         else:
                             author = {"login": author_data.get("login", "")}
 
-                        # Transform comments to include reactionGroups
+                        # Extract comment nodes with reactionGroups
                         comments_data = pr.get("comments", {})
                         comment_nodes = comments_data.get("nodes", [])
 

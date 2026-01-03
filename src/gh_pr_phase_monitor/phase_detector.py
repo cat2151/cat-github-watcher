@@ -10,8 +10,9 @@ def has_comments_with_reactions(comments: List[Dict[str, Any]]) -> bool:
     """Check if any comments have non-empty reactionGroups
 
     When the LLM (coding agent) is working on addressing review comments,
-    those comments may have reactions (like emoji reactions indicating
-    the bot is processing them). This indicates the LLM is actively working.
+    those comments may have reactions (GitHub reactions like 👍, 👎, 😄, 🎉,
+    😕, ❤️, 🚀, 👀, etc.) indicating the bot is processing them.
+    This indicates the LLM is actively working.
 
     Args:
         comments: List of comment dictionaries with reactionGroups

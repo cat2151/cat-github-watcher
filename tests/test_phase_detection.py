@@ -5,7 +5,7 @@ Tests cover the following scenarios:
 - Phase 1: Draft PRs
 - Phase 2: Copilot reviewer with comments/changes requested
 - Phase 3: Copilot reviewer approved or no comments, copilot-swe-agent modifications
-- LLM working: No reviews or unknown reviewers, comments with reactions
+- LLM working: No reviews, unknown reviewers, or comments with reactions
 """
 
 from src.gh_pr_phase_monitor import determine_phase, has_comments_with_reactions

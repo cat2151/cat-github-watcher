@@ -167,11 +167,10 @@ def get_repositories_with_open_prs() -> List[Dict[str, Any]]:
         # Build query with pagination using proper string formatting
         if end_cursor:
             # Use parameterized query for pagination
-            query_with_cursor = query.replace(
+            query_with_pagination = query.replace(
                 "repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER])",
                 f'repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER], after: "{end_cursor}")'
             )
-            query_with_pagination = query_with_cursor
         else:
             query_with_pagination = query
 

@@ -60,7 +60,8 @@ GitHub Copilotが自動実装を行うPRのフェーズを監視し、適切な�
 2. そのBot名に'copilot'が含まれる
 
 **動作**:
-- Copilotに対して「@copilot apply changes based on the comments in [this thread]($REVIEW_URL)」というコメントを投稿し、レビューコメントに基づいた変更の適用を依頼します
+- Copilotに対して「@copilot apply changes based on the comments in [this thread](レビューURL)」というコメントを投稿し、レビューコメントに基づいた変更の適用を依頼します
+- レビューURLは`github.event.review.html_url`から自動的に取得されます
 
 **権限**:
 - `pull-requests: write` - PRにコメントを投稿するため

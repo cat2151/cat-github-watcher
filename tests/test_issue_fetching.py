@@ -195,14 +195,14 @@ class TestGetIssuesFromRepositories:
         """Test that limit is respected when fetching issues"""
         repos = [{"name": "repo1", "owner": "user1"}]
 
-        # Create 15 issues
+        # Create 15 issues with valid dates (using hours instead of days)
         issues_nodes = [
             {
                 "title": f"Issue {i}",
                 "url": f"https://github.com/user1/repo1/issues/{i}",
                 "number": i,
                 "createdAt": "2024-01-01T00:00:00Z",
-                "updatedAt": f"2024-01-{str(i).zfill(2)}T00:00:00Z",
+                "updatedAt": f"2024-01-01T{str(i).zfill(2)}:00:00Z",
                 "author": {"login": "author"},
             }
             for i in range(1, 16)

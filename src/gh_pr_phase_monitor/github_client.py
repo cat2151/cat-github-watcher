@@ -10,6 +10,11 @@ from typing import Any, Dict, List
 # Cache for current user to avoid repeated subprocess calls
 _current_user_cache = None
 
+# GraphQL pagination constants
+REPOSITORIES_PER_PAGE = 100
+REPOSITORIES_BATCH_SIZE = 10
+ISSUES_PER_REPO = 50
+
 
 def get_current_user() -> str:
     """Get the current authenticated GitHub user's login
@@ -58,7 +63,7 @@ def get_repositories_with_open_prs() -> List[Dict[str, Any]]:
     query = """
     query($login: String!) {
       user(login: $login) {
-        repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER]) {
+        repositories(first: REPOSITORIES_PER_PAGE, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER]) {
           nodes {
             name
             owner {
@@ -75,19 +80,18 @@ def get_repositories_with_open_prs() -> List[Dict[str, Any]]:
         }
       }
     }
-    """
+    """.replace("REPOSITORIES_PER_PAGE", str(REPOSITORIES_PER_PAGE))
 
     repos_with_prs = []
     has_next_page = True
     end_cursor = None
 
     while has_next_page:
-        # Build query with pagination using proper string formatting
+        # Build query with pagination
         if end_cursor:
-            # Use parameterized query for pagination
             query_with_pagination = query.replace(
-                "repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER])",
-                f'repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER], after: "{end_cursor}")',
+                f"repositories(first: {REPOSITORIES_PER_PAGE}, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER])",
+                f'repositories(first: {REPOSITORIES_PER_PAGE}, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER], after: "{end_cursor}")',
             )
         else:
             query_with_pagination = query
@@ -142,12 +146,11 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return []
 
     # Build GraphQL query with aliases for multiple repositories
-    # Limit to 10 repos per query to avoid overly complex queries
-    batch_size = 10
+    # Limit to REPOSITORIES_BATCH_SIZE repos per query to avoid overly complex queries
     all_prs = []
 
-    for i in range(0, len(repos), batch_size):
-        batch = repos[i : i + batch_size]
+    for i in range(0, len(repos), REPOSITORIES_BATCH_SIZE):
+        batch = repos[i : i + REPOSITORIES_BATCH_SIZE]
 
         # Build query fragments for each repository
         repo_queries = []
@@ -408,7 +411,7 @@ def get_all_repositories() -> List[Dict[str, Any]]:
     query = """
     query($login: String!) {
       user(login: $login) {
-        repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER]) {
+        repositories(first: REPOSITORIES_PER_PAGE, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER]) {
           nodes {
             name
             owner {
@@ -428,7 +431,7 @@ def get_all_repositories() -> List[Dict[str, Any]]:
         }
       }
     }
-    """
+    """.replace("REPOSITORIES_PER_PAGE", str(REPOSITORIES_PER_PAGE))
 
     all_repos = []
     has_next_page = True
@@ -438,8 +441,8 @@ def get_all_repositories() -> List[Dict[str, Any]]:
         # Build query with pagination
         if end_cursor:
             query_with_pagination = query.replace(
-                "repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER])",
-                f'repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER], after: "{end_cursor}")',
+                f"repositories(first: {REPOSITORIES_PER_PAGE}, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER])",
+                f'repositories(first: {REPOSITORIES_PER_PAGE}, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER], after: "{end_cursor}")',
             )
         else:
             query_with_pagination = query
@@ -517,11 +520,10 @@ def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10) -
 
     # Build GraphQL query to fetch issues from all repositories
     # We'll batch repositories to avoid overly complex queries
-    batch_size = 10
     all_issues = []
 
-    for i in range(0, len(repos), batch_size):
-        batch = repos[i : i + batch_size]
+    for i in range(0, len(repos), REPOSITORIES_BATCH_SIZE):
+        batch = repos[i : i + REPOSITORIES_BATCH_SIZE]
 
         # Build query fragments for each repository
         repo_queries = []
@@ -534,14 +536,14 @@ def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10) -
             owner_literal = json.dumps(owner)
             repo_name_literal = json.dumps(repo_name)
 
-            # Fetch up to 50 issues per repository (sorted by updated time)
+            # Fetch up to ISSUES_PER_REPO issues per repository (sorted by updated time)
             repo_query = f"""
             {alias}: repository(owner: {owner_literal}, name: {repo_name_literal}) {{
               name
               owner {{
                 login
               }}
-              issues(first: 50, states: OPEN, orderBy: {{field: UPDATED_AT, direction: DESC}}) {{
+              issues(first: {ISSUES_PER_REPO}, states: OPEN, orderBy: {{field: UPDATED_AT, direction: DESC}}) {{
                 nodes {{
                   title
                   url

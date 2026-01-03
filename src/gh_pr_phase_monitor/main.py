@@ -14,7 +14,7 @@ from .github_client import (
     get_repositories_with_no_prs_and_open_issues,
     get_repositories_with_open_prs,
 )
-from .phase_detector import determine_phase
+from .phase_detector import PHASE_LLM_WORKING, determine_phase
 from .pr_actions import process_pr
 
 
@@ -112,7 +112,7 @@ def main():
                         process_pr(pr, config)
 
                     # Check if all PRs are in "LLM working" phase
-                    if pr_phases and all(phase == "LLM working" for phase in pr_phases):
+                    if pr_phases and all(phase == PHASE_LLM_WORKING for phase in pr_phases):
                         print(f"\n{'=' * 50}")
                         print("All PRs are in 'LLM working' phase")
                         print("Checking for repositories with no open PRs but with open issues...")

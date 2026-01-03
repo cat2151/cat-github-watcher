@@ -5,6 +5,12 @@ PR phase detection logic based on reviews and PR state
 import re
 from typing import Any, Dict, List, Union
 
+# Phase constants
+PHASE_LLM_WORKING = "LLM working"
+PHASE_1 = "phase1"
+PHASE_2 = "phase2"
+PHASE_3 = "phase3"
+
 
 def has_comments_with_reactions(comments: Union[List[Dict[str, Any]], int, None]) -> bool:
     """Check if any comments have non-empty reactionGroups
@@ -67,7 +73,7 @@ def determine_phase(pr: Dict[str, Any]) -> str:
         pr: PR data dictionary
 
     Returns:
-        Phase string: "phase1", "phase2", "phase3", or "LLM working"
+        Phase string: PHASE_1, PHASE_2, PHASE_3, or PHASE_LLM_WORKING
     """
     is_draft = pr.get("isDraft", False)
     reviews = pr.get("reviews", [])
@@ -80,18 +86,18 @@ def determine_phase(pr: Dict[str, Any]) -> str:
     # When the coding agent is responding to PR comments, those comments
     # may have reactions indicating the bot is processing them
     if has_comments_with_reactions(comment_nodes):
-        return "LLM working"
+        return PHASE_LLM_WORKING
 
     # Phase 1: Draft状態 (ただし、reviewRequestsが空の場合はLLM working)
     if is_draft:
         # reviewRequestsが空なら、LLM workingと判定
         if not review_requests:
-            return "LLM working"
-        return "phase1"
+            return PHASE_LLM_WORKING
+        return PHASE_1
 
     # Phase 2 と Phase 3 の判定には reviews が必要
     if not reviews or not latest_reviews:
-        return "LLM working"
+        return PHASE_LLM_WORKING
 
     # 最新のレビューを取得
     latest_review = reviews[-1]
@@ -104,22 +110,22 @@ def determine_phase(pr: Dict[str, Any]) -> str:
 
         # CHANGES_REQUESTEDの場合は確実にphase2
         if review_state == "CHANGES_REQUESTED":
-            return "phase2"
+            return PHASE_2
 
         # COMMENTEDの場合、レビュー本文にインラインコメントの存在を示すパターンがあるかチェック
         # レビューコメントがある場合はphase2（修正が必要）、ない場合はphase3（レビュー待ち）
         if review_state == "COMMENTED":
             review_body = latest_review.get("body", "")
             if has_inline_review_comments(review_body):
-                return "phase2"
+                return PHASE_2
             # レビューコメントがない場合はphase3
-            return "phase3"
+            return PHASE_3
 
         # それ以外(APPROVED, DISMISSED, PENDING等)はphase3
-        return "phase3"
+        return PHASE_3
 
     # Phase 3: copilot-swe-agent の修正後
     if author_login == "copilot-swe-agent":
-        return "phase3"
+        return PHASE_3
 
-    return "LLM working"
+    return PHASE_LLM_WORKING

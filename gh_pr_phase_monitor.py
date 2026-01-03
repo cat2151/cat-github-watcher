@@ -74,10 +74,8 @@ def parse_interval(interval_str: str) -> int:
         return value * 60
     elif unit == "h":
         return value * 3600
-    elif unit == "d":
+    else:  # unit == "d"
         return value * 86400
-
-    raise ValueError(f"Unknown time unit: {unit}")
 
 
 def load_config(config_path: str = "config.toml") -> Dict[str, Any]:

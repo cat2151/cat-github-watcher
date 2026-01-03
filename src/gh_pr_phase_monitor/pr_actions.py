@@ -9,7 +9,7 @@ from typing import Any, Dict
 
 from .colors import colorize_phase
 from .comment_manager import post_phase2_comment, post_phase3_comment
-from .phase_detector import determine_phase
+from .phase_detector import PHASE_1, PHASE_2, PHASE_3, determine_phase
 
 
 def mark_pr_ready(pr_url: str, repo_dir: Path = None) -> bool:
@@ -43,19 +43,23 @@ def open_browser(url: str) -> None:
     webbrowser.open(url)
 
 
-def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None) -> None:
+def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = None) -> None:
     """Process a single PR
 
     Args:
         pr: PR data dictionary (with repository info)
         config: Configuration dictionary (optional)
+        phase: Pre-computed phase (optional, will be computed if not provided)
     """
     repo_info = pr.get("repository", {})
     repo_name = repo_info.get("name", "Unknown")
     repo_owner = repo_info.get("owner", "Unknown")
     title = pr.get("title", "Unknown")
     url = pr.get("url", "")
-    phase = determine_phase(pr)
+
+    # Use pre-computed phase if provided, otherwise compute it
+    if phase is None:
+        phase = determine_phase(pr)
 
     # Display phase with colors
     phase_display = colorize_phase(phase)
@@ -63,7 +67,7 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None) -> None:
     print(f"    URL: {url}")
 
     # Mark PR as ready for review when in phase 1
-    if phase == "phase1":
+    if phase == PHASE_1:
         print("    Marking PR as ready for review...")
         if mark_pr_ready(url, None):
             print("    PR marked as ready successfully")
@@ -71,7 +75,7 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None) -> None:
             print("    Failed to mark PR as ready")
 
     # Post comment when in phase 2
-    if phase == "phase2":
+    if phase == PHASE_2:
         print("    Posting comment for phase2...")
         if post_phase2_comment(pr, None):
             print("    Comment posted successfully")
@@ -79,7 +83,7 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None) -> None:
             print("    Failed to post comment")
 
     # Open browser and post comment when in phase 3
-    if phase == "phase3":
+    if phase == PHASE_3:
         print("    Opening browser...")
         open_browser(url)
 

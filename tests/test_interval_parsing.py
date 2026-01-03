@@ -4,7 +4,7 @@ Tests for interval parsing functionality
 
 import pytest
 
-from gh_pr_phase_monitor import parse_interval
+from src.gh_pr_phase_monitor import parse_interval
 
 
 class TestParseInterval:

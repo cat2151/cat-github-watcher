@@ -179,7 +179,7 @@ class TestHasPhase3ReviewComment:
         """Test detection when Japanese review comment exists"""
         comments = [
             {"body": "Some other comment"},
-            {"body": "@user 🎁レビューお願いします🎁 : Copilot has finished applying the changes."},
+            {"body": "@user 🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."},
             {"body": "Another comment"},
         ]
 
@@ -265,7 +265,7 @@ class TestPostPhase3Comment:
     def test_post_comment_skips_if_exists(self, mock_run, mock_get_comments):
         """Test that comment posting is skipped if comment already exists"""
         mock_get_comments.return_value = [
-            {"body": "@testuser 🎁レビューお願いします🎁 : Copilot has finished applying the changes."}
+            {"body": "@testuser 🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."}
         ]
 
         pr = {"url": "https://github.com/user/repo/pull/123", "author": {"login": "testuser"}}

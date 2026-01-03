@@ -201,7 +201,7 @@ def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path) -> bool:
     """Post a comment to PR when phase3 is detected
 
     Args:
-        pr: PR data dictionary containing url and author
+        pr: PR data dictionary containing url and optionally author
         repo_dir: Repository directory
 
     Returns:

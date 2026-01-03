@@ -136,3 +136,35 @@ class TestDeterminePhase:
             "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "PENDING"}],
         }
         assert determine_phase(pr) == "phase3"
+
+    def test_phase2_copilot_reviewer_commented_with_review_comments(self):
+        """Copilot reviewer with COMMENTED state and inline review comments should be phase2"""
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "Copilot reviewed 2 out of 2 changed files in this pull request and generated 1 comment.",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
+        }
+
+        assert determine_phase(pr) == "phase2"
+
+    def test_phase3_copilot_reviewer_commented_without_review_comments(self):
+        """Copilot reviewer with COMMENTED state but no inline review comments should be phase3"""
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "## Pull request overview\n\nThis PR looks good overall.",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
+        }
+
+        assert determine_phase(pr) == "phase3"

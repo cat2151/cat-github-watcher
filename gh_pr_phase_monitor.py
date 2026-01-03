@@ -144,7 +144,14 @@ def get_pr_data(repo_dir: Path) -> List[Dict[str, Any]]:
 
 
 def determine_phase(pr: Dict[str, Any]) -> str:
-    """Determine which phase the PR is in"""
+    """Determine which phase the PR is in
+
+    Args:
+        pr: PR data dictionary
+
+    Returns:
+        Phase string: "phase1", "phase2", "phase3", or "LLM working"
+    """
     is_draft = pr.get("isDraft", False)
     reviews = pr.get("reviews", [])
     latest_reviews = pr.get("latestReviews", [])
@@ -170,12 +177,20 @@ def determine_phase(pr: Dict[str, Any]) -> str:
         # レビューの状態を確認
         review_state = latest_review.get("state", "")
 
-        # CHANGES_REQUESTEDの場合のみphase2 (copilot-swe-agentの対応待ち)
-        # それ以外(APPROVED, COMMENTED, DISMISSED, PENDING等)はphase3
-        # 本文の有無に関わらず、CHANGES_REQUESTEDでなければphase3と判定
+        # CHANGES_REQUESTEDの場合は確実にphase2
         if review_state == "CHANGES_REQUESTED":
             return "phase2"
 
+        # COMMENTEDの場合、レビュー本文にインラインコメントの存在を示すパターンがあるかチェック
+        # レビューコメントがある場合はphase2（修正が必要）、ない場合はphase3（レビュー待ち）
+        if review_state == "COMMENTED":
+            review_body = latest_review.get("body", "")
+            if has_inline_review_comments(review_body):
+                return "phase2"
+            # レビューコメントがない場合はphase3
+            return "phase3"
+
+        # それ以外(APPROVED, DISMISSED, PENDING等)はphase3
         return "phase3"
 
     # Phase 3: copilot-swe-agent の修正後
@@ -205,6 +220,28 @@ def get_existing_comments(pr_url: str, repo_dir: Path) -> List[Dict[str, Any]]:
         return data.get("comments", [])
     except (subprocess.CalledProcessError, json.JSONDecodeError):
         return []
+
+
+def has_inline_review_comments(review_body: str) -> bool:
+    """Check if review body indicates inline code comments were generated
+
+    Copilot's review body contains text like:
+    "Copilot reviewed X out of Y changed files in this pull request and generated N comment(s)."
+    when inline comments are present.
+
+    Args:
+        review_body: The body text of the review
+
+    Returns:
+        True if the review body indicates inline comments exist, False otherwise
+    """
+    if not review_body:
+        return False
+
+    # Check for the pattern indicating inline comments were generated
+    # Pattern matches: "generated 1 comment" or "generated 2 comments" etc.
+    pattern = r"generated\s+\d+\s+comments?"
+    return bool(re.search(pattern, review_body, re.IGNORECASE))
 
 
 def has_copilot_apply_comment(comments: List[Dict[str, Any]]) -> bool:

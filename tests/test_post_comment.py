@@ -210,7 +210,7 @@ class TestPostPhase2Comment:
     @patch("gh_pr_phase_monitor.get_existing_comments")
     @patch("gh_pr_phase_monitor.subprocess.run")
     def test_post_comment_with_correct_cwd(self, mock_run, mock_get_comments):
-        """Test that comment posting uses correct working directory"""
+        """Test that comment posting works without requiring working directory"""
         mock_get_comments.return_value = []
         mock_run.return_value = MagicMock(returncode=0)
 
@@ -219,8 +219,9 @@ class TestPostPhase2Comment:
 
         post_phase2_comment(pr, repo_dir)
 
+        # Verify that subprocess.run was called without cwd parameter
         call_kwargs = mock_run.call_args[1]
-        assert call_kwargs["cwd"] == repo_dir
+        assert "cwd" not in call_kwargs
 
     @patch("gh_pr_phase_monitor.get_existing_comments")
     def test_post_comment_no_url(self, mock_get_comments):
@@ -405,7 +406,7 @@ class TestPostPhase3Comment:
     @patch("gh_pr_phase_monitor.get_existing_comments")
     @patch("gh_pr_phase_monitor.subprocess.run")
     def test_post_comment_with_correct_cwd(self, mock_run, mock_get_comments, mock_get_user):
-        """Test that comment posting uses correct working directory"""
+        """Test that comment posting works without requiring working directory"""
         mock_get_comments.return_value = []
         mock_get_user.return_value = "currentuser"
         mock_run.return_value = MagicMock(returncode=0)
@@ -416,8 +417,9 @@ class TestPostPhase3Comment:
 
         post_phase3_comment(pr, repo_dir, custom_text)
 
+        # Verify that subprocess.run was called without cwd parameter
         call_kwargs = mock_run.call_args[1]
-        assert call_kwargs["cwd"] == repo_dir
+        assert "cwd" not in call_kwargs
 
     @patch("gh_pr_phase_monitor.get_current_user")
     @patch("gh_pr_phase_monitor.get_existing_comments")
@@ -491,7 +493,7 @@ class TestMarkPRReady:
 
     @patch("gh_pr_phase_monitor.subprocess.run")
     def test_mark_pr_ready_with_correct_cwd(self, mock_run):
-        """Test that PR ready marking uses correct working directory"""
+        """Test that PR ready marking works without requiring working directory"""
         mock_run.return_value = MagicMock(returncode=0)
 
         pr_url = "https://github.com/user/repo/pull/123"
@@ -499,8 +501,9 @@ class TestMarkPRReady:
 
         mark_pr_ready(pr_url, repo_dir)
 
+        # Verify that subprocess.run was called without cwd parameter
         call_kwargs = mock_run.call_args[1]
-        assert call_kwargs["cwd"] == repo_dir
+        assert "cwd" not in call_kwargs
 
     @patch("gh_pr_phase_monitor.subprocess.run")
     def test_mark_pr_ready_handles_missing_stderr(self, mock_run):

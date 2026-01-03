@@ -674,12 +674,12 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None) -> None:
     url = pr.get("url", "")
     phase = determine_phase(pr)
 
-    # Phase表示をカラフルに
+    # Display phase with colors
     phase_display = colorize_phase(phase)
     print(f"  [{repo_owner}/{repo_name}] {phase_display} {title}")
     print(f"    URL: {url}")
 
-    # Phase 1, 2, 3 の場合はブラウザで開く
+    # Open browser for phase 1, 2, 3
     if phase in ["phase1", "phase2", "phase3"]:
         print("    Opening browser...")
         open_browser(url)
@@ -704,11 +704,14 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None) -> None:
         if phase == "phase3":
             print("    Posting comment for phase3...")
             # phase3_comment_message is required and validated in main()
-            phase3_text = config["phase3_comment_message"]
-            if post_phase3_comment(pr, None, phase3_text):
-                print("    Comment posted successfully")
+            if config and "phase3_comment_message" in config:
+                phase3_text = config["phase3_comment_message"]
+                if post_phase3_comment(pr, None, phase3_text):
+                    print("    Comment posted successfully")
+                else:
+                    print("    Failed to post comment")
             else:
-                print("    Failed to post comment")
+                print("    Warning: phase3_comment_message not configured, skipping comment")
 
 
 def process_repository(repo_dir: Path, config: Dict[str, Any] = None) -> None:

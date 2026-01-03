@@ -16,6 +16,9 @@ from typing import Any, Dict, List
 
 import tomli
 
+# Cache for current user to avoid repeated subprocess calls
+_current_user_cache = None
+
 
 # ANSI Color codes
 class Colors:
@@ -88,6 +91,36 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
     """Load configuration from TOML file"""
     with open(config_path, "rb") as f:
         return tomli.load(f)
+
+
+def get_current_user() -> str:
+    """Get the current authenticated GitHub user's login
+
+    Returns:
+        The login name of the current authenticated user, or empty string if unavailable
+    """
+    global _current_user_cache
+
+    # Return cached value if available (only cache successful authentication)
+    if _current_user_cache is not None and _current_user_cache != "":
+        return _current_user_cache
+
+    cmd = ["gh", "api", "user", "--jq", ".login"]
+
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
+        )
+        _current_user_cache = result.stdout.strip()
+        return _current_user_cache
+    except subprocess.CalledProcessError:
+        print(
+            "[gh-pr-phase-monitor] Warning: Failed to retrieve current GitHub user via "
+            "`gh api user`. You may not be mentioned in phase3 comments. "
+            "Check your GitHub CLI authentication (e.g., run `gh auth status`)."
+        )
+        # Don't cache authentication failures to allow retry on next call
+        return ""
 
 
 def get_pr_data(repo_dir: Path) -> List[Dict[str, Any]]:
@@ -251,7 +284,7 @@ def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path) -> bool:
     """Post a comment to PR when phase3 is detected
 
     Args:
-        pr: PR data dictionary containing url and optionally author
+        pr: PR data dictionary containing url
         repo_dir: Repository directory
 
     Returns:
@@ -267,10 +300,10 @@ def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path) -> bool:
         print("    Comment already exists, skipping")
         return True
 
-    # Get the PR author
-    pr_author = pr.get("author", {}).get("login", "")
-    if pr_author:
-        comment_body = f"@{pr_author} 🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."
+    # Get the current authenticated user
+    current_user = get_current_user()
+    if current_user:
+        comment_body = f"@{current_user} 🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."
     else:
         comment_body = (
             "🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."

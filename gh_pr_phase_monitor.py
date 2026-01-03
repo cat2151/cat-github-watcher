@@ -136,10 +136,11 @@ def get_repositories_with_open_prs() -> List[Dict[str, Any]]:
     current_user = get_current_user()
 
     # GraphQL query to get all repositories with open PR counts
+    # Includes both user-owned repos and organization repos where user is a member
     query = """
     query($login: String!) {
       user(login: $login) {
-        repositories(first: 100, ownerAffiliations: OWNER) {
+        repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER]) {
           nodes {
             name
             owner {
@@ -163,12 +164,14 @@ def get_repositories_with_open_prs() -> List[Dict[str, Any]]:
     end_cursor = None
 
     while has_next_page:
+        # Build query with pagination using proper string formatting
         if end_cursor:
-            # Add pagination support
-            query_with_pagination = query.replace(
-                "repositories(first: 100, ownerAffiliations: OWNER)",
-                f'repositories(first: 100, ownerAffiliations: OWNER, after: "{end_cursor}")'
+            # Use parameterized query for pagination
+            query_with_cursor = query.replace(
+                "repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER])",
+                f'repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER], after: "{end_cursor}")'
             )
+            query_with_pagination = query_with_cursor
         else:
             query_with_pagination = query
 
@@ -179,7 +182,15 @@ def get_repositories_with_open_prs() -> List[Dict[str, Any]]:
             result = subprocess.run(
                 cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
             )
-            data = json.loads(result.stdout)
+            try:
+                data = json.loads(result.stdout)
+            except json.JSONDecodeError as e:
+                error_message = (
+                    f"Error parsing JSON response from gh CLI: {e}\n"
+                    f"Raw output from gh:\n{result.stdout}"
+                )
+                print(error_message)
+                raise RuntimeError(error_message) from e
 
             repositories = data.get("data", {}).get("user", {}).get("repositories", {})
             nodes = repositories.get("nodes", [])
@@ -199,10 +210,11 @@ def get_repositories_with_open_prs() -> List[Dict[str, Any]]:
             end_cursor = page_info.get("endCursor")
 
         except subprocess.CalledProcessError as e:
-            print(f"Error fetching repositories: {e}")
+            error_message = f"Error fetching repositories: {e}"
+            print(error_message)
             if e.stderr:
                 print(f"stderr: {e.stderr}")
-            break
+            raise RuntimeError(error_message) from e
 
     return repos_with_prs
 
@@ -234,13 +246,20 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             repo_name = repo["name"]
             owner = repo["owner"]
 
+            # Escape values to prevent GraphQL injection
+            owner_literal = json.dumps(owner)
+            repo_name_literal = json.dumps(repo_name)
+
+            # Note: We intentionally fetch a single page of open PRs and rely on GitHub's
+            # maximum page size (first: 100). Repositories with >100 open PRs will be
+            # truncated; add pagination here if full coverage is required.
             repo_query = f"""
-            {alias}: repository(owner: "{owner}", name: "{repo_name}") {{
+            {alias}: repository(owner: {owner_literal}, name: {repo_name_literal}) {{
               name
               owner {{
                 login
               }}
-              pullRequests(first: 50, states: OPEN, orderBy: {{field: UPDATED_AT, direction: DESC}}) {{
+              pullRequests(first: 100, states: OPEN, orderBy: {{field: UPDATED_AT, direction: DESC}}) {{
                 nodes {{
                   title
                   url
@@ -314,7 +333,13 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             result = subprocess.run(
                 cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
             )
-            data = json.loads(result.stdout)
+            try:
+                data = json.loads(result.stdout)
+            except json.JSONDecodeError as e:
+                raise RuntimeError(
+                    f"Failed to parse JSON from 'gh api graphql' output. "
+                    f"Raw output was:\n{result.stdout}"
+                ) from e
 
             # Extract PR data from response
             for idx, repo in enumerate(batch):
@@ -328,20 +353,32 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
                     # Transform GraphQL data to match expected format
                     for pr in prs:
-                        # Transform reviews
+                        # Transform reviews - handle null authors
                         reviews = []
                         for review in pr.get("reviews", {}).get("nodes", []):
+                            author_data = review.get("author")
+                            if author_data is None:
+                                # Deleted account - use placeholder
+                                author = {"login": "[deleted]"}
+                            else:
+                                author = {"login": author_data.get("login", "")}
                             reviews.append({
-                                "author": {"login": review.get("author", {}).get("login", "")},
+                                "author": author,
                                 "state": review.get("state", ""),
                                 "body": review.get("body", "")
                             })
 
-                        # Transform latestReviews
+                        # Transform latestReviews - handle null authors
                         latest_reviews = []
                         for review in pr.get("latestReviews", {}).get("nodes", []):
+                            author_data = review.get("author")
+                            if author_data is None:
+                                # Deleted account - use placeholder
+                                author = {"login": "[deleted]"}
+                            else:
+                                author = {"login": author_data.get("login", "")}
                             latest_reviews.append({
-                                "author": {"login": review.get("author", {}).get("login", "")},
+                                "author": author,
                                 "state": review.get("state", "")
                             })
 
@@ -353,12 +390,20 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                             if login:
                                 review_requests.append({"login": login})
 
+                        # Handle null PR author
+                        author_data = pr.get("author")
+                        if author_data is None:
+                            # Deleted account - use placeholder
+                            author = {"login": "[deleted]"}
+                        else:
+                            author = {"login": author_data.get("login", "")}
+
                         # Add repository info to PR
                         pr_with_repo = {
                             "title": pr.get("title", ""),
                             "url": pr.get("url", ""),
                             "isDraft": pr.get("isDraft", False),
-                            "author": pr.get("author", {}),
+                            "author": author,
                             "reviews": reviews,
                             "latestReviews": latest_reviews,
                             "reviewRequests": review_requests,
@@ -381,9 +426,12 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 print(f"  GraphQL API - Cost: {rate_limit.get('cost')}, Remaining: {rate_limit.get('remaining')}")
 
         except subprocess.CalledProcessError as e:
-            print(f"Error fetching PR details: {e}")
+            error_message = f"Error fetching PR details: {e}"
+            print(error_message)
             if e.stderr:
                 print(f"stderr: {e.stderr}")
+            # Re-raise to avoid silently skipping batches and to inform the caller of incomplete data
+            raise RuntimeError(error_message) from e
 
     return all_prs
 
@@ -833,6 +881,7 @@ def main():
 
     # Infinite monitoring loop
     iteration = 0
+    consecutive_failures = 0
     while True:
         iteration += 1
         print(f"\n{'=' * 50}")
@@ -866,6 +915,9 @@ def main():
                     for pr in all_prs:
                         process_pr(pr, config)
 
+            # Reset consecutive-failure counter on a successful iteration
+            consecutive_failures = 0
+
         except RuntimeError as e:
             print(f"\nError: {e}")
             print("Please ensure you are authenticated with gh CLI")
@@ -874,6 +926,16 @@ def main():
             print(f"\nUnexpected error: {e}")
             import traceback
             traceback.print_exc()
+
+            # Track consecutive unexpected failures to avoid infinite error loops
+            consecutive_failures += 1
+
+            if consecutive_failures >= 3:
+                print(
+                    "\nEncountered 3 consecutive unexpected errors; "
+                    "exiting to avoid an infinite error loop."
+                )
+                sys.exit(1)
 
         print(f"\n{'=' * 50}")
         print(f"Waiting {interval_str} until next check...")

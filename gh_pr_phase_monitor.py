@@ -101,8 +101,8 @@ def get_current_user() -> str:
     """
     global _current_user_cache
 
-    # Return cached value if available
-    if _current_user_cache is not None:
+    # Return cached value if available (only cache successful authentication)
+    if _current_user_cache is not None and _current_user_cache != "":
         return _current_user_cache
 
     cmd = ["gh", "api", "user", "--jq", ".login"]
@@ -119,7 +119,7 @@ def get_current_user() -> str:
             "`gh api user`. You may not be mentioned in phase3 comments. "
             "Check your GitHub CLI authentication (e.g., run `gh auth status`)."
         )
-        _current_user_cache = ""
+        # Don't cache authentication failures to allow retry on next call
         return ""
 
 

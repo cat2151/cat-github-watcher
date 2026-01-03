@@ -121,6 +121,26 @@ class TestGetCurrentUser:
         assert result2 == "testuser"
         assert mock_run.call_count == 1  # Still only called once
 
+    @patch("gh_pr_phase_monitor.subprocess.run")
+    def test_get_current_user_does_not_cache_failures(self, mock_run):
+        """Test that authentication failures are not cached, allowing retries"""
+        # Reset cache before test
+        import gh_pr_phase_monitor
+        gh_pr_phase_monitor._current_user_cache = None
+
+        # First call fails
+        mock_run.side_effect = subprocess.CalledProcessError(returncode=1, cmd=["gh", "api", "user"])
+        result1 = get_current_user()
+        assert result1 == ""
+        assert mock_run.call_count == 1
+
+        # Second call should retry (not use cached failure)
+        mock_run.side_effect = None
+        mock_run.return_value = MagicMock(returncode=0, stdout="testuser\n")
+        result2 = get_current_user()
+        assert result2 == "testuser"
+        assert mock_run.call_count == 2  # Called twice, allowing retry
+
 
 class TestPostPhase2Comment:
     """Test the post_phase2_comment function"""

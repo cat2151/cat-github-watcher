@@ -3,10 +3,10 @@ PR phase detection logic based on reviews and PR state
 """
 
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 
-def has_comments_with_reactions(comments: List[Dict[str, Any]]) -> bool:
+def has_comments_with_reactions(comments: Union[List[Dict[str, Any]], int, None]) -> bool:
     """Check if any comments have non-empty reactionGroups
 
     When the LLM (coding agent) is working on addressing PR comments

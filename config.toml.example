@@ -1,0 +1,18 @@
+# GitHub PR Phase Monitor Configuration
+
+# List of repository directories to monitor
+# Use absolute paths or ~ for home directory
+dirs = [
+    "/path/to/repo1",
+    "/path/to/repo2",
+    # "~/projects/my-repo",
+]
+
+# Check interval - how often to check the repositories
+# Supported formats:
+#   - "30s" = 30 seconds
+#   - "1m"  = 1 minute
+#   - "5m"  = 5 minutes
+#   - "1h"  = 1 hour
+#   - "1d"  = 1 day
+interval = "1m"

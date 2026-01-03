@@ -143,12 +143,21 @@ def get_pr_data(repo_dir: Path) -> List[Dict[str, Any]]:
     return json.loads(result.stdout)
 
 
-def determine_phase(pr: Dict[str, Any]) -> str:
-    """Determine which phase the PR is in"""
+def determine_phase(pr: Dict[str, Any], repo_dir: Path = None) -> str:
+    """Determine which phase the PR is in
+
+    Args:
+        pr: PR data dictionary
+        repo_dir: Repository directory (optional, needed for checking review comments)
+
+    Returns:
+        Phase string: "phase1", "phase2", "phase3", or "LLM working"
+    """
     is_draft = pr.get("isDraft", False)
     reviews = pr.get("reviews", [])
     latest_reviews = pr.get("latestReviews", [])
     review_requests = pr.get("reviewRequests", [])
+    pr_url = pr.get("url", "")
 
     # Phase 1: Draft状態 (ただし、reviewRequestsが空の場合はLLM working)
     if is_draft:
@@ -170,12 +179,21 @@ def determine_phase(pr: Dict[str, Any]) -> str:
         # レビューの状態を確認
         review_state = latest_review.get("state", "")
 
-        # CHANGES_REQUESTEDの場合のみphase2 (copilot-swe-agentの対応待ち)
-        # それ以外(APPROVED, COMMENTED, DISMISSED, PENDING等)はphase3
-        # 本文の有無に関わらず、CHANGES_REQUESTEDでなければphase3と判定
+        # CHANGES_REQUESTEDの場合は確実にphase2
         if review_state == "CHANGES_REQUESTED":
             return "phase2"
 
+        # COMMENTEDの場合、インラインのレビューコメントがあるかチェック
+        # レビューコメントがある場合はphase2（修正が必要）、ない場合はphase3（レビュー待ち）
+        if review_state == "COMMENTED":
+            # repo_dirとpr_urlがある場合のみチェック（テストではオプショナル）
+            if repo_dir and pr_url:
+                if has_review_comments_from_author(pr_url, repo_dir, author_login):
+                    return "phase2"
+            # レビューコメントがない、または確認できない場合はphase3
+            return "phase3"
+
+        # それ以外(APPROVED, DISMISSED, PENDING等)はphase3
         return "phase3"
 
     # Phase 3: copilot-swe-agent の修正後
@@ -205,6 +223,45 @@ def get_existing_comments(pr_url: str, repo_dir: Path) -> List[Dict[str, Any]]:
         return data.get("comments", [])
     except (subprocess.CalledProcessError, json.JSONDecodeError):
         return []
+
+
+def has_review_comments_from_author(pr_url: str, repo_dir: Path, author_login: str) -> bool:
+    """Check if there are review comments (inline code comments) from a specific author
+
+    Args:
+        pr_url: URL of the PR
+        repo_dir: Repository directory
+        author_login: GitHub login of the author to check
+
+    Returns:
+        True if there are review comments from the author, False otherwise
+    """
+    # Extract PR number from URL
+    match = re.search(r"/pull/(\d+)$", pr_url)
+    if not match:
+        return False
+
+    pr_number = match.group(1)
+
+    # Extract owner and repo from URL
+    match = re.search(r"github\.com/([^/]+)/([^/]+)/pull/", pr_url)
+    if not match:
+        return False
+
+    owner = match.group(1)
+    repo_name = match.group(2)
+
+    # Use GitHub API to get review comments (inline code comments)
+    cmd = ["gh", "api", f"repos/{owner}/{repo_name}/pulls/{pr_number}/comments", "--jq", f"[.[] | select(.user.login == \"{author_login}\")] | length"]
+
+    try:
+        result = subprocess.run(
+            cmd, cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
+        )
+        count = int(result.stdout.strip())
+        return count > 0
+    except (subprocess.CalledProcessError, ValueError):
+        return False
 
 
 def has_copilot_apply_comment(comments: List[Dict[str, Any]]) -> bool:
@@ -376,7 +433,7 @@ def process_repository(repo_dir: Path, config: Dict[str, Any] = None) -> None:
         for pr in pr_list:
             title = pr.get("title", "Unknown")
             url = pr.get("url", "")
-            phase = determine_phase(pr)
+            phase = determine_phase(pr, repo_dir)
 
             # Phase表示をカラフルに
             phase_display = colorize_phase(phase)

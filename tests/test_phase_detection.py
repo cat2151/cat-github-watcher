@@ -136,3 +136,59 @@ class TestDeterminePhase:
             "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "PENDING"}],
         }
         assert determine_phase(pr) == "phase3"
+
+    def test_phase2_copilot_reviewer_commented_with_review_comments(self, mocker):
+        """Copilot reviewer with COMMENTED state and inline review comments should be phase2"""
+        from pathlib import Path
+
+        # Mock the has_review_comments_from_author function to return True
+        mock_has_review_comments = mocker.patch(
+            "gh_pr_phase_monitor.has_review_comments_from_author", return_value=True
+        )
+
+        pr = {
+            "isDraft": False,
+            "url": "https://github.com/owner/repo/pull/123",
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "## Review comments\n\nPlease see inline comments.",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
+        }
+        repo_dir = Path("/tmp/test-repo")
+
+        assert determine_phase(pr, repo_dir) == "phase2"
+        mock_has_review_comments.assert_called_once_with(
+            "https://github.com/owner/repo/pull/123", repo_dir, "copilot-pull-request-reviewer"
+        )
+
+    def test_phase3_copilot_reviewer_commented_without_review_comments(self, mocker):
+        """Copilot reviewer with COMMENTED state but no inline review comments should be phase3"""
+        from pathlib import Path
+
+        # Mock the has_review_comments_from_author function to return False
+        mock_has_review_comments = mocker.patch(
+            "gh_pr_phase_monitor.has_review_comments_from_author", return_value=False
+        )
+
+        pr = {
+            "isDraft": False,
+            "url": "https://github.com/owner/repo/pull/123",
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "## Pull request overview\n\nThis PR looks good overall.",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
+        }
+        repo_dir = Path("/tmp/test-repo")
+
+        assert determine_phase(pr, repo_dir) == "phase3"
+        mock_has_review_comments.assert_called_once_with(
+            "https://github.com/owner/repo/pull/123", repo_dir, "copilot-pull-request-reviewer"
+        )

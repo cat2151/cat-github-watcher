@@ -53,13 +53,13 @@ def parse_interval(interval_str: str) -> int:
 
 def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
     """Load configuration from TOML file
-    
+
     Args:
         config_path: Path to the TOML configuration file
-        
+
     Returns:
         Dictionary containing configuration data
-        
+
     Raises:
         FileNotFoundError: If the configuration file is not found
     """

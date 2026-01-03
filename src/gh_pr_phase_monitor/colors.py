@@ -17,10 +17,10 @@ class Colors:
 
 def colorize_phase(phase: str) -> str:
     """Add color to phase string
-    
+
     Args:
         phase: Phase string (phase1, phase2, phase3, or LLM working)
-        
+
     Returns:
         Colorized phase string with ANSI codes
     """

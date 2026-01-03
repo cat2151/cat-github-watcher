@@ -358,10 +358,10 @@ def get_pr_data(repo_dir: Path) -> List[Dict[str, Any]]:
 
     This function is no longer used in the main flow but kept for potential
     backwards compatibility or testing purposes.
-    
+
     Args:
         repo_dir: Repository directory path
-        
+
     Returns:
         List of PR data dictionaries
     """

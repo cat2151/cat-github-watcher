@@ -38,7 +38,7 @@ def mark_pr_ready(pr_url: str, repo_dir: Path = None) -> bool:
 
 def open_browser(url: str) -> None:
     """Open URL in browser
-    
+
     Args:
         url: URL to open in browser
     """

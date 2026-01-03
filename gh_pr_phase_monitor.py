@@ -91,6 +91,7 @@ def determine_phase(pr: Dict[str, Any]) -> str:
 
             # レビューが承認された、またはコメントがない場合はphase3
             # (copilot-swe-agentが対応する必要がないため)
+            # Note: strip() handles None, empty string, and whitespace-only strings
             if review_state == "APPROVED" or not review_body:
                 return "phase3"
 

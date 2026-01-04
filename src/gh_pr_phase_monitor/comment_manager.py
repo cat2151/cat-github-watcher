@@ -83,7 +83,7 @@ def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path = None, custom_text: 
     Args:
         pr: PR data dictionary containing url
         repo_dir: Repository directory (optional, not used when working with URLs)
-        custom_text: Custom text for the comment.
+        custom_text: The complete comment text to post.
                      Required parameter from config.
 
     Returns:

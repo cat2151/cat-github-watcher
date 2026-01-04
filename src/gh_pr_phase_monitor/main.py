@@ -140,8 +140,10 @@ def main():
                                     print(f"     Labels: {label_str}")
                                     print("\n  Attempting to assign to Copilot...")
 
-                                    # Assign the issue to Copilot
-                                    assign_issue_to_copilot(issue)
+                                    # Assign the issue to Copilot and check the result
+                                    success = assign_issue_to_copilot(issue)
+                                    if not success:
+                                        print("  Assignment failed - will retry on next iteration")
                                 else:
                                     print("  No 'good first issue' issues found in repositories without open PRs")
 

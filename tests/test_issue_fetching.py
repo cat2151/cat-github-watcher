@@ -3,9 +3,11 @@ Tests for issue fetching functionality
 """
 
 import json
+import subprocess
 from unittest.mock import MagicMock, patch
 
 from src.gh_pr_phase_monitor.github_client import (
+    assign_issue_to_copilot,
     get_all_repositories,
     get_issues_from_repositories,
     get_repositories_with_no_prs_and_open_issues,
@@ -307,3 +309,87 @@ class TestGetIssuesFromRepositories:
         assert len(issues) == 1
         assert issues[0]["title"] == "Good First Issue"
         assert "good first issue" in issues[0]["labels"]
+
+
+class TestAssignIssueToCopilot:
+    """Tests for assign_issue_to_copilot function"""
+
+    @patch("subprocess.run")
+    def test_successful_assignment(self, mock_run):
+        """Test successful issue assignment"""
+        issue = {
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "number": 123,
+        }
+
+        mock_result = MagicMock()
+        mock_run.return_value = mock_result
+
+        result = assign_issue_to_copilot(issue)
+
+        assert result is True
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args
+        assert call_args[0][0] == ["gh", "issue", "comment", "123", "--repo", "test-owner/test-repo", "--body", "Assign to Copilot"]
+        assert call_args[1]["timeout"] == 30
+
+    @patch("subprocess.run")
+    def test_failed_assignment(self, mock_run):
+        """Test failed assignment (subprocess.CalledProcessError)"""
+        issue = {
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "number": 123,
+        }
+
+        mock_run.side_effect = subprocess.CalledProcessError(1, "gh", stderr="Error message")
+
+        result = assign_issue_to_copilot(issue)
+
+        assert result is False
+
+    @patch("subprocess.run")
+    def test_timeout_assignment(self, mock_run):
+        """Test timeout scenario"""
+        issue = {
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "number": 123,
+        }
+
+        mock_run.side_effect = subprocess.TimeoutExpired("gh", 30)
+
+        result = assign_issue_to_copilot(issue)
+
+        assert result is False
+
+    def test_missing_required_fields(self):
+        """Test validation of missing required fields"""
+        # Missing 'repository' field
+        issue1 = {"number": 123}
+        assert assign_issue_to_copilot(issue1) is False
+
+        # Missing 'number' field
+        issue2 = {"repository": {"name": "test-repo", "owner": "test-owner"}}
+        assert assign_issue_to_copilot(issue2) is False
+
+    def test_missing_repository_fields(self):
+        """Test validation of missing repository fields"""
+        # Missing 'name' field
+        issue1 = {
+            "repository": {"owner": "test-owner"},
+            "number": 123,
+        }
+        assert assign_issue_to_copilot(issue1) is False
+
+        # Missing 'owner' field
+        issue2 = {
+            "repository": {"name": "test-repo"},
+            "number": 123,
+        }
+        assert assign_issue_to_copilot(issue2) is False
+
+        # Repository is not a dict
+        issue3 = {
+            "repository": "not-a-dict",
+            "number": 123,
+        }
+        assert assign_issue_to_copilot(issue3) is False

@@ -4,7 +4,7 @@ Issue fetching module for GitHub issues
 
 import json
 import subprocess
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .graphql_client import execute_graphql_query
 
@@ -13,7 +13,7 @@ REPOSITORIES_BATCH_SIZE = 10
 ISSUES_PER_REPO = 50
 
 
-def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10, labels: List[str] = None) -> List[Dict[str, Any]]:
+def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10, labels: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """Get issues from multiple repositories, sorted by timestamp descending
 
     Args:
@@ -140,8 +140,18 @@ def assign_issue_to_copilot(issue: Dict[str, Any]) -> bool:
     Returns:
         True if assignment was successful, False otherwise
     """
-    repo_name = issue["repository"]["name"]
-    owner = issue["repository"]["owner"]
+    # Validate that the issue dictionary contains the required fields before accessing them
+    if "repository" not in issue or "number" not in issue:
+        print("  ✗ Invalid issue data: missing required fields")
+        return False
+
+    repository = issue["repository"]
+    if not isinstance(repository, dict) or "name" not in repository or "owner" not in repository:
+        print("  ✗ Invalid issue data: missing repository fields")
+        return False
+
+    repo_name = repository["name"]
+    owner = repository["owner"]
     issue_number = issue["number"]
 
     # Post a comment "Assign to Copilot" which triggers GitHub's workflow for Copilot assignment

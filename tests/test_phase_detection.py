@@ -8,7 +8,39 @@ Tests cover the following scenarios:
 - LLM working: No reviews, unknown reviewers, or comments with reactions
 """
 
-from src.gh_pr_phase_monitor import determine_phase, has_comments_with_reactions
+from src.gh_pr_phase_monitor import determine_phase, has_comments_with_reactions, has_inline_review_comments
+
+
+class TestHasInlineReviewComments:
+    """Test the has_inline_review_comments function"""
+
+    def test_with_one_comment(self):
+        """Text with 'generated 1 comment' should return True"""
+        body = "Copilot reviewed 1 out of 1 changed file in this pull request and generated 1 comment."
+        assert has_inline_review_comments(body) is True
+
+    def test_with_multiple_comments(self):
+        """Text with 'generated N comments' should return True"""
+        body = "Copilot reviewed 2 out of 2 changed files in this pull request and generated 3 comments."
+        assert has_inline_review_comments(body) is True
+
+    def test_with_zero_comments(self):
+        """Text with 'generated 0 comments' should return False"""
+        body = "Copilot reviewed 1 out of 1 changed file in this pull request and generated 0 comments."
+        assert has_inline_review_comments(body) is False
+
+    def test_with_no_pattern(self):
+        """Text without the pattern should return False"""
+        body = "## Pull request overview\n\nLooks good overall."
+        assert has_inline_review_comments(body) is False
+
+    def test_with_empty_body(self):
+        """Empty body should return False"""
+        assert has_inline_review_comments("") is False
+
+    def test_with_none_body(self):
+        """None body should return False"""
+        assert has_inline_review_comments(None) is False
 
 
 class TestHasCommentsWithReactions:
@@ -406,4 +438,41 @@ class TestDeterminePhase:
         }
 
         # Should be phase3 because the most recent review from copilot-pull-request-reviewer has no issues
+        assert determine_phase(pr) == "phase3"
+
+    def test_phase3_when_review_generated_zero_comments(self):
+        """When copilot-pull-request-reviewer says 'generated 0 comments', should be phase3 not phase2"""
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "Copilot reviewed 1 out of 1 changed file in this pull request and generated 0 comments.",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
+            "commentNodes": [],
+        }
+
+        # Should be phase3 because 0 comments means no inline review comments
+        assert determine_phase(pr) == "phase3"
+
+    def test_phase3_when_swe_agent_after_zero_comments(self):
+        """When copilot-swe-agent posts after 'generated 0 comments', should be phase3 not phase2"""
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "Copilot reviewed 1 out of 1 changed file in this pull request and generated 0 comments.",
+                },
+                {"author": {"login": "copilot-swe-agent"}, "state": "COMMENTED", "body": "Made some improvements"},
+            ],
+            "latestReviews": [{"author": {"login": "copilot-swe-agent"}, "state": "COMMENTED"}],
+            "commentNodes": [],
+        }
+
+        # Should be phase3 because the review had 0 comments (no issues to address)
         assert determine_phase(pr) == "phase3"

@@ -62,7 +62,8 @@ def has_inline_review_comments(review_body: str) -> bool:
 
     # Check for the pattern indicating inline comments were generated
     # Pattern matches: "generated 1 comment" or "generated 2 comments" etc.
-    pattern = r"generated\s+\d+\s+comments?"
+    # But NOT "generated 0 comments" (use negative lookahead)
+    pattern = r"generated\s+(?!0\s)(\d+)\s+comments?"
     return bool(re.search(pattern, review_body, re.IGNORECASE))
 
 

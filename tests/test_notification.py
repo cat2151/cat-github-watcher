@@ -165,24 +165,30 @@ class TestSendNtfyNotification:
     def test_non_200_response_code(self, mock_urlopen):
         """Test with non-200 response codes"""
         # Test 201 Created
-        mock_response = MagicMock()
-        mock_response.status = 201
-        mock_urlopen.return_value.__enter__.return_value = mock_response
+        mock_response_201 = MagicMock()
+        mock_response_201.status = 201
+        mock_urlopen.return_value.__enter__.return_value = mock_response_201
         result = send_ntfy_notification("test-topic", "Test message")
         assert result is False
 
         # Test 400 Bad Request
-        mock_response.status = 400
+        mock_response_400 = MagicMock()
+        mock_response_400.status = 400
+        mock_urlopen.return_value.__enter__.return_value = mock_response_400
         result = send_ntfy_notification("test-topic", "Test message")
         assert result is False
 
         # Test 404 Not Found
-        mock_response.status = 404
+        mock_response_404 = MagicMock()
+        mock_response_404.status = 404
+        mock_urlopen.return_value.__enter__.return_value = mock_response_404
         result = send_ntfy_notification("test-topic", "Test message")
         assert result is False
 
         # Test 500 Internal Server Error
-        mock_response.status = 500
+        mock_response_500 = MagicMock()
+        mock_response_500.status = 500
+        mock_urlopen.return_value.__enter__.return_value = mock_response_500
         result = send_ntfy_notification("test-topic", "Test message")
         assert result is False
 

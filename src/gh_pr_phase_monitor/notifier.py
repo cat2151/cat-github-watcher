@@ -76,11 +76,16 @@ def is_valid_topic(topic: str) -> bool:
     if not (1 <= len(topic) <= 100):
         return False
 
-    # Allow alphanumeric, underscore, hyphen, and dot, but:
-    # - do not start with a dot
-    # - do not end with a dot
-    # - do not contain consecutive dots
-    return bool(re.match(r"^(?!\.)(?!.*\.\.)(?!.*\.$)[a-zA-Z0-9_.-]+$", topic))
+    # Check for leading or trailing dots
+    if topic.startswith(".") or topic.endswith("."):
+        return False
+
+    # Check for consecutive dots
+    if ".." in topic:
+        return False
+
+    # Check allowed characters: alphanumeric, underscore, hyphen, and dot
+    return bool(re.match(r"^[a-zA-Z0-9_.-]+$", topic))
 
 
 def send_ntfy_notification(

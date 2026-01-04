@@ -2,8 +2,25 @@
 Notification module for sending alerts via ntfy.sh
 """
 
+import re
 import urllib.request
 from typing import Any, Dict, Optional
+
+
+def is_valid_topic(topic: str) -> bool:
+    """Validate ntfy.sh topic name
+
+    Topics should only contain alphanumeric characters, underscores, hyphens, and dots.
+    This prevents potential URL injection issues.
+
+    Args:
+        topic: Topic name to validate
+
+    Returns:
+        True if valid, False otherwise
+    """
+    # Allow alphanumeric, underscore, hyphen, and dot
+    return bool(re.match(r"^[a-zA-Z0-9_.-]+$", topic)) and len(topic) <= 100
 
 
 def send_ntfy_notification(
@@ -21,6 +38,11 @@ def send_ntfy_notification(
         True if notification was sent successfully, False otherwise
     """
     if not topic or not message:
+        return False
+
+    # Validate topic to prevent URL injection
+    if not is_valid_topic(topic):
+        print(f"    Error: Invalid ntfy topic name: {topic}")
         return False
 
     url = f"https://ntfy.sh/{topic}"

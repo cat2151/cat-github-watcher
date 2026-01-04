@@ -6,9 +6,56 @@ from unittest.mock import MagicMock, patch
 
 from src.gh_pr_phase_monitor.notifier import (
     format_notification_message,
+    is_valid_topic,
     send_ntfy_notification,
     send_phase3_notification,
 )
+
+
+class TestIsValidTopic:
+    """Test the is_valid_topic function"""
+
+    def test_valid_simple_topic(self):
+        """Test valid simple topic name"""
+        assert is_valid_topic("test-topic") is True
+
+    def test_valid_topic_with_underscores(self):
+        """Test valid topic with underscores"""
+        assert is_valid_topic("test_topic_123") is True
+
+    def test_valid_topic_with_dots(self):
+        """Test valid topic with dots"""
+        assert is_valid_topic("test.topic.com") is True
+
+    def test_valid_alphanumeric(self):
+        """Test valid alphanumeric topic"""
+        assert is_valid_topic("TestTopic123") is True
+
+    def test_invalid_topic_with_slash(self):
+        """Test invalid topic with slash"""
+        assert is_valid_topic("test/topic") is False
+
+    def test_invalid_topic_with_spaces(self):
+        """Test invalid topic with spaces"""
+        assert is_valid_topic("test topic") is False
+
+    def test_invalid_topic_with_special_chars(self):
+        """Test invalid topic with special characters"""
+        assert is_valid_topic("test@topic") is False
+        assert is_valid_topic("test#topic") is False
+        assert is_valid_topic("test$topic") is False
+
+    def test_invalid_empty_topic(self):
+        """Test empty topic"""
+        assert is_valid_topic("") is False
+
+    def test_invalid_too_long_topic(self):
+        """Test topic that is too long"""
+        assert is_valid_topic("a" * 101) is False
+
+    def test_valid_max_length_topic(self):
+        """Test topic at maximum length"""
+        assert is_valid_topic("a" * 100) is True
 
 
 class TestFormatNotificationMessage:
@@ -94,6 +141,11 @@ class TestSendNtfyNotification:
     def test_empty_message(self):
         """Test with empty message"""
         result = send_ntfy_notification("test-topic", "")
+        assert result is False
+
+    def test_invalid_topic_name(self):
+        """Test with invalid topic name"""
+        result = send_ntfy_notification("test/invalid", "Test message")
         assert result is False
 
 

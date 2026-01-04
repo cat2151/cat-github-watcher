@@ -102,19 +102,18 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         else:
             print("    Browser already opened for this PR, skipping")
 
-        # Send notification if configured and not already sent
+        # Send notification if configured and not already attempted
         notification_key = (url, phase)
         if notification_key not in _notifications_sent:
+            # Mark as attempted regardless of outcome to avoid repeated checks
+            _notifications_sent.add(notification_key)
+
             if config and config.get("ntfy", {}).get("enabled", False):
                 print("    Sending ntfy notification...")
                 if send_phase3_notification(config, url, title):
                     print("    Notification sent successfully")
-                    _notifications_sent.add(notification_key)
                 else:
                     print("    Failed to send notification")
-            else:
-                # Mark as sent to avoid repeated checks
-                _notifications_sent.add(notification_key)
 
 
 def process_repository(repo_dir: Path, config: Dict[str, Any] = None) -> None:

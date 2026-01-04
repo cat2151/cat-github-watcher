@@ -22,7 +22,7 @@ from .pr_actions import process_pr
 
 def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = None):
     """Display issues from repositories with no open PRs
-    
+
     Args:
         config: Configuration dictionary (optional)
     """

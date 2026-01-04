@@ -6,15 +6,15 @@ optionally enabled through configuration.
 """
 
 import time
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 # Selenium imports are optional - will be imported only if automation is enabled
 try:
     from selenium import webdriver
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
     from selenium.common.exceptions import TimeoutException, WebDriverException
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
     SELENIUM_AVAILABLE = True
 except ImportError:
     SELENIUM_AVAILABLE = False
@@ -22,7 +22,7 @@ except ImportError:
 
 def is_selenium_available() -> bool:
     """Check if Selenium is available for use
-    
+
     Returns:
         True if Selenium is installed and available, False otherwise
     """
@@ -34,73 +34,73 @@ def assign_issue_to_copilot_automated(
     config: Optional[Dict[str, Any]] = None
 ) -> bool:
     """Automatically assign an issue to Copilot by clicking buttons in browser
-    
+
     This function uses Selenium WebDriver to:
     1. Open the issue in a browser
     2. Wait for the configured time (default 10 seconds)
     3. Click the "Assign to Copilot" button
     4. Click the "Assign" button
-    
+
     Args:
         issue_url: The URL of the GitHub issue
         config: Optional configuration dict with automation settings
-        
+
     Returns:
         True if automation was successful, False otherwise
     """
     if not SELENIUM_AVAILABLE:
         print("  ✗ Selenium is not installed. Install with: pip install selenium webdriver-manager")
         return False
-    
+
     # Get configuration settings
     if config is None:
         config = {}
-    
+
     assign_config = config.get("assign_to_copilot", {})
     wait_seconds = assign_config.get("wait_seconds", 10)
     browser_type = assign_config.get("browser", "edge").lower()
     headless = assign_config.get("headless", False)
-    
+
     driver = None
-    
+
     try:
         # Initialize the browser driver
         driver = _create_browser_driver(browser_type, headless)
         if driver is None:
             return False
-        
+
         print(f"  → Opening issue in {browser_type} browser...")
         driver.get(issue_url)
-        
+
         # Wait for the configured time
         print(f"  → Waiting {wait_seconds} seconds for page to load...")
         time.sleep(wait_seconds)
-        
+
         # Click "Assign to Copilot" button
         print("  → Looking for 'Assign to Copilot' button...")
         if not _click_button(driver, "Assign to Copilot"):
             print("  ✗ Could not find or click 'Assign to Copilot' button")
             return False
-        
+
         print("  ✓ Clicked 'Assign to Copilot' button")
-        
+
         # Wait a bit for the assignment UI to appear
         time.sleep(2)
-        
+
         # Click "Assign" button
         print("  → Looking for 'Assign' button...")
         if not _click_button(driver, "Assign"):
             print("  ✗ Could not find or click 'Assign' button")
             return False
-        
+
         print("  ✓ Clicked 'Assign' button")
         print("  ✓ Successfully automated issue assignment to Copilot")
-        
+
         # Wait a bit before closing
         time.sleep(2)
-        
+
         return True
-        
+
     except WebDriverException as e:
         print(f"  ✗ Browser automation error: {e}")
         return False
@@ -118,11 +118,11 @@ def assign_issue_to_copilot_automated(
 
 def _create_browser_driver(browser_type: str, headless: bool):
     """Create and configure a browser driver
-    
+
     Args:
         browser_type: Type of browser (edge, chrome, firefox)
         headless: Whether to run in headless mode
-        
+
     Returns:
         WebDriver instance or None if failed
     """
@@ -133,24 +133,24 @@ def _create_browser_driver(browser_type: str, headless: bool):
                 options.add_argument("--headless")
             options.add_argument("--disable-blink-features=AutomationControlled")
             return webdriver.Edge(options=options)
-            
+
         elif browser_type == "chrome":
             options = webdriver.ChromeOptions()
             if headless:
                 options.add_argument("--headless")
             options.add_argument("--disable-blink-features=AutomationControlled")
             return webdriver.Chrome(options=options)
-            
+
         elif browser_type == "firefox":
             options = webdriver.FirefoxOptions()
             if headless:
                 options.add_argument("--headless")
             return webdriver.Firefox(options=options)
-            
+
         else:
             print(f"  ✗ Unsupported browser type: {browser_type}")
             return None
-            
+
     except WebDriverException as e:
         print(f"  ✗ Failed to create {browser_type} browser driver: {e}")
         print(f"  → Make sure {browser_type} driver is installed")
@@ -159,18 +159,18 @@ def _create_browser_driver(browser_type: str, headless: bool):
 
 def _click_button(driver, button_text: str, timeout: int = 10) -> bool:
     """Find and click a button by its text
-    
+
     Args:
         driver: Selenium WebDriver instance
         button_text: Text content of the button to click
         timeout: Maximum time to wait for button (seconds)
-        
+
     Returns:
         True if button was found and clicked, False otherwise
     """
     try:
         wait = WebDriverWait(driver, timeout)
-        
+
         # Try multiple strategies to find the button
         selectors = [
             (By.XPATH, f"//button[contains(text(), '{button_text}')]"),
@@ -178,7 +178,7 @@ def _click_button(driver, button_text: str, timeout: int = 10) -> bool:
             (By.XPATH, f"//a[contains(text(), '{button_text}')]"),
             (By.CSS_SELECTOR, f"button[title='{button_text}']"),
         ]
-        
+
         for by, selector in selectors:
             try:
                 button = wait.until(
@@ -188,10 +188,10 @@ def _click_button(driver, button_text: str, timeout: int = 10) -> bool:
                 return True
             except TimeoutException:
                 continue
-        
+
         # If none of the selectors worked
         return False
-        
+
     except Exception as e:
         print(f"  ✗ Error clicking button '{button_text}': {e}")
         return False

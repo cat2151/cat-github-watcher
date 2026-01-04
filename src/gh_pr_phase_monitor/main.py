@@ -9,6 +9,7 @@ import traceback
 
 from .config import load_config, parse_interval
 from .github_client import (
+    assign_issue_to_copilot,
     get_issues_from_repositories,
     get_pr_details_batch,
     get_repositories_with_no_prs_and_open_issues,
@@ -116,6 +117,37 @@ def main():
                                 for repo in repos_with_issues:
                                     print(f"    - {repo['owner']}/{repo['name']}: {repo['openIssueCount']} open issue(s)")
 
+                                # First, try to fetch and auto-assign "good first issue" issues
+                                print(f"\n{'=' * 50}")
+                                print("Checking for 'good first issue' issues to auto-assign to Copilot...")
+                                print(f"{'=' * 50}")
+
+                                good_first_issues = get_issues_from_repositories(
+                                    repos_with_issues, limit=1, labels=["good first issue"]
+                                )
+
+                                if good_first_issues:
+                                    issue = good_first_issues[0]
+                                    repo_info = issue["repository"]
+                                    print("\n  Found top 'good first issue' (sorted by last update, descending):")
+                                    print(f"  [{repo_info['owner']}/{repo_info['name']}] #{issue['number']}: {issue['title']}")
+                                    print(f"     URL: {issue['url']}")
+                                    print(f"     Author: {issue['author']['login']}")
+                                    print(f"     Updated: {issue['updatedAt']}")
+                                    # Safely join labels, ensuring they are all strings
+                                    labels = issue.get('labels', [])
+                                    label_str = ', '.join(str(label) for label in labels)
+                                    print(f"     Labels: {label_str}")
+                                    print("\n  Attempting to assign to Copilot...")
+
+                                    # Assign the issue to Copilot and check the result
+                                    success = assign_issue_to_copilot(issue)
+                                    if not success:
+                                        print("  Assignment failed - will retry on next iteration")
+                                else:
+                                    print("  No 'good first issue' issues found in repositories without open PRs")
+
+                                # Then, show top 10 issues from these repositories
                                 print(f"\n{'=' * 50}")
                                 print("Fetching top 10 issues from these repositories...")
                                 print(f"{'=' * 50}")

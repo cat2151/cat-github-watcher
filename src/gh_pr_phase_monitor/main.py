@@ -70,7 +70,7 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                     print("\n  Attempting to assign to Copilot...")
 
                     # Assign the issue to Copilot and check the result
-                    success = assign_issue_to_copilot(issue)
+                    success = assign_issue_to_copilot(issue, config)
                     if not success:
                         print("  Assignment failed - will retry on next iteration")
                 else:

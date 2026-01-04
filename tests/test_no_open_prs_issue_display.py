@@ -5,8 +5,7 @@ This test ensures the new behavior requested in the issue:
 "Add the condition 'No repositories with open PRs found' to the conditions for displaying the latest issue."
 """
 
-import json
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.main import display_issues_from_repos_without_prs
 
@@ -121,11 +120,11 @@ def test_display_issues_handles_exceptions():
 if __name__ == "__main__":
     test_display_issues_when_no_repos_with_prs()
     print("✓ Test 1 passed: display_issues_when_no_repos_with_prs")
-    
+
     test_display_issues_when_no_repos_with_issues()
     print("✓ Test 2 passed: display_issues_when_no_repos_with_issues")
-    
+
     test_display_issues_handles_exceptions()
     print("✓ Test 3 passed: display_issues_handles_exceptions")
-    
+
     print("\n✅ All tests passed!")

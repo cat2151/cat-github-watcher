@@ -1,4 +1,4 @@
-Last updated: 2026-01-04
+Last updated: 2026-01-05
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -205,44 +205,73 @@ Last updated: 2026-01-04
 - README.md
 - STRUCTURE.md
 - _config.yml
+- cat-github-watcher.py
 - config.toml.example
 - generated-docs/project-overview-generated-prompt.md
-- cat-github-watcher.py
 - pytest.ini
 - ruff.toml
 - src/__init__.py
 - src/gh_pr_phase_monitor/__init__.py
 - src/gh_pr_phase_monitor/colors.py
+- src/gh_pr_phase_monitor/comment_fetcher.py
 - src/gh_pr_phase_monitor/comment_manager.py
 - src/gh_pr_phase_monitor/config.py
+- src/gh_pr_phase_monitor/github_auth.py
 - src/gh_pr_phase_monitor/github_client.py
+- src/gh_pr_phase_monitor/graphql_client.py
+- src/gh_pr_phase_monitor/issue_fetcher.py
 - src/gh_pr_phase_monitor/main.py
+- src/gh_pr_phase_monitor/notifier.py
 - src/gh_pr_phase_monitor/phase_detector.py
 - src/gh_pr_phase_monitor/pr_actions.py
+- src/gh_pr_phase_monitor/pr_fetcher.py
+- src/gh_pr_phase_monitor/repository_fetcher.py
+- tests/test_integration_issue_fetching.py
 - tests/test_interval_parsing.py
+- tests/test_issue_fetching.py
+- tests/test_no_open_prs_issue_display.py
+- tests/test_notification.py
 - tests/test_phase_detection.py
 - tests/test_post_comment.py
 - tests/test_pr_actions.py
 
 ## 現在のオープンIssues
-## [Issue #34](../issue-notes/34.md): Display issues from repos without open PRs when all PRs are in LLM working phase
-When all monitored PRs are in "LLM working" phase, users need visibility into what to work on next. This PR adds automatic discovery and display of issues from repositories that have no open PRs.
+## [Issue #65](../issue-notes/65.md): Replace gh comment with browser-based issue assignment
+The previous implementation posted "Assign to Copilot" comments via `gh issue comment`, which only incremented assignee count without actually assigning Copilot, polluting issue metadata.
 
 ## Changes
 
-### New GraphQL queries (`github_client.py`)
-- `get_all_repositories()` - Fetches all user ...
+**Core implementation** (`issue_fetcher.py`):
+- Replace `subprocess.run(['gh', 'issue', 'comment', ...
 ラベル: 
---- issue-notes/34.md の内容 ---
+--- issue-notes/65.md の内容 ---
 
 ```markdown
 
 ```
 
-## [Issue #33](../issue-notes/33.md): すべてがLLM workingのとき、ghで認証済みのGitHubアカウント（つまり自分）の「全リポジトリ」のうち「openなprがなく、openなissueのあるリポジトリ」を得て、そのリポジトリ群のissueのtimestamp降順sortで先頭10件を表示する
+## [Issue #64](../issue-notes/64.md): Assign to copilotを検証した結果がNG。assignees人数だけ増えて、copilotは実際にはアサインされない、となりissue情報が汚れてuserが混乱した。機能を変更し、tomlでenableのときのみ動作し、ghコマンドではなく、なんらかのブラウザ自動操縦方法で、issueを開いてAssign to Copilotボタンを押させる方法で実現とする
 
 ラベル: 
---- issue-notes/33.md の内容 ---
+--- issue-notes/64.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #57](../issue-notes/57.md): デフォルトはdry run動作とする。tomlに enable_execution = true を書いたときだけ、phase1,phase2,phase3の検知後に「実際にPRに書き込みや、ntfy通知」とする
+
+ラベル: good first issue
+--- issue-notes/57.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #39](../issue-notes/39.md): issue10件表示機能について、リポジトリlist表示を削除し、authorとupdatedを削除し、表示は10件でなく5件にして、userの認知負荷を下げる
+
+ラベル: good first issue
+--- issue-notes/39.md の内容 ---
 
 ```markdown
 
@@ -250,26 +279,17 @@ When all monitored PRs are in "LLM working" phase, users need visibility into wh
 
 ## [Issue #32](../issue-notes/32.md): 「Posting comment for phase2... / Comment already exists, skipping / Comment posted successfully」と表示され、userが混乱する。skippingのあとはpostedを表示しないようにする
 
-ラベル: 
+ラベル: good first issue
 --- issue-notes/32.md の内容 ---
 
 ```markdown
 
 ```
 
-## [Issue #21](../issue-notes/21.md): pyについて、前回とまったく同じ表示内容かつLLM workingであれば、表示内容を変更し、「現在、検知してから3分20秒経過」のような表示をする。さらに、その表示時と、待ち時間中は1秒ごと、エスケープシーケンスを利用し、前回の「3分19秒経過」を消して「3分20秒経過」のように書き換える
+## [Issue #21](../issue-notes/21.md): 前回とまったく同じ表示内容であれば、表示内容を変更し、「現在、検知してから3分20秒経過」のような表示をする。さらに、その表示時と、待ち時間中は1秒ごと、エスケープシーケンスを利用し、前回の「3分19秒経過」を消して「3分20秒経過」のように書き換える
 
-ラベル: 
+ラベル: good first issue
 --- issue-notes/21.md の内容 ---
-
-```markdown
-
-```
-
-## [Issue #7](../issue-notes/7.md): リポジトリ名を cat-github-pr-watcher にする。cat-file-watcher同様、最初は範囲を絞った名前で、中身が多少今後拡大しても許容とするつもり
-
-ラベル: 
---- issue-notes/7.md の内容 ---
 
 ```markdown
 
@@ -512,87 +532,6 @@ jobs:
 {% endraw %}
 ```
 
-### .github/actions-tmp/issue-notes/3.md
-```md
-{% raw %}
-# issue GitHub Actions「issue note生成」を共通ワークフロー化する #3
-[issues #3](https://github.com/cat2151/github-actions/issues/3)
-
-- 前提
-  - userは、translateのworkflowを共通ワークフロー化し、動くようにしたので、共通ワークフロー化の知識がある
-  - よって、今回は、promptでplanさせ、そのplanをuserがレビューし、planの改善を指示できるので、ハルシネーションのリスクを下げることができる
-
-- prompt
-```
-あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
-このymlはまだ共通ワークフロー化されず、
-呼び出し元からコピーされたままの状態です。
-このymlファイル名のまま、
-中身を共通ワークフロー化してください。
-呼び出し元ymlは別途書きますので気にしないでください。
-まずplanしてください
-```
-
-- plan 生成結果
-```
-共通ワークフロー化のためのplanは以下の通りです。
-
-1. 目的
-現在の issue-note.yml を「共通ワークフロー」として再設計し、他リポジトリや他ワークフローから workflow_call で呼び出せるようにする。
-2. 主な変更点
-on: トリガーを workflow_call に変更（直接イベントで起動しない）。
-必要な入力（inputs）やシークレット（secrets）を workflow_call セクションで定義。
-github.event.issue などのイベント依存部分を、inputs経由で受け取る形に修正。
-既存の処理（issueノート生成、コミット、issue body更新）はそのまま活かすが、パラメータ化する。
-3. 具体的な修正内容
-on: issues: → on: workflow_call: に変更。
-inputs で必要な値（例: issue_title, issue_number, issue_body, issue_url など）を受け取る。
-スクリプト内の ${{ github.event.issue.xxx }} を ${{ inputs.xxx }} に置換。
-github-script ステップも同様にinputsを参照。
-必要に応じて secrets も workflow_call で受け取れるようにする。
-4. ファイル名・配置
-ファイル名はそのまま issue-note.yml。
-配置場所は workflows でOK（共通ワークフローとしてもこの場所で良い）。
-5. 呼び出し元への影響
-呼び出し元ワークフローで uses: <repo>/.github/workflows/issue-note.yml@main のように参照し、inputsを渡す形になる。
-このplanで進めます。次に、実際の共通ワークフロー化のためのyml修正案を作成しますか？
-```
-
-- userがplanレビューし、OKを出した
-- agentに生成結果ymlをレビューさせた、OKとなった
-  - userはこのレビューは認知負荷が高いのでskipとする（単純な細かい間違い探し作業になるので、それはagentに任せた）
--  エラー。呼び出し元ymlのエラーがあり修正。共通ワークフローのエラー指摘があり、共通ワークフロー側の修正が必要となった
-```
-原因の分析：
-
-呼び出し元（tonejs-mml-to-jsonのissue-note.yml）は、reusable workflow（cat2151/github-actions/.github/workflows/issue-note.yml@main）をusesで呼び出し、inputsをwithで渡しています。
-共通ワークフロー（reusable workflow）は inputs を workflow_call で受け取り、各ステップで ${{ inputs.xxx }} で参照しています。
-しかし、エラーが発生したのは actions/github-script@v7 の script 内です。
-エラーの本質的な原因：
-
-actions/github-script の script: で ${{ inputs.issue_number }} のような式を直接 JavaScript テンプレートリテラル内で使っていますが、これはサポートされていません。
-script: の中は JavaScript であり、YAMLの ${{ ... }} は展開されません（または意図通りに展開されません）。
-そのため、inputs 変数は script 内の JavaScript で未定義となり、ReferenceError になります。
-正しい書き方：
-
-actions/github-script の script: でワークフローの inputs を使いたい場合は、with: で input を environment 変数や script の引数として渡し、JavaScript で process.env から取得するか、github-script の input 機能を使う必要があります。
-例（修正版）：
-
-このように、inputs の値を env で渡し、script 内では process.env で参照してください。
-
-まとめ：
-
-actions/github-script の script 内で ${{ inputs.xxx }} を直接使うと ReferenceError になる
-env: で値を渡し、process.env で参照するのが正しい
-修正が必要です。修正版のワークフローが必要な場合はお知らせください。
-```
-
-- test green
-- closeとする
-
-{% endraw %}
-```
-
 ### .github/actions-tmp/issue-notes/4.md
 ```md
 {% raw %}
@@ -751,159 +690,62 @@ jobs:
 {% endraw %}
 ```
 
-### src/gh_pr_phase_monitor/github_client.py
+### .github/actions-tmp/issue-notes/9.md
+```md
+{% raw %}
+# issue 関数コールグラフhtmlビジュアライズが0件なので、原因を可視化する #9
+[issues #9](https://github.com/cat2151/github-actions/issues/9)
+
+# agentに修正させたり、人力で修正したりした
+- agentがハルシネーションし、いろいろ根の深いバグにつながる、エラー隠蔽などを仕込んでいたため、検知が遅れた
+- 詳しくはcommit logを参照のこと
+- WSL + actの環境を少し変更、act起動時のコマンドライン引数を変更し、generated-docsをmountする（ほかはデフォルト挙動であるcpだけにする）ことで、デバッグ情報をコンテナ外に出力できるようにし、デバッグを効率化した
+
+# test green
+
+# closeとする
+
+{% endraw %}
+```
+
+### src/gh_pr_phase_monitor/issue_fetcher.py
 ```py
 {% raw %}
 """
-GitHub API client for interacting with repositories, PRs, and comments
+Issue fetching module for GitHub issues
 """
 
 import json
 import subprocess
-from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-# Cache for current user to avoid repeated subprocess calls
-_current_user_cache = None
+from .graphql_client import execute_graphql_query
 
-
-def get_current_user() -> str:
-    """Get the current authenticated GitHub user's login
-
-    Returns:
-        The login name of the current authenticated user
-
-    Raises:
-        RuntimeError: If unable to retrieve the current user (authentication failure)
-    """
-    global _current_user_cache
-
-    # Return cached value if available (only cache successful authentication)
-    if _current_user_cache is not None and _current_user_cache != "":
-        return _current_user_cache
-
-    cmd = ["gh", "api", "user", "--jq", ".login"]
-
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
-        _current_user_cache = result.stdout.strip()
-        return _current_user_cache
-    except subprocess.CalledProcessError as e:
-        error_msg = (
-            "Failed to retrieve current GitHub user via `gh api user`. "
-            "GitHub CLI authentication is required for phase3 comments. "
-            "Please run `gh auth login` or `gh auth status` to check your authentication."
-        )
-        print(f"\n[ERROR] {error_msg}")
-        if e.stderr:
-            print(f"Details: {e.stderr}")
-        raise RuntimeError(error_msg) from e
+# GraphQL pagination constants
+REPOSITORIES_BATCH_SIZE = 10
+ISSUES_PER_REPO = 50
 
 
-def get_repositories_with_open_prs() -> List[Dict[str, Any]]:
-    """Get all repositories with open PR counts using GraphQL (Phase 1)
-
-    Returns:
-        List of repositories with name and open PR count
-        Example: [{"name": "repo1", "owner": "user", "openPRCount": 2}, ...]
-    """
-    current_user = get_current_user()
-
-    # GraphQL query to get all repositories with open PR counts
-    # Only includes user-owned repos (not organization repos)
-    query = """
-    query($login: String!) {
-      user(login: $login) {
-        repositories(first: 100, ownerAffiliations: [OWNER]) {
-          nodes {
-            name
-            owner {
-              login
-            }
-            pullRequests(states: OPEN) {
-              totalCount
-            }
-          }
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-        }
-      }
-    }
-    """
-
-    repos_with_prs = []
-    has_next_page = True
-    end_cursor = None
-
-    while has_next_page:
-        # Build query with pagination using proper string formatting
-        if end_cursor:
-            # Use parameterized query for pagination
-            query_with_pagination = query.replace(
-                "repositories(first: 100, ownerAffiliations: [OWNER])",
-                f'repositories(first: 100, ownerAffiliations: [OWNER], after: "{end_cursor}")',
-            )
-        else:
-            query_with_pagination = query
-
-        # Execute GraphQL query using gh CLI
-        cmd = ["gh", "api", "graphql", "-f", f"query={query_with_pagination}", "-F", f"login={current_user}"]
-
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
-            try:
-                data = json.loads(result.stdout)
-            except json.JSONDecodeError as e:
-                error_message = f"Error parsing JSON response from gh CLI: {e}\nRaw output from gh:\n{result.stdout}"
-                print(error_message)
-                raise RuntimeError(error_message) from e
-
-            repositories = data.get("data", {}).get("user", {}).get("repositories", {})
-            nodes = repositories.get("nodes", [])
-            page_info = repositories.get("pageInfo", {})
-
-            # Filter repositories with open PRs
-            for repo in nodes:
-                pr_count = repo.get("pullRequests", {}).get("totalCount", 0)
-                if pr_count > 0:
-                    repos_with_prs.append(
-                        {"name": repo.get("name"), "owner": repo.get("owner", {}).get("login"), "openPRCount": pr_count}
-                    )
-
-            has_next_page = page_info.get("hasNextPage", False)
-            end_cursor = page_info.get("endCursor")
-
-        except subprocess.CalledProcessError as e:
-            error_message = f"Error fetching repositories: {e}"
-            print(error_message)
-            if e.stderr:
-                print(f"stderr: {e.stderr}")
-            raise RuntimeError(error_message) from e
-
-    return repos_with_prs
-
-
-def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Get PR details for multiple repositories in a single GraphQL query (Phase 2)
+def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10, labels: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """Get issues from multiple repositories, sorted by timestamp descending
 
     Args:
         repos: List of repository dicts with 'name' and 'owner' keys
+        limit: Maximum number of issues to return (default: 10)
+        labels: Optional list of label names to filter by (e.g., ["good first issue"])
 
     Returns:
-        List of PR data matching the format expected by determine_phase()
+        List of issue data sorted by updatedAt timestamp in descending order
     """
     if not repos:
         return []
 
-    # Build GraphQL query with aliases for multiple repositories
-    # Limit to 10 repos per query to avoid overly complex queries
-    batch_size = 10
-    all_prs = []
+    # Build GraphQL query to fetch issues from all repositories
+    # We'll batch repositories to avoid overly complex queries
+    all_issues = []
 
-    for i in range(0, len(repos), batch_size):
-        batch = repos[i : i + batch_size]
+    for i in range(0, len(repos), REPOSITORIES_BATCH_SIZE):
+        batch = repos[i : i + REPOSITORIES_BATCH_SIZE]
 
         # Build query fragments for each repository
         repo_queries = []
@@ -916,72 +758,34 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             owner_literal = json.dumps(owner)
             repo_name_literal = json.dumps(repo_name)
 
-            # Note: We intentionally fetch a single page of open PRs and rely on GitHub's
-            # maximum page size (first: 100). Repositories with >100 open PRs will be
-            # truncated; add pagination here if full coverage is required.
+            # Build labels filter if provided
+            labels_filter = ""
+            if labels:
+                labels_json = json.dumps(labels)
+                labels_filter = f", labels: {labels_json}"
+
+            # Fetch up to ISSUES_PER_REPO issues per repository (sorted by updated time)
             repo_query = f"""
             {alias}: repository(owner: {owner_literal}, name: {repo_name_literal}) {{
               name
               owner {{
                 login
               }}
-              pullRequests(first: 100, states: OPEN, orderBy: {{field: UPDATED_AT, direction: DESC}}) {{
+              issues(first: {ISSUES_PER_REPO}, states: OPEN, orderBy: {{field: UPDATED_AT, direction: DESC}}{labels_filter}) {{
                 nodes {{
                   title
                   url
-                  isDraft
+                  number
+                  createdAt
+                  updatedAt
                   author {{
                     login
                   }}
-                  reviews(last: 50) {{
+                  labels(first: 10) {{
                     nodes {{
-                      author {{
-                        login
-                      }}
-                      state
-                      body
+                      name
                     }}
                   }}
-                  latestReviews(first: 50) {{
-                    nodes {{
-                      author {{
-                        login
-                      }}
-                      state
-                    }}
-                  }}
-                  reviewRequests(first: 10) {{
-                    nodes {{
-                      requestedReviewer {{
-                        ... on User {{
-                          login
-                        }}
-                        ... on Team {{
-                          name
-                        }}
-                      }}
-                    }}
-                  }}
-                  comments(last: 10) {{
-                    totalCount
-                    nodes {{
-                      reactionGroups {{
-                        content
-                        users {{
-                          totalCount
-                        }}
-                      }}
-                    }}
-                  }}
-                  commits(last: 1) {{
-                    totalCount
-                  }}
-                  autoMergeRequest {{
-                    enabledAt
-                  }}
-                  mergeable
-                  reviewDecision
-                  state
                 }}
               }}
             }}
@@ -992,202 +796,136 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         full_query = f"""
         query {{
           {" ".join(repo_queries)}
-          rateLimit {{
-            cost
-            remaining
-            resetAt
-          }}
         }}
         """
 
         # Execute GraphQL query
-        cmd = ["gh", "api", "graphql", "-f", f"query={full_query}"]
+        data = execute_graphql_query(full_query)
 
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
-            try:
-                data = json.loads(result.stdout)
-            except json.JSONDecodeError as e:
-                raise RuntimeError(
-                    f"Failed to parse JSON from 'gh api graphql' output. Raw output was:\n{result.stdout}"
-                ) from e
+        # Extract issue data from response
+        for idx, repo in enumerate(batch):
+            alias = f"repo{idx}"
+            repo_data = data.get("data", {}).get(alias, {})
 
-            # Extract PR data from response
-            for idx, repo in enumerate(batch):
-                alias = f"repo{idx}"
-                repo_data = data.get("data", {}).get(alias, {})
+            if repo_data:
+                issues = repo_data.get("issues", {}).get("nodes", [])
+                repo_name = repo_data.get("name", repo["name"])
+                owner = repo_data.get("owner", {}).get("login", repo["owner"])
 
-                if repo_data:
-                    prs = repo_data.get("pullRequests", {}).get("nodes", [])
-                    repo_name = repo_data.get("name", repo["name"])
-                    owner = repo_data.get("owner", {}).get("login", repo["owner"])
+                # Add repository info to each issue
+                for issue in issues:
+                    # Handle null author
+                    author_data = issue.get("author")
+                    if author_data is None:
+                        author = {"login": "[deleted]"}
+                    else:
+                        author = {"login": author_data.get("login", "")}
 
-                    # Transform GraphQL data to match expected format
-                    for pr in prs:
-                        # Transform reviews - handle null authors
-                        reviews = []
-                        for review in pr.get("reviews", {}).get("nodes", []):
-                            author_data = review.get("author")
-                            if author_data is None:
-                                # Deleted account - use placeholder
-                                author = {"login": "[deleted]"}
-                            else:
-                                author = {"login": author_data.get("login", "")}
-                            reviews.append(
-                                {"author": author, "state": review.get("state", ""), "body": review.get("body", "")}
-                            )
+                    # Extract label names
+                    label_nodes = issue.get("labels", {}).get("nodes", [])
+                    label_names = [label.get("name", "") for label in label_nodes]
 
-                        # Transform latestReviews - handle null authors
-                        latest_reviews = []
-                        for review in pr.get("latestReviews", {}).get("nodes", []):
-                            author_data = review.get("author")
-                            if author_data is None:
-                                # Deleted account - use placeholder
-                                author = {"login": "[deleted]"}
-                            else:
-                                author = {"login": author_data.get("login", "")}
-                            latest_reviews.append({"author": author, "state": review.get("state", "")})
+                    issue_with_repo = {
+                        "title": issue.get("title", ""),
+                        "url": issue.get("url", ""),
+                        "number": issue.get("number", 0),
+                        "createdAt": issue.get("createdAt", ""),
+                        "updatedAt": issue.get("updatedAt", ""),
+                        "author": author,
+                        "labels": label_names,
+                        "repository": {"name": repo_name, "owner": owner},
+                    }
+                    all_issues.append(issue_with_repo)
 
-                        # Transform reviewRequests
-                        review_requests = []
-                        for req in pr.get("reviewRequests", {}).get("nodes", []):
-                            reviewer = req.get("requestedReviewer", {})
-                            login = reviewer.get("login") or reviewer.get("name", "")
-                            if login:
-                                review_requests.append({"login": login})
+    # Sort all issues by updatedAt timestamp in descending order
+    all_issues.sort(key=lambda x: x["updatedAt"], reverse=True)
 
-                        # Handle null PR author
-                        author_data = pr.get("author")
-                        if author_data is None:
-                            # Deleted account - use placeholder
-                            author = {"login": "[deleted]"}
-                        else:
-                            author = {"login": author_data.get("login", "")}
-
-                        # Extract comment nodes with reactionGroups
-                        comments_data = pr.get("comments", {})
-                        comment_nodes = comments_data.get("nodes", [])
-
-                        # Add repository info to PR
-                        pr_with_repo = {
-                            "title": pr.get("title", ""),
-                            "url": pr.get("url", ""),
-                            "isDraft": pr.get("isDraft", False),
-                            "author": author,
-                            "reviews": reviews,
-                            "latestReviews": latest_reviews,
-                            "reviewRequests": review_requests,
-                            "comments": comments_data.get("totalCount", 0),
-                            "commentNodes": comment_nodes,
-                            "commits": pr.get("commits", {}).get("totalCount", 0),
-                            "autoMergeRequest": pr.get("autoMergeRequest"),
-                            "mergeable": pr.get("mergeable", ""),
-                            "reviewDecision": pr.get("reviewDecision"),
-                            "state": pr.get("state", ""),
-                            "repository": {"name": repo_name, "owner": owner},
-                        }
-                        all_prs.append(pr_with_repo)
-
-            # Print rate limit info
-            rate_limit = data.get("data", {}).get("rateLimit", {})
-            if rate_limit:
-                print(f"  GraphQL API - Cost: {rate_limit.get('cost')}, Remaining: {rate_limit.get('remaining')}")
-
-        except subprocess.CalledProcessError as e:
-            error_message = f"Error fetching PR details: {e}"
-            print(error_message)
-            if e.stderr:
-                print(f"stderr: {e.stderr}")
-            # Re-raise to avoid silently skipping batches and to inform the caller of incomplete data
-            raise RuntimeError(error_message) from e
-
-    return all_prs
+    # Return top N issues
+    return all_issues[:limit]
 
 
-def get_pr_data(repo_dir: Path) -> List[Dict[str, Any]]:
-    """Get PR data from GitHub CLI (Legacy function - kept for compatibility)
-
-    This function is no longer used in the main flow but kept for potential
-    backwards compatibility or testing purposes.
+def assign_issue_to_copilot(issue: Dict[str, Any]) -> bool:
+    """Assign an issue to GitHub Copilot by posting an 'Assign to Copilot' comment
 
     Args:
-        repo_dir: Repository directory path
+        issue: Issue dictionary with 'repository' (name, owner), 'number' fields
 
     Returns:
-        List of PR data dictionaries
+        True if assignment was successful, False otherwise
     """
-    cmd = [
-        "gh",
-        "pr",
-        "list",
-        "--json",
-        "author,autoMergeRequest,comments,commits,isDraft,latestReviews,mergeable,reviewDecision,reviewRequests,reviews,state,statusCheckRollup,title,url",
-    ]
+    # Validate that the issue dictionary contains the required fields before accessing them
+    if "repository" not in issue or "number" not in issue:
+        print("  ✗ Invalid issue data: missing required fields")
+        return False
 
-    result = subprocess.run(
-        cmd, cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
-    )
+    repository = issue["repository"]
+    if not isinstance(repository, dict) or "name" not in repository or "owner" not in repository:
+        print("  ✗ Invalid issue data: missing repository fields")
+        return False
 
-    return json.loads(result.stdout)
+    repo_name = repository["name"]
+    owner = repository["owner"]
+    issue_number = issue["number"]
 
-
-def get_existing_comments(pr_url: str, repo_dir: Path = None) -> List[Dict[str, Any]]:
-    """Get existing comments on a PR
-
-    Args:
-        pr_url: URL of the PR
-        repo_dir: Repository directory (optional, not used when working with URLs)
-
-    Returns:
-        List of comment dictionaries
-    """
-    cmd = ["gh", "pr", "view", pr_url, "--json", "comments"]
-
+    # Post a comment "Assign to Copilot" which triggers GitHub's workflow for Copilot assignment
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
-        data = json.loads(result.stdout)
-        return data.get("comments", [])
-    except (subprocess.CalledProcessError, json.JSONDecodeError):
-        return []
+        cmd = [
+            "gh",
+            "issue",
+            "comment",
+            str(issue_number),
+            "--repo",
+            f"{owner}/{repo_name}",
+            "--body",
+            "Assign to Copilot",
+        ]
+
+        subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=True,
+            timeout=30,  # 30 second timeout for the gh command
+        )
+
+        print(f"  ✓ Assigned issue #{issue_number} to Copilot in {owner}/{repo_name}")
+        return True
+
+    except subprocess.CalledProcessError as e:
+        print(f"  ✗ Failed to assign issue #{issue_number} to Copilot: {e}")
+        if e.stderr:
+            print(f"    stderr: {e.stderr}")
+        return False
+    except subprocess.TimeoutExpired:
+        print(f"  ✗ Timeout while assigning issue #{issue_number} to Copilot")
+        return False
 
 {% endraw %}
 ```
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-021765b Merge pull request #31 from cat2151/copilot/update-llm-working-detection
-18eb34c Fix type annotation to reflect backward compatibility support
-ac8b1a7 Fix backward compatibility and terminology issues from PR review
-1bac686 Address code review feedback - clarify docstrings and comments
-c188ef6 Fix linting issues in phase_detector.py
-7b9f5d2 Add reactionGroups detection for LLM working phase
-0a5972e Initial plan
-807dab4 Merge pull request #30 from cat2151/copilot/open-browser-in-phase3
-a292aef Fix: Browser now opens only for phase3, not phase1 or phase2
-eb0e70a Initial plan
+7763490 Merge pull request #61 from cat2151/copilot/add-condition-for-no-open-prs
+356725f Merge pull request #63 from cat2151/copilot/fix-phase-detection-error
+5899d99 Address code review: clarify empty body in PR 61 test
+c9e5821 Fix phase detection for PR 61: treat COMMENTED reviews optimistically
+b5189e9 Initial plan
+05a5bd6 Auto-translate README.ja.md to README.md [auto]
+d3bc231 Update GitHub Copilot message in Japanese README
+66b4807 Remove redundant separator lines in display_issues_from_repos_without_prs
+ed45387 Auto-translate README.ja.md to README.md [auto]
+576662b Update ntfy.sh topic name instruction in README
 
 ### 変更されたファイル:
-.github/workflows/auto-copilot-implement.yml
-.github/workflows/auto_ready_for_review.yml
-.github/workflows/notify-copilot-done.yml
-STRUCTURE.md
-config.toml.example
-gh-pr-phase-monitor.py
-gh_pr_phase_monitor.py
-src/__init__.py
-src/gh_pr_phase_monitor/__init__.py
-src/gh_pr_phase_monitor/colors.py
-src/gh_pr_phase_monitor/comment_manager.py
-src/gh_pr_phase_monitor/config.py
-src/gh_pr_phase_monitor/github_client.py
+README.ja.md
+README.md
 src/gh_pr_phase_monitor/main.py
 src/gh_pr_phase_monitor/phase_detector.py
-src/gh_pr_phase_monitor/pr_actions.py
-tests/test_interval_parsing.py
+tests/test_no_open_prs_issue_display.py
 tests/test_phase_detection.py
-tests/test_post_comment.py
-tests/test_pr_actions.py
 
 
 ---
-Generated at: 2026-01-04 07:01:23 JST
+Generated at: 2026-01-05 07:01:26 JST

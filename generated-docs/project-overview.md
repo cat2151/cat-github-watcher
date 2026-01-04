@@ -1,172 +1,149 @@
-Last updated: 2026-01-04
+Last updated: 2026-01-05
 
 # Project Overview
 
 ## プロジェクト概要
-- GitHub Copilotが自動実装するPull Requestのフェーズを監視し、効率的な開発を支援するツールです。
-- PRの状況に応じて自動で通知やアクションを実行し、開発者の負担を軽減します。
-- 現在は、より柔軟な監視と制御を可能にするPython版として開発が進められています。
+- GitHub Copilotによる自動実装フェーズのプルリクエスト(PR)の進捗を監視し、適切なアクションを自動実行するPythonツールです。
+- PRのフェーズ（ドラフト、レビュー指摘対応中、レビュー待ち、コーディング中）を自動判定し、ドラフトPRのReady化、自動コメント投稿、モバイル通知などを行います。
+- 認証済みGitHubユーザーが所有するリポジトリを対象とし、GraphQL APIを活用して効率的な監視と管理を実現します。
 
 ## 技術スタック
-- フロントエンド: このプロジェクトはバックエンド処理が主であり、直接的なフロントエンド技術は使用していません。
-- 音楽・オーディオ: 音楽やオーディオ関連の技術は使用していません。
+- フロントエンド: このツールはCLI（コマンドラインインターフェース）アプリケーションであり、特定のフロントエンド技術は使用していません。
+- 音楽・オーディオ: 音楽やオーディオに関連する技術は使用していません。
 - 開発ツール:
-    - **Visual Studio Code (VS Code)**: `.vscode/settings.json`によって開発環境の統一された設定を提供します。
-    - **Git / GitHub**: バージョン管理システムおよび主要な開発プラットフォームとして利用しています。
+    - GitHub CLI (`gh`): GitHub APIとの認証と連携に利用されるコマンドラインツール。
+    - pytest: Pythonで書かれたテストコードを実行するためのフレームワーク。
+    - ruff: 高速なPythonリンターおよびフォーマッターで、コード品質の維持に貢献します。
 - テスト:
-    - **pytest**: Pythonアプリケーションの単体テストや結合テストを記述、実行するためのフレームワークです。
-- ビルドツール: このプロジェクトでは特定のビルドツールは明示されていませんが、Pythonの標準的なパッケージ管理（例: pip）を利用する可能性があります。
+    - pytest: プロジェクトのテストスイートの実行に用いられ、機能の正確性を検証します。
+- ビルドツール:
+    - Python 3.x: プロジェクトがPython言語で書かれており、実行環境としてPythonインタープリタを使用します。
 - 言語機能:
-    - **Python**: プロジェクトの主要な開発言語です。GitHub APIとの連携やPR監視ロジックの実装に使用されます。
+    - Python 3.x: プロジェクトの主要な開発言語。
+    - GitHub GraphQL API: GitHubからPRやリポジトリの情報を効率的に取得するために利用されるAPI。
 - 自動化・CI/CD:
-    - このプロジェクト自体は監視ツールであり、GitHub Actionsは**過去に試みられた実装**でしたが、現在はPython版の開発に移行しています。Python版は、GitHub ActionsなどのCI/CDプラットフォーム上で実行されることを想定しています。
+    - GitHub Actions: READMEの自動翻訳生成など、一部のCI/CDタスクに利用されていますが、主要なPR監視ロジックはPython版で実行されます。
+    - ntfy.sh: フェーズ3（レビュー待ち）を検知した際に、モバイル端末に通知を送信するためのサービス。
 - 開発標準:
-    - **EditorConfig**: `.editorconfig`ファイルにより、異なるエディタやIDE間でコードの整形スタイルを統一します。
-    - **Ruff**: `ruff.toml`ファイルにより、Pythonコードのリンティングとフォーマットを高速に行い、コード品質と一貫性を維持します。
+    - .editorconfig: 異なるエディタやIDE間でコードの書式設定を統一するための設定ファイル。
+    - ruff: コードの静的解析とフォーマットを自動化し、一貫したコードスタイルと品質を維持します。
 
 ## ファイル階層ツリー
 ```
-📄 .editorconfig
-📄 .gitignore
-📁 .vscode/
-  📊 settings.json
-📄 LICENSE
-📖 README.ja.md
-📖 README.md
-📖 STRUCTURE.md
-📄 _config.yml
-📄 config.toml.example
-📁 generated-docs/
-📄 cat-github-watcher.py
-📄 pytest.ini
-📄 ruff.toml
-📁 src/
-  📄 __init__.py
-  📁 gh_pr_phase_monitor/
-    📄 __init__.py
-    📄 colors.py
-    📄 comment_manager.py
-    📄 config.py
-    📄 github_client.py
-    📄 main.py
-    📄 phase_detector.py
-    📄 pr_actions.py
-📁 tests/
-  📄 test_interval_parsing.py
-  📄 test_phase_detection.py
-  📄 test_post_comment.py
-  📄 test_pr_actions.py
+cat-github-watcher/
+├── cat-github-watcher.py    # エントリーポイント
+├── src/
+│   └── gh_pr_phase_monitor/
+│       ├── colors.py         # ANSI カラーコードと色付け
+│       ├── config.py         # 設定の読み込みと解析
+│       ├── github_client.py  # GitHub API 連携
+│       ├── phase_detector.py # PRフェーズ判定ロジック
+│       ├── comment_manager.py # コメント投稿と確認
+│       ├── pr_actions.py     # PRアクション（Ready化、ブラウザ起動）
+│       └── main.py           # メイン実行ループ
+└── tests/                    # テストファイル
 ```
 
 ## ファイル詳細説明
--   `.editorconfig`: さまざまなエディタやIDEで、インデントスタイル、文字コード、行末などの基本的なコード整形ルールを定義し、プロジェクト全体で一貫したコーディングスタイルを維持します。
--   `.gitignore`: Gitによるバージョン管理から除外するファイルやディレクトリ（例: ビルド成果物、ログファイル、一時ファイルなど）を指定します。
--   `LICENSE`: プロジェクトのソフトウェアライセンス情報（MIT License）を記述しています。これにより、プロジェクトの利用、配布、改変に関する条件が明示されます。
--   `README.ja.md`: プロジェクトの日本語版の概要、目的、特徴、セットアップ方法、使い方、注意事項などが詳細に記述されています。
--   `README.md`: プロジェクトの英語版の概要ドキュメントです。
--   `STRUCTURE.md`: プロジェクトの構造に関する追加情報を提供するドキュメントです。
--   `_config.yml`: プロジェクトで利用される可能性のある設定ファイルの一つです。YAML形式でアプリケーションの設定を管理します。
--   `config.toml.example`: アプリケーションの設定の例を示すTOML形式のファイルです。これをコピーして実際の環境に合わせて設定をカスタマイズすることが想定されます。
--   `generated-docs/`: 自動生成されたドキュメントファイルを格納するためのディレクトリです。
--   `cat-github-watcher.py`: プロジェクトの主要な実行スクリプト、またはメインのエントリポイントとなるファイルです。全体の監視プロセスを開始します。
--   `pytest.ini`: pytestテストフレームワークの設定ファイルです。テストの発見方法、実行オプションなどを定義します。
--   `ruff.toml`: Ruffリンターの設定ファイルです。Pythonコードの静的解析ルールや自動フォーマットに関する設定を定義し、コード品質を向上させます。
--   `src/__init__.py`: `src`ディレクトリがPythonパッケージであることを示す初期化ファイルです。
--   `src/gh_pr_phase_monitor/__init__.py`: `gh_pr_phase_monitor`ディレクトリがPythonサブパッケージであることを示す初期化ファイルです。
--   `src/gh_pr_phase_monitor/colors.py`: ターミナル出力などに色付けを行うためのユーティリティ関数を提供するモジュールです。
--   `src/gh_pr_phase_monitor/comment_manager.py`: GitHub Pull Requestにコメントを投稿したり、既存のコメントを管理したりする機能を提供するモジュールです。
--   `src/gh_pr_phase_monitor/config.py`: アプリケーションの各種設定（APIキー、監視間隔など）を読み込み、管理するためのモジュールです。
--   `src/gh_pr_phase_monitor/github_client.py`: GitHub APIと連携するためのクライアントライブラリをラップし、PR情報の取得、ステータス更新、コメント投稿などの機能を提供するモジュールです。
--   `src/gh_pr_phase_monitor/main.py`: `gh_pr_phase_monitor`パッケージのメインロジックを含むファイルです。監視ループや全体の処理フローを定義します。
--   `src/gh_pr_phase_monitor/phase_detector.py`: GitHub Pull Requestの特定のフェーズ（例: Copilotによる実装完了、レビュー完了）を検知するためのロジックを提供するモジュールです。
--   `src/gh_pr_phase_monitor/pr_actions.py`: PRのフェーズ検知に基づいて実行される具体的なアクション（例: 通知、変更適用依頼、PRのReady化）を定義するモジュールです。
--   `tests/test_interval_parsing.py`: 監視間隔のパース機能に関するテストを記述したファイルです。
--   `tests/test_phase_detection.py`: `phase_detector.py`モジュール内のフェーズ検知ロジックに関するテストを記述したファイルです。
--   `tests/test_post_comment.py`: コメント投稿機能に関するテストを記述したファイルです。
--   `tests/test_pr_actions.py`: `pr_actions.py`モジュール内のPRアクション機能に関するテストを記述したファイルです。
+-   `cat-github-watcher.py`: プロジェクトのエントリーポイント。アプリケーションの実行を開始します。
+-   `src/gh_pr_phase_monitor/__init__.py`: Pythonパッケージの初期化ファイル。
+-   `src/gh_pr_phase_monitor/main.py`: メインの実行ループを管理し、リポジトリの監視、PRの処理、アクションの実行をオーケストレーションします。
+-   `src/gh_pr_phase_monitor/config.py`: アプリケーションの設定ファイル（`config.toml`）を読み込み、解析し、設定値へのアクセスを提供します。監視間隔やntfy.sh通知設定などが含まれます。
+-   `src/gh_pr_phase_monitor/github_auth.py`: GitHub CLI (`gh`) を使用して、GitHub認証の状態を確認し、必要に応じて認証プロセスを促します。
+-   `src/gh_pr_phase_monitor/graphql_client.py`: GitHub GraphQL APIへの低レベルなリクエスト送信を担当します。クエリの実行と結果のハンドリングを行います。
+-   `src/gh_pr_pr_phase_monitor/github_client.py`: `graphql_client` を利用し、PR情報取得、コメント投稿、PRステータス変更など、より高レベルなGitHub API連携機能を提供します。
+-   `src/gh_pr_phase_monitor/repository_fetcher.py`: 認証済みユーザーが所有するリポジトリの一覧を取得する機能を提供します。
+-   `src/gh_pr_phase_monitor/pr_fetcher.py`: 指定されたリポジトリ内のオープンなプルリクエストの詳細情報を取得する機能を提供します。
+-   `src/gh_pr_phase_monitor/comment_fetcher.py`: 特定のプルリクエストに投稿されたコメントを取得する機能を提供します。
+-   `src/gh_pr_phase_monitor/issue_fetcher.py`: オープンなPRがないリポジトリの上位イシューを取得し、表示する機能を提供します。
+-   `src/gh_pr_phase_monitor/phase_detector.py`: プルリクエストの現在の状態（Draft、レビューコメントの有無など）を分析し、`phase1`、`phase2`、`phase3`、`LLM working` のいずれかのフェーズを判定するロジックを実装しています。
+-   `src/gh_pr_phase_monitor/comment_manager.py`: PRへの自動コメント投稿、および特定のボットによる既存コメントの確認・管理を行います。
+-   `src/gh_pr_phase_monitor/pr_actions.py`: Draft PRを「Ready for review」状態に変更したり、PRのURLをWebブラウザで開いたりするなど、PRに対する具体的なアクションを実行します。
+-   `src/gh_pr_phase_monitor/notifier.py`: ntfy.shサービスを通じてモバイル端末に通知を送信する機能を提供します。PRのレビュー準備完了時などに利用されます。
+-   `src/gh_pr_phase_monitor/colors.py`: コンソール出力にANSIカラーコードを適用し、ログやメッセージを見やすくするためのユーティリティ関数を提供します。
+-   `tests/`: プロジェクトの各機能が正しく動作するかを検証するためのテストファイル群が格納されています。
+-   `.editorconfig`: 異なる開発環境間でのコーディングスタイル（インデント、改行コードなど）を統一するための設定ファイルです。
+-   `.gitignore`: Gitによってバージョン管理の対象外とするファイルやディレクトリを指定します。
+-   `LICENSE`: プロジェクトのライセンス情報（MIT License）が記述されています。
+-   `README.ja.md`: プロジェクトの概要、機能、使い方などを日本語で説明する主要なドキュメントです。
+-   `README.md`: `README.ja.md`の英語版で、GitHub Actionsにより自動生成されています。
+-   `STRUCTURE.md`: プロジェクトの構造に関する追加情報が記述されている可能性があります。
+-   `_config.yml`: Jekyllなどの静的サイトジェネレータで使用される設定ファイルですが、このプロジェクトではドキュメント生成に関連している可能性があります。
+-   `config.toml.example`: 設定ファイル（`config.toml`）のサンプルで、ユーザーが設定を作成する際のテンプレートとなります。
+-   `generated-docs/`: AIエージェントによって生成された追加のドキュメントが格納されるディレクトリです。
+-   `pytest.ini`: `pytest`の設定ファイルで、テスト実行時のオプションなどを指定します。
+-   `ruff.toml`: `ruff`リンター/フォーマッターの設定ファイルです。
+-   `.vscode/settings.json`: Visual Studio Codeエディタのワークスペース固有の設定を定義します。
 
 ## 関数詳細説明
--   **`main.py` 内の関数**
-    -   `main()`:
-        -   **役割**: プロジェクトのメインエントリポイントであり、PR監視プロセスの全体を統括します。設定の読み込み、GitHubクライアントの初期化、監視ループの開始などを担当します。
-        -   **引数**: なし、またはコマンドライン引数（例: 設定ファイルのパス）。
-        -   **戻り値**: 実行結果を示す整数ステータスコード。
-
--   **`github_client.py` 内の関数/メソッド**
-    -   `GitHubClient.__init__(token)`:
-        -   **役割**: GitHub APIと対話するためのクライアントオブジェクトを初期化します。
-        -   **引数**: `token` (str): GitHub APIへの認証に使用するパーソナルアクセストークン。
-        -   **戻り値**: なし。
-    -   `GitHubClient.get_pull_request_info(repository, pr_number)`:
-        -   **役割**: 指定されたリポジトリとPR番号に基づいて、Pull Requestの詳細情報をGitHub APIから取得します。
-        -   **引数**: `repository` (str): リポジトリ名 (例: "owner/repo")、`pr_number` (int): Pull Requestの番号。
-        -   **戻り値**: `dict`: Pull Requestの詳細情報を含む辞書。
-    -   `GitHubClient.post_comment(repository, pr_number, comment_body)`:
-        -   **役割**: 指定されたPull Requestに新しいコメントを投稿します。
-        -   **引数**: `repository` (str), `pr_number` (int), `comment_body` (str): 投稿するコメントの内容。
-        -   **戻り値**: `bool`: コメント投稿の成功/失敗。
-    -   `GitHubClient.update_pr_status(repository, pr_number, new_state)`:
-        -   **役割**: Pull Requestのステータス（例: "draft" から "open" / "ready for review" へ）を更新します。
-        -   **引数**: `repository` (str), `pr_number` (int), `new_state` (str): 更新後のPRステータス (例: "open", "closed")。
-        -   **戻り値**: `bool`: ステータス更新の成功/失敗。
-    -   `GitHubClient.is_bot_user(username)`:
-        -   **役割**: 指定されたユーザー名がBotアカウントであるかどうかを判定します。
-        -   **引数**: `username` (str): チェックするユーザー名。
-        -   **戻り値**: `bool`: BotであればTrue、そうでなければFalse。
-
--   **`phase_detector.py` 内の関数**
-    -   `detect_copilot_completion(pr_info, commits)`:
-        -   **役割**: Pull Requestの最新のコミット履歴やPR情報に基づいて、GitHub Copilotによる実装が完了したフェーズを検知します。
-        -   **引数**: `pr_info` (dict): Pull Request情報、`commits` (list): コミット履歴のリスト。
-        -   **戻り値**: `bool`: Copilotの完了が検知されればTrue、そうでなければFalse。
-    -   `detect_review_status(pr_reviews)`:
-        -   **役割**: Pull Requestに提出されたレビューの状況を分析し、特定のレビュー（例: Copilotによるレビュー）が完了したかなどを検知します。
-        -   **引数**: `pr_reviews` (list): Pull Requestのレビュー履歴のリスト。
-        -   **戻り値**: `dict`: レビュー状況に関する情報（例: Copilotレビューが完了したか、そのURLなど）。
-
--   **`pr_actions.py` 内の関数**
-    -   `notify_pr_creator(pr_info, comment_manager)`:
-        -   **役割**: Pull Request作成者に対して、特定のイベント（例: Copilot実装完了）を通知するコメントを投稿します。
-        -   **引数**: `pr_info` (dict): Pull Request情報、`comment_manager` (CommentManager): コメント管理オブジェクト。
-        -   **戻り値**: `bool`: 通知の成功/失敗。
-    -   `request_copilot_apply_changes(pr_info, review_url, comment_manager)`:
-        -   **役割**: Copilotのレビューコメントに基づいて変更を適用するよう、Copilotに対してコメントで依頼します。
-        -   **引数**: `pr_info` (dict): Pull Request情報、`review_url` (str): レビューコメントのスレッドURL、`comment_manager` (CommentManager): コメント管理オブジェクト。
-        -   **戻り値**: `bool`: 依頼の成功/失敗。
-    -   `set_pr_ready_for_review(pr_info, github_client)`:
-        -   **役割**: Draft状態のPull Requestを「Ready for review」状態に変更します。
-        -   **引数**: `pr_info` (dict): Pull Request情報、`github_client` (GitHubClient): GitHubクライアントオブジェクト。
-        -   **戻り値**: `bool`: 状態変更の成功/失敗。
-
--   **`comment_manager.py` 内の関数/メソッド**
-    -   `CommentManager.post_notification(pr_id, message)`:
-        -   **役割**: 特定のPull Requestに通知用のコメントを投稿します。
-        -   **引数**: `pr_id` (int/str): Pull Requestの識別子、`message` (str): 投稿する通知メッセージ。
-        -   **戻り値**: `bool`: 投稿の成功/失敗。
-    -   `CommentManager.post_action_request(pr_id, message)`:
-        -   **役割**: 特定のPull Requestに、アクションを要求するコメントを投稿します。
-        -   **引数**: `pr_id` (int/str): Pull Requestの識別子、`message` (str): 投稿するアクション要求メッセージ。
-        -   **戻り値**: `bool`: 投稿の成功/失敗。
-
--   **`config.py` 内の関数**
-    -   `load_config(config_path)`:
-        -   **役割**: 指定されたパスから設定ファイルを読み込み、アプリケーション全体で利用可能な設定オブジェクトを返します。
-        -   **引数**: `config_path` (str): 設定ファイルのパス。
-        -   **戻り値**: `dict`: 読み込まれた設定を含む辞書。
-    -   `get_setting(key, default=None)`:
-        -   **役割**: 読み込まれた設定から指定されたキーの値を取得します。
-        -   **引数**: `key` (str): 取得する設定のキー、`default` (any): キーが存在しない場合のデフォルト値。
-        -   **戻り値**: `any`: 設定値。
-
--   **`colors.py` 内の関数**
-    -   `colorize(text, color_code)`:
-        -   **役割**: ターミナル出力用のテキストに指定された色コードを適用し、色付きの文字列を生成します。
-        -   **引数**: `text` (str): 色を適用するテキスト、`color_code` (str/int): 色を示すコード。
-        -   **戻り値**: `str`: 色コードが付加されたテキスト。
+-   **`cat-github-watcher.py`**
+    -   `main()`: エントリポイントとしてアプリケーションの起動処理を担い、監視ループの開始を呼び出します。
+-   **`src/gh_pr_phase_monitor/main.py`**
+    -   `start_monitoring(config_path)`: 設定ファイルを読み込み、GitHub認証を確認した後、定期的にリポジトリを監視するメインループを開始します。
+    -   `process_repositories(config)`: GitHubから認証済みユーザーのリポジトリとPRを取得し、各PRのフェーズを判定して適切なアクションを実行します。
+-   **`src/gh_pr_phase_monitor/config.py`**
+    -   `load_config(config_path)`: 指定されたパスからTOML形式の設定ファイルを読み込み、設定オブジェクトを返します。
+    -   `parse_interval(interval_str)`: "1m", "5s"のような文字列形式の間隔設定を、秒単位の数値に変換します。
+-   **`src/gh_pr_phase_monitor/github_auth.py`**
+    -   `ensure_gh_authenticated()`: GitHub CLIがシステムにインストールされ、ユーザーが認証済みであることを確認します。
+-   **`src/gh_pr_phase_monitor/graphql_client.py`**
+    -   `execute_query(query, variables=None)`: GitHub GraphQL APIに対してクエリを実行し、その結果をJSON形式で返します。
+-   **`src/gh_pr_phase_monitor/github_client.py`**
+    -   `get_current_user_login()`: 現在認証されているGitHubユーザーのログイン名を取得します。
+    -   `get_repositories_with_open_prs(user_login)`: 指定されたユーザーが所有し、オープンなPRを持つリポジトリのリストを取得します。
+    -   `get_pr_details(repo_owner, repo_name, pr_number)`: 特定のPRの詳細情報（タイトル、ステータス、コメントなど）を取得します。
+    -   `post_comment_to_pr(repo_id, pr_id, comment_body)`: 指定されたPRに新しいコメントを投稿します。
+    -   `mark_pr_as_ready(pr_id)`: ドラフト状態のPRを「レビュー準備完了」状態に変更します。
+-   **`src/gh_pr_phase_monitor/repository_fetcher.py`**
+    -   `fetch_user_repositories(github_client, user_login)`: 指定されたGitHubクライアントとユーザーログイン情報を使用して、所有リポジトリをフェッチします。
+-   **`src/gh_pr_phase_monitor/pr_fetcher.py`**
+    -   `fetch_open_prs(github_client, repo_owner, repo_name)`: 指定されたリポジトリのすべてのオープンなPRをフェッチします。
+-   **`src/gh_pr_phase_monitor/comment_fetcher.py`**
+    -   `fetch_pr_comments(github_client, pr_id)`: 指定されたPRのすべてのコメントをフェッチします。
+-   **`src/gh_pr_phase_monitor/issue_fetcher.py`**
+    -   `fetch_top_issues_for_repo(github_client, repo_owner, repo_name, count=10)`: 特定のリポジトリのオープンイシューから上位`count`件を取得します。
+-   **`src/gh_pr_phase_monitor/phase_detector.py`**
+    -   `detect_pr_phase(pr_data, comments_data)`: PRのデータとコメント履歴を分析し、そのPRがどのフェーズ（phase1, 2, 3, LLM working）にあるかを判定します。
+-   **`src/gh_pr_phase_monitor/comment_manager.py`**
+    -   `post_phase_comment(github_client, pr_id, current_phase)`: 現在のPRフェーズに応じて、適切な自動コメントをPRに投稿します。
+    -   `has_comment_from_bot(comments_data, bot_name, keyword)`: 特定のボットが特定のキーワードを含むコメントを投稿しているかを確認します。
+-   **`src/gh_pr_phase_monitor/pr_actions.py`**
+    -   `make_pr_ready_for_review(github_client, pr_id)`: 指定されたPRをドラフト状態からレビュー可能な状態に移行させます。
+    -   `open_pr_in_browser(pr_url)`: 指定されたPRのURLを既定のウェブブラウザで開きます。
+-   **`src/gh_pr_phase_monitor/notifier.py`**
+    -   `send_ntfy_notification(config, pr_url)`: ntfy.shサービスを利用して、指定されたURLを含む通知をモバイル端末に送信します。
+-   **`src/gh_pr_phase_monitor/colors.py`**
+    -   `colorize_text(text, color_code)`: 指定されたテキストにANSIカラーコードを適用し、色付きの文字列を返します。
 
 ## 関数呼び出し階層ツリー
 ```
-関数呼び出し階層を分析できませんでした
+cat-github-watcher.py (エントリーポイント)
+└── src/gh_pr_phase_monitor/main.py::start_monitoring
+    ├── src/gh_pr_phase_monitor/config.py::load_config
+    ├── src/gh_pr_phase_monitor/github_auth.py::ensure_gh_authenticated
+    └── src/gh_pr_phase_monitor/main.py::process_repositories (ループ内で継続的に呼び出し)
+        ├── src/gh_pr_phase_monitor/repository_fetcher.py::fetch_user_repositories
+        │   └── src/gh_pr_phase_monitor/github_client.py::get_current_user_login
+        │   └── src/gh_pr_phase_monitor/github_client.py::get_repositories_with_open_prs
+        │       └── src/gh_pr_phase_monitor/graphql_client.py::execute_query
+        ├── src/gh_pr_phase_monitor/pr_fetcher.py::fetch_open_prs
+        │   └── src/gh_pr_phase_monitor/github_client.py::get_pr_details
+        │       └── src/gh_pr_phase_monitor/graphql_client.py::execute_query
+        ├── src/gh_pr_phase_monitor/comment_fetcher.py::fetch_pr_comments
+        │   └── src/gh_pr_phase_monitor/github_client.py::get_pr_details (コメント部分の取得)
+        │       └── src/gh_pr_phase_monitor/graphql_client.py::execute_query
+        ├── src/gh_pr_phase_monitor/phase_detector.py::detect_pr_phase
+        ├── src/gh_pr_phase_monitor/comment_manager.py::post_phase_comment
+        │   └── src/gh_pr_phase_monitor/github_client.py::post_comment_to_pr
+        │       └── src/gh_pr_phase_monitor/graphql_client.py::execute_query
+        ├── src/gh_pr_phase_monitor/pr_actions.py::make_pr_ready_for_review
+        │   └── src/gh_pr_phase_monitor/github_client.py::mark_pr_as_ready
+        │       └── src/gh_pr_phase_monitor/graphql_client.py::execute_query
+        ├── src/gh_pr_phase_monitor/pr_actions.py::open_pr_in_browser
+        ├── src/gh_pr_phase_monitor/notifier.py::send_ntfy_notification
+        └── src/gh_pr_phase_monitor/issue_fetcher.py::fetch_top_issues_for_repo (特定の条件下で呼び出し)
+            └── src/gh_pr_phase_monitor/github_client.py::get_repository_issues
+                └── src/gh_pr_phase_monitor/graphql_client.py::execute_query
 
 ---
-Generated at: 2026-01-04 07:01:53 JST
+Generated at: 2026-01-05 07:01:56 JST

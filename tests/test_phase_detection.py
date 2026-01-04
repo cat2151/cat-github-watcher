@@ -8,39 +8,58 @@ Tests cover the following scenarios:
 - LLM working: No reviews, unknown reviewers, or comments with reactions
 """
 
-from src.gh_pr_phase_monitor import determine_phase, has_comments_with_reactions, has_inline_review_comments
+from src.gh_pr_phase_monitor import determine_phase, has_comments_with_reactions, has_unresolved_review_threads
 
 
-class TestHasInlineReviewComments:
-    """Test the has_inline_review_comments function"""
+class TestHasUnresolvedReviewThreads:
+    """Test the has_unresolved_review_threads function"""
 
-    def test_with_one_comment(self):
-        """Text with 'generated 1 comment' should return True"""
-        body = "Copilot reviewed 1 out of 1 changed file in this pull request and generated 1 comment."
-        assert has_inline_review_comments(body) is True
+    def test_no_threads(self):
+        """Empty threads list should return False"""
+        assert has_unresolved_review_threads([]) is False
 
-    def test_with_multiple_comments(self):
-        """Text with 'generated N comments' should return True"""
-        body = "Copilot reviewed 2 out of 2 changed files in this pull request and generated 3 comments."
-        assert has_inline_review_comments(body) is True
+    def test_none_threads(self):
+        """None threads should return False"""
+        assert has_unresolved_review_threads(None) is False
 
-    def test_with_zero_comments(self):
-        """Text with 'generated 0 comments' should return False"""
-        body = "Copilot reviewed 1 out of 1 changed file in this pull request and generated 0 comments."
-        assert has_inline_review_comments(body) is False
+    def test_all_resolved_threads(self):
+        """All resolved threads should return False"""
+        threads = [
+            {"isResolved": True, "isOutdated": False, "comments": {"totalCount": 1}},
+            {"isResolved": True, "isOutdated": False, "comments": {"totalCount": 1}},
+        ]
+        assert has_unresolved_review_threads(threads) is False
 
-    def test_with_no_pattern(self):
-        """Text without the pattern should return False"""
-        body = "## Pull request overview\n\nLooks good overall."
-        assert has_inline_review_comments(body) is False
+    def test_unresolved_thread(self):
+        """Unresolved thread should return True"""
+        threads = [
+            {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+        ]
+        assert has_unresolved_review_threads(threads) is True
 
-    def test_with_empty_body(self):
-        """Empty body should return False"""
-        assert has_inline_review_comments("") is False
+    def test_mixed_resolved_unresolved(self):
+        """Mix of resolved and unresolved should return True"""
+        threads = [
+            {"isResolved": True, "isOutdated": False, "comments": {"totalCount": 1}},
+            {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+        ]
+        assert has_unresolved_review_threads(threads) is True
 
-    def test_with_none_body(self):
-        """None body should return False"""
-        assert has_inline_review_comments(None) is False
+    def test_outdated_unresolved_thread(self):
+        """Outdated unresolved thread should return False (outdated doesn't need fixes)"""
+        threads = [
+            {"isResolved": False, "isOutdated": True, "comments": {"totalCount": 1}},
+        ]
+        assert has_unresolved_review_threads(threads) is False
+
+    def test_multiple_unresolved_threads(self):
+        """Multiple unresolved threads should return True"""
+        threads = [
+            {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+            {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+            {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+        ]
+        assert has_unresolved_review_threads(threads) is True
 
 
 class TestHasCommentsWithReactions:
@@ -272,6 +291,9 @@ class TestDeterminePhase:
             ],
             "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
             "comments": [],
+            "reviewThreads": [
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+            ],
         }
 
         assert determine_phase(pr) == "phase2"
@@ -289,6 +311,7 @@ class TestDeterminePhase:
             ],
             "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
             "comments": [],
+            "reviewThreads": [],  # No review threads
         }
 
         assert determine_phase(pr) == "phase3"
@@ -332,6 +355,9 @@ class TestDeterminePhase:
             "commentNodes": [
                 {"body": "Please fix this issue", "reactionGroups": []},
             ],
+            "reviewThreads": [
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+            ],
         }
 
         assert determine_phase(pr) == "phase2"
@@ -373,6 +399,9 @@ class TestDeterminePhase:
             ],
             "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
             "comments": 5,  # Legacy API returns integer
+            "reviewThreads": [
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+            ],
         }
 
         assert determine_phase(pr) == "phase2"
@@ -391,6 +420,11 @@ class TestDeterminePhase:
             ],
             "latestReviews": [{"author": {"login": "copilot-swe-agent"}, "state": "COMMENTED"}],
             "commentNodes": [],
+            "reviewThreads": [
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+            ],
         }
 
         # Should be phase2 because there are unresolved review comments from copilot-pull-request-reviewer
@@ -435,44 +469,42 @@ class TestDeterminePhase:
             ],
             "latestReviews": [{"author": {"login": "copilot-swe-agent"}, "state": "COMMENTED"}],
             "commentNodes": [],
+            "reviewThreads": [],  # All threads resolved
         }
 
         # Should be phase3 because the most recent review from copilot-pull-request-reviewer has no issues
         assert determine_phase(pr) == "phase3"
 
-    def test_phase3_when_review_generated_zero_comments(self):
-        """When copilot-pull-request-reviewer says 'generated 0 comments', should be phase3 not phase2"""
+    def test_real_pr_74_scenario(self):
+        """Real scenario from PR #74: review body without 'generated N comments' but has unresolved threads"""
+        # This is the actual data from PR cat2151/cat-oscilloscope#74
         pr = {
             "isDraft": False,
             "reviews": [
                 {
                     "author": {"login": "copilot-pull-request-reviewer"},
                     "state": "COMMENTED",
-                    "body": "Copilot reviewed 1 out of 1 changed file in this pull request and generated 0 comments.",
+                    "body": "## Pull request overview\n\nこのPRは、デバッグ波形表示の視認性を向上させるため...",
                 }
             ],
-            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
-            "commentNodes": [],
-        }
-
-        # Should be phase3 because 0 comments means no inline review comments
-        assert determine_phase(pr) == "phase3"
-
-    def test_phase3_when_swe_agent_after_zero_comments(self):
-        """When copilot-swe-agent posts after 'generated 0 comments', should be phase3 not phase2"""
-        pr = {
-            "isDraft": False,
-            "reviews": [
+            "latestReviews": [
                 {
                     "author": {"login": "copilot-pull-request-reviewer"},
-                    "state": "COMMENTED",
-                    "body": "Copilot reviewed 1 out of 1 changed file in this pull request and generated 0 comments.",
-                },
-                {"author": {"login": "copilot-swe-agent"}, "state": "COMMENTED", "body": "Made some improvements"},
+                    "state": "COMMENTED"
+                }
             ],
-            "latestReviews": [{"author": {"login": "copilot-swe-agent"}, "state": "COMMENTED"}],
             "commentNodes": [],
+            "reviewThreads": [
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 1}},
+            ],
         }
 
-        # Should be phase3 because the review had 0 comments (no issues to address)
-        assert determine_phase(pr) == "phase3"
+        # Should be phase2 because there are 7 unresolved review threads
+        # even though the review body doesn't contain "generated N comments" text
+        assert determine_phase(pr) == "phase2"

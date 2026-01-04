@@ -123,7 +123,7 @@ class TestProcessPR:
             "src.gh_pr_phase_monitor.pr_actions.has_phase3_review_comment"
         ) as mock_has_comment:
             mock_comment.return_value = True
-            mock_get_comments.return_value = [{"body": "@user Test message"}]
+            mock_get_comments.return_value = [{"body": "Test message"}]
             mock_has_comment.return_value = True  # Comment already exists
             process_pr(pr, config)
             # Browser should NOT be called when comment already exists

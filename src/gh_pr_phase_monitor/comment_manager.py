@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, List
 
-from .github_client import get_current_user, get_existing_comments
+from .github_client import get_existing_comments
 
 
 def has_copilot_apply_comment(comments: List[Dict[str, Any]]) -> bool:
@@ -83,14 +83,11 @@ def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path = None, custom_text: 
     Args:
         pr: PR data dictionary containing url
         repo_dir: Repository directory (optional, not used when working with URLs)
-        custom_text: Custom text to append after "@{user} " prefix.
+        custom_text: Custom text for the comment.
                      Required parameter from config.
 
     Returns:
         True if comment was posted successfully, False otherwise
-
-    Raises:
-        RuntimeError: If unable to get current GitHub user (authentication failure)
     """
     pr_url = pr.get("url", "")
     if not pr_url:
@@ -102,11 +99,8 @@ def post_phase3_comment(pr: Dict[str, Any], repo_dir: Path = None, custom_text: 
         print("    Comment already exists, skipping")
         return True
 
-    # Get the current authenticated user (will raise RuntimeError if unavailable)
-    current_user = get_current_user()
-
-    # Build comment body with hardcoded "@{user} " prefix
-    comment_body = f"@{current_user} {custom_text}"
+    # Build comment body with custom text
+    comment_body = custom_text
 
     cmd = ["gh", "pr", "comment", pr_url, "--body", comment_body]
 

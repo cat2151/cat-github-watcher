@@ -63,9 +63,32 @@ Limitations
 * Action buttons are supported by ntfy mobile app and some clients
 """
 
+import base64
 import re
 import urllib.request
 from typing import Any, Dict, Optional
+
+
+def encode_header_value(value: str) -> str:
+    """Encode a header value for use in HTTP headers.
+
+    If the value contains non-ASCII characters, encode it using RFC 2047
+    MIME encoded-word syntax (=?UTF-8?B?...?=) which ntfy.sh supports.
+
+    Args:
+        value: The header value to encode
+
+    Returns:
+        Encoded header value safe for HTTP headers
+    """
+    try:
+        # Try to encode as latin-1 (ASCII-compatible)
+        value.encode("latin-1")
+        return value
+    except UnicodeEncodeError:
+        # Contains non-ASCII, use RFC 2047 Base64 encoding
+        encoded = base64.b64encode(value.encode("utf-8")).decode("ascii")
+        return f"=?UTF-8?B?{encoded}?="
 
 
 def is_valid_topic(topic: str) -> bool:
@@ -128,7 +151,8 @@ def send_ntfy_notification(
     if title:
         # Sanitize title to prevent header injection via newline/control characters
         sanitized_title = re.sub(r"[\r\n]+", " ", title)
-        headers["Title"] = sanitized_title
+        # Encode non-ASCII characters for HTTP headers
+        headers["Title"] = encode_header_value(sanitized_title)
     if priority is not None:
         headers["Priority"] = str(priority)
     if actions:

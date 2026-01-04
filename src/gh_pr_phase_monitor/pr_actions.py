@@ -5,16 +5,16 @@ PR actions such as marking ready and opening browser
 import subprocess
 import webbrowser
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Set, Tuple
 
 from .colors import colorize_phase
 from .comment_manager import (
-    get_existing_comments,
-    has_phase3_review_comment,
     post_phase2_comment,
-    post_phase3_comment,
 )
 from .phase_detector import PHASE_1, PHASE_2, PHASE_3, determine_phase
+
+# Track which PRs have had their browser opened: set of (url, phase) tuples
+_browser_opened: Set[Tuple[str, str]] = set()
 
 
 def mark_pr_ready(pr_url: str, repo_dir: Path = None) -> bool:
@@ -87,28 +87,16 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         else:
             print("    Failed to post comment")
 
-    # Open browser and post comment when in phase 3
+    # Open browser when in phase 3
     if phase == PHASE_3:
-        # Check if phase3 comment already exists
-        existing_comments = get_existing_comments(url, None)
-        comment_already_exists = has_phase3_review_comment(existing_comments)
-
-        if not comment_already_exists:
+        # Check if browser was already opened for this PR in this phase
+        browser_key = (url, phase)
+        if browser_key not in _browser_opened:
             print("    Opening browser...")
             open_browser(url)
+            _browser_opened.add(browser_key)
         else:
-            print("    Browser already opened (comment exists), skipping")
-
-        print("    Posting comment for phase3...")
-        # phase3_comment_message is required and validated in main()
-        if config and "phase3_comment_message" in config:
-            phase3_text = config["phase3_comment_message"]
-            if post_phase3_comment(pr, None, phase3_text):
-                print("    Comment posted successfully")
-            else:
-                print("    Failed to post comment")
-        else:
-            print("    Warning: phase3_comment_message not configured, skipping comment")
+            print("    Browser already opened for this PR, skipping")
 
 
 def process_repository(repo_dir: Path, config: Dict[str, Any] = None) -> None:

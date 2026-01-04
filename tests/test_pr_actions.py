@@ -4,11 +4,16 @@ Tests for PR actions including browser opening behavior
 
 from unittest.mock import patch
 
+from src.gh_pr_phase_monitor import pr_actions
 from src.gh_pr_phase_monitor.pr_actions import process_pr
 
 
 class TestProcessPR:
     """Test the process_pr function"""
+
+    def setup_method(self):
+        """Clear the browser opened tracking before each test"""
+        pr_actions._browser_opened.clear()
 
     def test_browser_not_opened_for_phase1(self):
         """Browser should not open for phase1"""
@@ -56,7 +61,7 @@ class TestProcessPR:
             mock_browser.assert_not_called()
 
     def test_browser_opened_for_phase3(self):
-        """Browser should open for phase3 when comment does not exist"""
+        """Browser should open for phase3"""
         pr = {
             "isDraft": False,
             "reviews": [
@@ -68,20 +73,9 @@ class TestProcessPR:
             "url": "https://github.com/test-owner/test-repo/pull/1",
         }
 
-        config = {"phase3_comment_message": "Test message"}
-
-        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser, patch(
-            "src.gh_pr_phase_monitor.pr_actions.post_phase3_comment"
-        ) as mock_comment, patch(
-            "src.gh_pr_phase_monitor.pr_actions.get_existing_comments"
-        ) as mock_get_comments, patch(
-            "src.gh_pr_phase_monitor.pr_actions.has_phase3_review_comment"
-        ) as mock_has_comment:
-            mock_comment.return_value = True
-            mock_get_comments.return_value = []
-            mock_has_comment.return_value = False  # Comment does not exist
-            process_pr(pr, config)
-            # Browser should be called for phase3 when comment does not exist
+        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser:
+            process_pr(pr, {})
+            # Browser should be called for phase3
             mock_browser.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1")
 
     def test_browser_not_opened_for_llm_working(self):
@@ -100,8 +94,8 @@ class TestProcessPR:
             # Browser should not be called for LLM working
             mock_browser.assert_not_called()
 
-    def test_browser_not_opened_for_phase3_when_comment_exists(self):
-        """Browser should not open for phase3 when comment already exists"""
+    def test_browser_opened_only_once_for_phase3(self):
+        """Browser should open only once for phase3, even if called multiple times"""
         pr = {
             "isDraft": False,
             "reviews": [
@@ -113,18 +107,15 @@ class TestProcessPR:
             "url": "https://github.com/test-owner/test-repo/pull/1",
         }
 
-        config = {"phase3_comment_message": "Test message"}
+        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser:
+            # First call should open browser
+            process_pr(pr, {})
+            assert mock_browser.call_count == 1
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser, patch(
-            "src.gh_pr_phase_monitor.pr_actions.post_phase3_comment"
-        ) as mock_comment, patch(
-            "src.gh_pr_phase_monitor.pr_actions.get_existing_comments"
-        ) as mock_get_comments, patch(
-            "src.gh_pr_phase_monitor.pr_actions.has_phase3_review_comment"
-        ) as mock_has_comment:
-            mock_comment.return_value = True
-            mock_get_comments.return_value = [{"body": "@user Test message"}]
-            mock_has_comment.return_value = True  # Comment already exists
-            process_pr(pr, config)
-            # Browser should NOT be called when comment already exists
-            mock_browser.assert_not_called()
+            # Second call should not open browser again
+            process_pr(pr, {})
+            assert mock_browser.call_count == 1
+
+            # Third call should still not open browser
+            process_pr(pr, {})
+            assert mock_browser.call_count == 1

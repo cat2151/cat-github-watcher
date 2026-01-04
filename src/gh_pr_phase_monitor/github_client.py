@@ -12,7 +12,15 @@ The original functionality has been split into focused modules following the Sin
 """
 
 # Re-export authentication functions
+# Re-export comment functions
+from .comment_fetcher import get_existing_comments
 from .github_auth import get_current_user
+
+# Re-export issue functions
+from .issue_fetcher import get_issues_from_repositories
+
+# Re-export PR functions
+from .pr_fetcher import get_pr_data, get_pr_details_batch
 
 # Re-export repository functions
 from .repository_fetcher import (
@@ -20,15 +28,6 @@ from .repository_fetcher import (
     get_repositories_with_no_prs_and_open_issues,
     get_repositories_with_open_prs,
 )
-
-# Re-export PR functions
-from .pr_fetcher import get_pr_data, get_pr_details_batch
-
-# Re-export issue functions
-from .issue_fetcher import get_issues_from_repositories
-
-# Re-export comment functions
-from .comment_fetcher import get_existing_comments
 
 __all__ = [
     "get_current_user",

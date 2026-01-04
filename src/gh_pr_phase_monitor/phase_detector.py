@@ -190,8 +190,8 @@ def determine_phase(pr: Dict[str, Any]) -> str:
         if has_unresolved_review_threads(review_threads):
             # When copilot-pull-request-reviewer uses COMMENTED (not CHANGES_REQUESTED),
             # it indicates suggestions rather than required changes.
-            # However, if swe-agent just started (only initial response), still phase2.
-            # If swe-agent has done work (multiple reviews or re-review scenario), → phase3
+            # If swe-agent has posted even one review in response, the work is complete → phase3
+            # This is different from CHANGES_REQUESTED where we'd want stronger completion signals.
 
             is_re_review = (
                 latest_reviewer_index is not None
@@ -200,16 +200,21 @@ def determine_phase(pr: Dict[str, Any]) -> str:
             )
 
             # Determine if swe-agent has completed work
-            swe_agent_completed = (
-                swe_agent_review_count > 1  # Multiple reviews indicate completion
-                or is_re_review  # Re-review after swe-agent indicates completion
-            )
+            if latest_reviewer_state == "COMMENTED":
+                # For COMMENTED reviews (suggestions only), any swe-agent review indicates completion
+                swe_agent_completed = swe_agent_review_count >= 1
+            else:
+                # For other states, require stronger completion signals
+                swe_agent_completed = (
+                    swe_agent_review_count > 1  # Multiple reviews indicate completion
+                    or is_re_review  # Re-review after swe-agent indicates completion
+                )
 
-            if latest_reviewer_state == "COMMENTED" and swe_agent_completed:
-                # Reviewer used COMMENTED (suggestions only) and swe-agent completed work → phase3
+            if swe_agent_completed:
+                # Swe-agent completed work → phase3
                 return PHASE_3
             else:
-                # Either swe-agent just started, or no clear completion signal → phase2
+                # Swe-agent just started or no clear completion signal → phase2
                 return PHASE_2
 
         # 未解決のレビューコメントがない場合、または最新のレビューアーが満足している場合はphase3

@@ -429,8 +429,9 @@ class TestDeterminePhase:
 
         assert determine_phase(pr) == "phase2"
 
-    def test_phase2_when_copilot_swe_agent_after_review_comments(self):
-        """When copilot-swe-agent posts after copilot-pull-request-reviewer with review comments, should be phase2 not phase3"""
+    def test_phase3_when_copilot_swe_agent_after_commented_review(self):
+        """When copilot-swe-agent posts after copilot-pull-request-reviewer with COMMENTED review, should be phase3.
+        COMMENTED indicates suggestions rather than blocking changes, so even one swe-agent review indicates completion."""
         pr = {
             "isDraft": False,
             "reviews": [
@@ -439,7 +440,7 @@ class TestDeterminePhase:
                     "state": "COMMENTED",
                     "body": "Copilot reviewed 2 out of 2 changed files in this pull request and generated 3 comments.",
                 },
-                {"author": {"login": "copilot-swe-agent"}, "state": "COMMENTED", "body": "Working on the fixes"},
+                {"author": {"login": "copilot-swe-agent"}, "state": "COMMENTED", "body": "Addressed the comments"},
             ],
             "latestReviews": [{"author": {"login": "copilot-swe-agent"}, "state": "COMMENTED"}],
             "commentNodes": [],
@@ -450,8 +451,8 @@ class TestDeterminePhase:
             ],
         }
 
-        # Should be phase2 because there are unresolved review comments from copilot-pull-request-reviewer
-        assert determine_phase(pr) == "phase2"
+        # Should be phase3 because reviewer used COMMENTED (suggestions only), not CHANGES_REQUESTED
+        assert determine_phase(pr) == "phase3"
 
     def test_phase2_when_copilot_swe_agent_after_changes_requested(self):
         """When copilot-swe-agent posts after copilot-pull-request-reviewer with CHANGES_REQUESTED, should be phase2 not phase3"""
@@ -614,4 +615,39 @@ class TestDeterminePhase:
         # 1. Reviewer used COMMENTED (not CHANGES_REQUESTED) - suggestions only
         # 2. Multiple swe-agent reviews (6) indicate completion
         # 3. Only 1 non-outdated thread remains (test coverage suggestion - non-blocking)
+        assert determine_phase(pr) == "phase3"
+
+    def test_phase3_real_pr_61_pattern_single_swe_agent_review_commented(self):
+        """
+        Real scenario from PR 61: 1 copilot-pull-request-reviewer review with COMMENTED state
+        followed by 1 copilot-swe-agent review responding to the review comment.
+        Should be phase3 because reviewer used COMMENTED (suggestions only), not CHANGES_REQUESTED.
+        With COMMENTED, even a single swe-agent review indicates the agent has addressed the feedback.
+        """
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "## Pull request overview\n\nThis PR improves the visibility...",
+                },
+                {
+                    "author": {"login": "copilot-swe-agent"},
+                    "state": "COMMENTED",
+                    "body": "",
+                },
+            ],
+            "latestReviews": [{"author": {"login": "copilot-swe-agent"}, "state": "COMMENTED"}],
+            "commentNodes": [],
+            # 1 unresolved thread with 2 comments (reviewer comment + swe-agent response)
+            "reviewThreads": [
+                {"isResolved": False, "isOutdated": False, "comments": {"totalCount": 2}},
+            ],
+        }
+
+        # Should be phase3 because:
+        # 1. Reviewer used COMMENTED (not CHANGES_REQUESTED) - suggestions only
+        # 2. Swe-agent posted a review responding to the feedback
+        # 3. With COMMENTED state, even one swe-agent review indicates completion
         assert determine_phase(pr) == "phase3"

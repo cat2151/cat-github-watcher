@@ -7,9 +7,7 @@ Monitors PR phases and opens browser for actionable phases
 from .colors import Colors, colorize_phase
 from .comment_manager import (
     has_copilot_apply_comment,
-    has_phase3_review_comment,
     post_phase2_comment,
-    post_phase3_comment,
 )
 from .config import load_config, parse_interval
 from .github_client import (
@@ -41,9 +39,7 @@ __all__ = [
     "has_inline_review_comments",
     # Comment Manager
     "has_copilot_apply_comment",
-    "has_phase3_review_comment",
     "post_phase2_comment",
-    "post_phase3_comment",
     # PR Actions
     "mark_pr_ready",
     "open_browser",

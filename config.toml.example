@@ -9,12 +9,6 @@
 #   - "1d"  = 1 day
 interval = "1m"
 
-# Phase 3 comment message - posted when copilot finishes applying changes
-# This text will be posted as-is in the PR comment
-# GitHub CLI authentication is REQUIRED - run `gh auth login` if not authenticated
-# REQUIRED field - the comment text to post
-phase3_comment_message = "🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."
-
 # Note: This tool now monitors ALL repositories under the current GitHub user account
 # It uses GraphQL API to efficiently fetch all repositories with open PRs
 # No need to specify repository directories anymore!

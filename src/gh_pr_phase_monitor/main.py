@@ -34,19 +34,7 @@ def main():
         print("You can create a config.toml file to customize settings")
         print("Expected format:")
         print('interval = "1m"  # Check interval (e.g., "30s", "1m", "5m")')
-        print(
-            'phase3_comment_message = "🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."'
-        )
         print()
-
-    # Validate required phase3_comment_message field
-    if "phase3_comment_message" not in config:
-        print("Error: 'phase3_comment_message' is required in config file")
-        print("\nExpected format:")
-        print(
-            'phase3_comment_message = "🎁レビューお願いします🎁 : Copilot has finished applying the changes. Please review the updates."'
-        )
-        sys.exit(1)
 
     # Get interval setting (default to 1 minute if not specified)
     interval_str = config.get("interval", "1m")

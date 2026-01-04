@@ -13,7 +13,7 @@ from .comment_manager import (
 )
 from .phase_detector import PHASE_1, PHASE_2, PHASE_3, determine_phase
 
-# Track which PRs have had their browser opened: (url, phase) -> True
+# Track which PRs have had their browser opened: set of (url, phase) tuples
 _browser_opened: Set[Tuple[str, str]] = set()
 
 

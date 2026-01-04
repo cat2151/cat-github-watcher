@@ -17,7 +17,7 @@ from .comment_fetcher import get_existing_comments
 from .github_auth import get_current_user
 
 # Re-export issue functions
-from .issue_fetcher import get_issues_from_repositories
+from .issue_fetcher import assign_issue_to_copilot, get_issues_from_repositories
 
 # Re-export PR functions
 from .pr_fetcher import get_pr_data, get_pr_details_batch
@@ -37,5 +37,6 @@ __all__ = [
     "get_pr_details_batch",
     "get_pr_data",
     "get_issues_from_repositories",
+    "assign_issue_to_copilot",
     "get_existing_comments",
 ]

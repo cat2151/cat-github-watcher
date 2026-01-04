@@ -3,6 +3,7 @@ Issue fetching module for GitHub issues
 """
 
 import json
+import subprocess
 from typing import Any, Dict, List
 
 from .graphql_client import execute_graphql_query
@@ -12,12 +13,13 @@ REPOSITORIES_BATCH_SIZE = 10
 ISSUES_PER_REPO = 50
 
 
-def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10) -> List[Dict[str, Any]]:
+def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10, labels: List[str] = None) -> List[Dict[str, Any]]:
     """Get issues from multiple repositories, sorted by timestamp descending
 
     Args:
         repos: List of repository dicts with 'name' and 'owner' keys
         limit: Maximum number of issues to return (default: 10)
+        labels: Optional list of label names to filter by (e.g., ["good first issue"])
 
     Returns:
         List of issue data sorted by updatedAt timestamp in descending order
@@ -43,6 +45,12 @@ def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10) -
             owner_literal = json.dumps(owner)
             repo_name_literal = json.dumps(repo_name)
 
+            # Build labels filter if provided
+            labels_filter = ""
+            if labels:
+                labels_json = json.dumps(labels)
+                labels_filter = f", labels: {labels_json}"
+
             # Fetch up to ISSUES_PER_REPO issues per repository (sorted by updated time)
             repo_query = f"""
             {alias}: repository(owner: {owner_literal}, name: {repo_name_literal}) {{
@@ -50,7 +58,7 @@ def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10) -
               owner {{
                 login
               }}
-              issues(first: {ISSUES_PER_REPO}, states: OPEN, orderBy: {{field: UPDATED_AT, direction: DESC}}) {{
+              issues(first: {ISSUES_PER_REPO}, states: OPEN, orderBy: {{field: UPDATED_AT, direction: DESC}}{labels_filter}) {{
                 nodes {{
                   title
                   url
@@ -59,6 +67,11 @@ def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10) -
                   updatedAt
                   author {{
                     login
+                  }}
+                  labels(first: 10) {{
+                    nodes {{
+                      name
+                    }}
                   }}
                 }}
               }}
@@ -95,6 +108,10 @@ def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10) -
                     else:
                         author = {"login": author_data.get("login", "")}
 
+                    # Extract label names
+                    label_nodes = issue.get("labels", {}).get("nodes", [])
+                    label_names = [label.get("name", "") for label in label_nodes]
+
                     issue_with_repo = {
                         "title": issue.get("title", ""),
                         "url": issue.get("url", ""),
@@ -102,6 +119,7 @@ def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10) -
                         "createdAt": issue.get("createdAt", ""),
                         "updatedAt": issue.get("updatedAt", ""),
                         "author": author,
+                        "labels": label_names,
                         "repository": {"name": repo_name, "owner": owner},
                     }
                     all_issues.append(issue_with_repo)
@@ -111,3 +129,42 @@ def get_issues_from_repositories(repos: List[Dict[str, Any]], limit: int = 10) -
 
     # Return top N issues
     return all_issues[:limit]
+
+
+def assign_issue_to_copilot(issue: Dict[str, Any]) -> bool:
+    """Assign an issue to GitHub Copilot by posting an 'Assign to Copilot' comment
+
+    Args:
+        issue: Issue dictionary with 'repository' (name, owner), 'number' fields
+
+    Returns:
+        True if assignment was successful, False otherwise
+    """
+    repo_name = issue["repository"]["name"]
+    owner = issue["repository"]["owner"]
+    issue_number = issue["number"]
+
+    # Use gh CLI to post a comment that triggers Copilot assignment
+    # The comment "Assign to Copilot" is a GitHub feature that assigns the issue to Copilot
+    try:
+        cmd = [
+            "gh",
+            "issue",
+            "comment",
+            str(issue_number),
+            "--repo",
+            f"{owner}/{repo_name}",
+            "--body",
+            "Assign to Copilot",
+        ]
+
+        subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
+
+        print(f"  ✓ Assigned issue #{issue_number} to Copilot in {owner}/{repo_name}")
+        return True
+
+    except subprocess.CalledProcessError as e:
+        print(f"  ✗ Failed to assign issue #{issue_number} to Copilot: {e}")
+        if e.stderr:
+            print(f"    stderr: {e.stderr}")
+        return False

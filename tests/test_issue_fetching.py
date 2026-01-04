@@ -144,6 +144,7 @@ class TestGetIssuesFromRepositories:
                                 "createdAt": "2024-01-01T00:00:00Z",
                                 "updatedAt": "2024-01-03T00:00:00Z",
                                 "author": {"login": "author1"},
+                                "labels": {"nodes": [{"name": "bug"}]},
                             },
                             {
                                 "title": "Issue 2",
@@ -152,6 +153,7 @@ class TestGetIssuesFromRepositories:
                                 "createdAt": "2024-01-02T00:00:00Z",
                                 "updatedAt": "2024-01-02T00:00:00Z",
                                 "author": {"login": "author2"},
+                                "labels": {"nodes": []},
                             },
                         ]
                     },
@@ -168,6 +170,7 @@ class TestGetIssuesFromRepositories:
                                 "createdAt": "2024-01-01T00:00:00Z",
                                 "updatedAt": "2024-01-04T00:00:00Z",
                                 "author": {"login": "author3"},
+                                "labels": {"nodes": [{"name": "enhancement"}]},
                             }
                         ]
                     },
@@ -204,6 +207,7 @@ class TestGetIssuesFromRepositories:
                 "createdAt": "2024-01-01T00:00:00Z",
                 "updatedAt": f"2024-01-01T00:{str(i).zfill(2)}:00Z",
                 "author": {"login": "author"},
+                "labels": {"nodes": []},
             }
             for i in range(1, 16)
         ]
@@ -250,6 +254,7 @@ class TestGetIssuesFromRepositories:
                                 "createdAt": "2024-01-01T00:00:00Z",
                                 "updatedAt": "2024-01-03T00:00:00Z",
                                 "author": None,  # Deleted account
+                                "labels": {"nodes": []},
                             }
                         ]
                     },
@@ -265,3 +270,40 @@ class TestGetIssuesFromRepositories:
 
         assert len(issues) == 1
         assert issues[0]["author"]["login"] == "[deleted]"
+
+    @patch("subprocess.run")
+    def test_get_issues_with_labels_filter(self, mock_run):
+        """Test filtering issues by labels"""
+        repos = [{"name": "repo1", "owner": "user1"}]
+
+        mock_response = {
+            "data": {
+                "repo0": {
+                    "name": "repo1",
+                    "owner": {"login": "user1"},
+                    "issues": {
+                        "nodes": [
+                            {
+                                "title": "Good First Issue",
+                                "url": "https://github.com/user1/repo1/issues/1",
+                                "number": 1,
+                                "createdAt": "2024-01-01T00:00:00Z",
+                                "updatedAt": "2024-01-03T00:00:00Z",
+                                "author": {"login": "author1"},
+                                "labels": {"nodes": [{"name": "good first issue"}]},
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+
+        mock_result = MagicMock()
+        mock_result.stdout = json.dumps(mock_response)
+        mock_run.return_value = mock_result
+
+        issues = get_issues_from_repositories(repos, limit=10, labels=["good first issue"])
+
+        assert len(issues) == 1
+        assert issues[0]["title"] == "Good First Issue"
+        assert "good first issue" in issues[0]["labels"]

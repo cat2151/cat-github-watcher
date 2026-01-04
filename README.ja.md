@@ -156,4 +156,4 @@ MIT License - 詳細はLICENSEファイルを参照してください
 
 ※英語版README.mdは、README.ja.mdを元にGeminiの翻訳でGitHub Actionsにより自動生成しています
 
-*GitHub Copilot watches your PR phases. Now you can focus on coding. 🤖*
+*Big Brother is watching your repositories. Now it’s the cat.* 🐱

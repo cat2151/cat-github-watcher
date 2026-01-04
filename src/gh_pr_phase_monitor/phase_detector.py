@@ -166,13 +166,16 @@ def determine_phase(pr: Dict[str, Any]) -> str:
         latest_reviewer_index = None
         latest_reviewer_state = None
         first_swe_agent_index = None
+        swe_agent_review_count = 0
 
         for i, review in enumerate(reviews):
             reviewer_login = review.get("author", {}).get("login", "")
 
-            # Track the first copilot-swe-agent review
-            if reviewer_login == "copilot-swe-agent" and first_swe_agent_index is None:
-                first_swe_agent_index = i
+            # Track copilot-swe-agent reviews
+            if reviewer_login == "copilot-swe-agent":
+                swe_agent_review_count += 1
+                if first_swe_agent_index is None:
+                    first_swe_agent_index = i
 
             # Track the latest copilot-pull-request-reviewer review
             if reviewer_login == "copilot-pull-request-reviewer":
@@ -190,12 +193,6 @@ def determine_phase(pr: Dict[str, Any]) -> str:
             # However, if swe-agent just started (only initial response), still phase2.
             # If swe-agent has done work (multiple reviews or re-review scenario), → phase3
 
-            # Check if there's been significant swe-agent activity
-            # (either multiple reviews or a re-review from reviewer)
-            swe_agent_review_count = sum(
-                1 for review in reviews if review.get("author", {}).get("login", "") == "copilot-swe-agent"
-            )
-
             is_re_review = (
                 latest_reviewer_index is not None
                 and first_swe_agent_index is not None
@@ -211,9 +208,6 @@ def determine_phase(pr: Dict[str, Any]) -> str:
             if latest_reviewer_state == "COMMENTED" and swe_agent_completed:
                 # Reviewer used COMMENTED (suggestions only) and swe-agent completed work → phase3
                 pass
-            elif latest_reviewer_state == "CHANGES_REQUESTED":
-                # CHANGES_REQUESTED always means phase2
-                return PHASE_2
             else:
                 # Either swe-agent just started, or no clear completion signal → phase2
                 return PHASE_2

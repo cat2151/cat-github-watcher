@@ -25,6 +25,10 @@ try:
     PLAYWRIGHT_AVAILABLE = True
 except ImportError:
     PLAYWRIGHT_AVAILABLE = False
+    # Define a placeholder exception class when Playwright is not available
+    class PlaywrightTimeoutError(Exception):  # type: ignore
+        """Placeholder for when Playwright is not installed"""
+        pass
 
 
 def is_selenium_available() -> bool:

@@ -6,7 +6,7 @@ import signal
 import sys
 import time
 import traceback
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .colors import colorize_phase
 from .config import load_config, parse_interval
@@ -20,8 +20,73 @@ from .github_client import (
 from .phase_detector import PHASE_LLM_WORKING, PHASE_1, PHASE_2, PHASE_3, determine_phase
 from .pr_actions import process_pr
 
+# Track PR states and detection times
+# Key: (pr_url, phase), Value: timestamp when first detected
+_pr_state_times: Dict[Tuple[str, str], float] = {}
 
-def display_status_summary(all_prs, pr_phases, repos_with_prs):
+
+def format_elapsed_time(seconds: float) -> str:
+    """Format elapsed time in Japanese style
+    
+    Args:
+        seconds: Elapsed time in seconds
+        
+    Returns:
+        Formatted string like "3分20秒"
+    """
+    minutes = int(seconds // 60)
+    secs = int(seconds % 60)
+    
+    if minutes > 0:
+        return f"{minutes}分{secs}秒"
+    else:
+        return f"{secs}秒"
+
+
+def wait_with_countdown(interval_seconds: int, interval_str: str) -> None:
+    """Wait for the specified interval with a live countdown display
+    
+    Args:
+        interval_seconds: Number of seconds to wait
+        interval_str: Human-readable interval string (e.g., "1m", "30s")
+    """
+    print(f"\n{'=' * 50}")
+    print(f"Waiting {interval_str} until next check...")
+    print(f"{'=' * 50}")
+    
+    # Display countdown with updates every second using ANSI escape sequences
+    remaining = interval_seconds
+    while remaining > 0:
+        elapsed_str = format_elapsed_time(interval_seconds - remaining)
+        # Print countdown on same line using carriage return
+        print(f"\r待機中... 経過時間: {elapsed_str}     ", end="", flush=True)
+        time.sleep(1)
+        remaining -= 1
+    
+    # Final update
+    elapsed_str = format_elapsed_time(interval_seconds)
+    print(f"\r待機中... 経過時間: {elapsed_str}     ", flush=True)
+    print()  # New line after countdown completes
+
+
+def cleanup_old_pr_states(current_prs_with_phases: List[Tuple[str, str]]) -> None:
+    """Clean up PR state tracking for PRs that no longer exist or changed phase
+    
+    Args:
+        current_prs_with_phases: List of tuples (pr_url, phase) for current PRs
+    """
+    current_keys = set(current_prs_with_phases)
+    # Filter the existing state dict in place to keep only current keys
+    filtered_states = {
+        key: value
+        for key, value in _pr_state_times.items()
+        if key in current_keys
+    }
+    _pr_state_times.clear()
+    _pr_state_times.update(filtered_states)
+
+
+def display_status_summary(all_prs: List[Dict[str, Any]], pr_phases: List[str], repos_with_prs: List[Dict[str, Any]]) -> None:
     """Display a concise summary of current PR status
     
     This summary helps users understand the overall status at a glance,
@@ -39,7 +104,11 @@ def display_status_summary(all_prs, pr_phases, repos_with_prs):
     
     if not all_prs:
         print("  No open PRs to monitor")
+        cleanup_old_pr_states([])
         return
+    
+    current_time = time.time()
+    current_states = []
     
     # Display each PR using the same format as process_pr()
     for pr, phase in zip(all_prs, pr_phases):
@@ -47,10 +116,29 @@ def display_status_summary(all_prs, pr_phases, repos_with_prs):
         repo_name = repo_info.get("name", "Unknown")
         repo_owner = repo_info.get("owner", "Unknown")
         title = pr.get("title", "Unknown")
+        url = pr.get("url", "")
+        
+        # Track state for elapsed time
+        state_key = (url, phase)
+        current_states.append(state_key)
+        if state_key not in _pr_state_times:
+            _pr_state_times[state_key] = current_time
+        
+        # Calculate elapsed time
+        elapsed = current_time - _pr_state_times[state_key]
         
         # Display phase with colors using the same format
         phase_display = colorize_phase(phase)
-        print(f"  [{repo_owner}/{repo_name}] {phase_display} {title}")
+        
+        # Show elapsed time if state has persisted for more than 60 seconds
+        if elapsed >= 60:
+            elapsed_str = format_elapsed_time(elapsed)
+            print(f"  [{repo_owner}/{repo_name}] {phase_display} {title} (現在、検知してから{elapsed_str}経過)")
+        else:
+            print(f"  [{repo_owner}/{repo_name}] {phase_display} {title}")
+    
+    # Clean up old PR states that are no longer present
+    cleanup_old_pr_states(current_states)
 
 
 def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = None):
@@ -255,10 +343,8 @@ def main():
         # state that was successfully retrieved before the error.
         display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-        print(f"\n{'=' * 50}")
-        print(f"Waiting {interval_str} until next check...")
-        print(f"{'=' * 50}")
-        time.sleep(interval_seconds)
+        # Wait with countdown display
+        wait_with_countdown(interval_seconds, interval_str)
 
 
 if __name__ == "__main__":

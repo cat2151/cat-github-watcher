@@ -32,9 +32,10 @@ GitHub Copilotが自動実装を行うPRのフェーズを監視し、適切な�
 - **全リポジトリ自動監視**: 認証済みGitHubユーザーのユーザー所有リポジトリのPRを自動監視
 - **GraphQL API活用**: 効率的なデータ取得で高速監視を実現
 - **フェーズ検知**: PRの状態（phase1: Draft状態、phase2: レビュー指摘対応中、phase3: レビュー待ち、LLM working: コーディングエージェント作業中）を自動判定
-- **自動コメント投稿**: フェーズに応じて適切なコメントを自動投稿
-- **Draft PR自動Ready化**: phase2でのレビュー指摘対応のため、Draft PRを自動的にReady状態に変更
-- **モバイル通知**: ntfy.shを利用してphase3（レビュー待ち）を検知したらモバイル端末に通知
+- **Dry-runモード**: デフォルトでは監視のみ行い、実際のアクション（コメント投稿、PR Ready化、通知送信）は実行しない。明示的に有効化することで安全に運用可能
+- **自動コメント投稿**: フェーズに応じて適切なコメントを自動投稿（要：設定ファイルで有効化）
+- **Draft PR自動Ready化**: phase2でのレビュー指摘対応のため、Draft PRを自動的にReady状態に変更（要：設定ファイルで有効化）
+- **モバイル通知**: ntfy.shを利用してphase3（レビュー待ち）を検知したらモバイル端末に通知（要：設定ファイルで有効化）
 - **issue一覧表示**: 全PRが「LLM working」の場合、オープンPRのないリポジトリのissue上位10件を表示
 
 ## アーキテクチャ
@@ -90,10 +91,16 @@ cat-github-watcher/
    cp config.toml.example config.toml
    ```
 
-3. `config.toml` を編集して、監視間隔やntfy.sh通知、Copilot自動割り当てを設定（オプション）：
+3. `config.toml` を編集して、監視間隔や実行モード、ntfy.sh通知、Copilot自動割り当てを設定（オプション）：
    ```toml
    # チェック間隔（"30s", "1m", "5m", "1h", "1d"など）
    interval = "1m"
+   
+   # 実行制御フラグ - デフォルトはDry-runモード
+   # 実際のアクション（PRのReady化、コメント投稿、通知送信）を有効にするにはtrueに設定
+   enable_execution_phase1_to_phase2 = false  # trueにするとdraft PRをready化
+   enable_execution_phase2_to_phase3 = false  # trueにするとphase2コメント投稿
+   enable_execution_phase3_send_ntfy = false  # trueにするとntfy通知送信
    
    # ntfy.sh通知設定（オプション）
    # 通知にはPRを開くためのクリック可能なアクションボタンが含まれます
@@ -148,11 +155,26 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
 2. **PR検知**: オープンPRを持つリポジトリを自動検出
 3. **フェーズ判定**: 各PRのフェーズを判定（phase1/2/3、LLM working）
 4. **アクション実行**:
-   - **phase1**: 何もしない（Draft状態で待機）
-   - **phase2**: Draft PRをReady状態に変更し、Copilotに変更適用を依頼するコメントを投稿
-   - **phase3**: レビュー待ちを通知（ntfy.sh設定時はモバイル通知、ブラウザでPRページを開く）
+   - **phase1**: デフォルトはDry-run（`enable_execution_phase1_to_phase2 = true`でDraft PRをReady状態に変更）
+   - **phase2**: デフォルトはDry-run（`enable_execution_phase2_to_phase3 = true`でCopilotに変更適用を依頼するコメントを投稿）
+   - **phase3**: ブラウザでPRページを開く（`enable_execution_phase3_send_ntfy = true`でntfy.sh通知も送信）
    - **LLM working**: 待機（全PRがこの状態の場合、オープンPRのないリポジトリのissueを表示）
 5. **繰り返し**: 設定された間隔で監視を継続
+
+### Dry-runモード
+
+デフォルトでは、ツールは**Dry-runモード**で動作し、実際のアクションは実行しません。これにより、安全に動作を確認できます。
+
+- **Phase1（Draft → Ready化）**: `[DRY-RUN] Would mark PR as ready for review` と表示されるが、実際には何もしない
+- **Phase2（コメント投稿）**: `[DRY-RUN] Would post comment for phase2` と表示されるが、実際には何もしない
+- **Phase3（ntfy通知）**: `[DRY-RUN] Would send ntfy notification` と表示されるが、実際には何もしない
+
+実際のアクションを有効にするには、`config.toml`で以下のフラグを`true`に設定します：
+```toml
+enable_execution_phase1_to_phase2 = true  # Draft PRをReady化
+enable_execution_phase2_to_phase3 = true  # Phase2コメント投稿
+enable_execution_phase3_send_ntfy = true  # ntfy通知送信
+```
 
 ### 停止
 

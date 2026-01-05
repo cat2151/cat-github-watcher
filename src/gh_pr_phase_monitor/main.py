@@ -8,6 +8,7 @@ import time
 import traceback
 from typing import Any, Dict, Optional
 
+from .colors import colorize_phase
 from .config import load_config, parse_interval
 from .github_client import (
     assign_issue_to_copilot,
@@ -16,8 +17,40 @@ from .github_client import (
     get_repositories_with_no_prs_and_open_issues,
     get_repositories_with_open_prs,
 )
-from .phase_detector import PHASE_LLM_WORKING, determine_phase
+from .phase_detector import PHASE_LLM_WORKING, PHASE_1, PHASE_2, PHASE_3, determine_phase
 from .pr_actions import process_pr
+
+
+def display_status_summary(all_prs, pr_phases, repos_with_prs):
+    """Display a concise summary of current PR status
+    
+    This summary helps users understand the overall status at a glance,
+    especially useful on terminals with limited display lines.
+    Uses the same format as process_pr() for consistency.
+    
+    Args:
+        all_prs: List of all PRs
+        pr_phases: List of phase strings corresponding to all_prs
+        repos_with_prs: List of repositories with open PRs
+    """
+    print(f"\n{'=' * 50}")
+    print("Status Summary:")
+    print(f"{'=' * 50}")
+    
+    if not all_prs:
+        print("  No open PRs to monitor")
+        return
+    
+    # Display each PR using the same format as process_pr()
+    for pr, phase in zip(all_prs, pr_phases):
+        repo_info = pr.get("repository", {})
+        repo_name = repo_info.get("name", "Unknown")
+        repo_owner = repo_info.get("owner", "Unknown")
+        title = pr.get("title", "Unknown")
+        
+        # Display phase with colors using the same format
+        phase_display = colorize_phase(phase)
+        print(f"  [{repo_owner}/{repo_name}] {phase_display} {title}")
 
 
 def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = None):
@@ -151,6 +184,11 @@ def main():
         print(f"Check #{iteration} - {time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'=' * 50}")
 
+        # Initialize variables to track status for summary
+        all_prs = []
+        pr_phases = []
+        repos_with_prs = []
+
         try:
             # Phase 1: Get all repositories with open PRs (lightweight query)
             print("\nPhase 1: Fetching repositories with open PRs...")
@@ -178,7 +216,6 @@ def main():
                     print(f"{'=' * 50}")
 
                     # Track phases to detect if all PRs are in "LLM working"
-                    pr_phases = []
                     for pr in all_prs:
                         phase = determine_phase(pr)
                         pr_phases.append(phase)
@@ -209,6 +246,14 @@ def main():
             if consecutive_failures >= 3:
                 print("\nEncountered 3 consecutive unexpected errors; exiting to avoid an infinite error loop.")
                 sys.exit(1)
+
+        # Display status summary before waiting
+        # This helps users understand the current state at a glance,
+        # especially on terminals with limited display lines.
+        # Note: If an error occurred during data collection, the summary will show
+        # incomplete or empty data, which is acceptable as it reflects the actual
+        # state that was successfully retrieved before the error.
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
         print(f"\n{'=' * 50}")
         print(f"Waiting {interval_str} until next check...")

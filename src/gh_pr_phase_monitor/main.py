@@ -76,9 +76,14 @@ def cleanup_old_pr_states(current_prs_with_phases: List[Tuple[str, str]]) -> Non
         current_prs_with_phases: List of tuples (pr_url, phase) for current PRs
     """
     current_keys = set(current_prs_with_phases)
-    keys_to_remove = [key for key in _pr_state_times.keys() if key not in current_keys]
-    for key in keys_to_remove:
-        del _pr_state_times[key]
+    # Filter the existing state dict in place to keep only current keys
+    filtered_states = {
+        key: value
+        for key, value in _pr_state_times.items()
+        if key in current_keys
+    }
+    _pr_state_times.clear()
+    _pr_state_times.update(filtered_states)
 
 
 def display_status_summary(all_prs: List[Dict[str, Any]], pr_phases: List[str], repos_with_prs: List[Dict[str, Any]]) -> None:

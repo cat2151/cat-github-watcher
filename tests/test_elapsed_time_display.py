@@ -7,11 +7,12 @@ to show something like '現在、検知してから3分20秒経過' (Currently, 
 """
 
 import time
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from src.gh_pr_phase_monitor.main import (
     display_status_summary,
     format_elapsed_time,
+    wait_with_countdown,
     _pr_state_times,
 )
 from src.gh_pr_phase_monitor.phase_detector import PHASE_LLM_WORKING, PHASE_1
@@ -26,6 +27,7 @@ class TestElapsedTimeDisplay:
 
     def test_format_elapsed_time_seconds_only(self):
         """Test formatting elapsed time when less than a minute"""
+        assert format_elapsed_time(0) == "0秒"
         assert format_elapsed_time(30) == "30秒"
         assert format_elapsed_time(59) == "59秒"
 
@@ -167,3 +169,101 @@ class TestElapsedTimeDisplay:
         # Verify only one PR is now tracked (cleanup removed the other)
         assert len(_pr_state_times) == 1
         assert ("https://github.com/owner/repo1/pulls/1", PHASE_LLM_WORKING) in _pr_state_times
+
+    def test_elapsed_time_shown_at_exactly_60_seconds(self):
+        """Test that elapsed time is shown when exactly 60 seconds have elapsed (boundary condition)"""
+        # Create mock PR data
+        all_prs = [
+            {
+                "title": "PR at boundary",
+                "url": "https://github.com/owner/repo1/pulls/1",
+                "repository": {"name": "repo1", "owner": "owner"},
+            }
+        ]
+        pr_phases = [PHASE_LLM_WORKING]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
+
+        # First call to set the initial detection time
+        with patch("builtins.print"):
+            display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+        # Manually adjust the detection time to simulate exactly 60 seconds elapsed
+        state_key = ("https://github.com/owner/repo1/pulls/1", PHASE_LLM_WORKING)
+        _pr_state_times[state_key] = time.time() - 60
+
+        # Second call should show elapsed time since it's >= 60
+        with patch("builtins.print") as mock_print:
+            display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+            # Extract all printed messages
+            calls = [str(call) for call in mock_print.call_args_list]
+            output = " ".join(calls)
+
+            # Verify that elapsed time IS displayed at the boundary
+            assert "現在、検知してから" in output
+            assert "経過" in output
+            assert "1分0秒" in output  # Should be exactly 1 minute
+
+
+class TestWaitWithCountdown:
+    """Test the wait_with_countdown functionality"""
+
+    def test_countdown_displays_elapsed_time(self):
+        """Test that countdown displays correctly with elapsed time formatting"""
+        with patch("builtins.print") as mock_print, patch("time.sleep") as mock_sleep:
+            wait_with_countdown(3, "3s")
+
+            # Verify print was called with header
+            calls = [str(call) for call in mock_print.call_args_list]
+            output = " ".join(calls)
+            assert "Waiting 3s until next check" in output
+
+            # Verify countdown messages were printed
+            assert "待機中... 経過時間: 0秒" in output
+            assert "待機中... 経過時間: 1秒" in output
+            assert "待機中... 経過時間: 2秒" in output
+            assert "待機中... 経過時間: 3秒" in output
+
+            # Verify sleep was called correct number of times
+            assert mock_sleep.call_count == 3
+
+    def test_countdown_uses_carriage_return_for_updates(self):
+        """Test that countdown uses ANSI escape sequences (carriage return) for in-place updates"""
+        with patch("builtins.print") as mock_print, patch("time.sleep"):
+            wait_with_countdown(2, "2s")
+
+            # Check that carriage return is used in countdown lines
+            countdown_calls = [
+                call for call in mock_print.call_args_list
+                if "待機中" in str(call)
+            ]
+
+            # Verify carriage return usage
+            for call in countdown_calls[:-1]:  # All except the last one
+                call_str = str(call)
+                assert "\\r" in call_str or call_str.startswith("call('\\r")
+
+    def test_countdown_handles_different_intervals(self):
+        """Test that countdown properly handles different time intervals"""
+        with patch("builtins.print") as mock_print, patch("time.sleep") as mock_sleep:
+            wait_with_countdown(5, "5s")
+
+            # Verify sleep was called 5 times (once per second)
+            assert mock_sleep.call_count == 5
+
+            # Verify final elapsed time
+            calls = [str(call) for call in mock_print.call_args_list]
+            output = " ".join(calls)
+            assert "待機中... 経過時間: 5秒" in output
+
+    def test_countdown_formats_time_correctly(self):
+        """Test that countdown formats time with minutes and seconds"""
+        with patch("builtins.print") as mock_print, patch("time.sleep"):
+            wait_with_countdown(90, "90s")
+
+            calls = [str(call) for call in mock_print.call_args_list]
+            output = " ".join(calls)
+
+            # Verify that minutes are displayed correctly
+            assert "待機中... 経過時間: 1分29秒" in output
+            assert "待機中... 経過時間: 1分30秒" in output

@@ -168,6 +168,49 @@ def test_display_issues_with_assign_disabled():
                 mock_assign.assert_not_called()
 
 
+def test_display_issues_with_custom_limit():
+    """
+    Test that display_issues_from_repos_without_prs respects the issue_display_limit config
+    """
+    with patch("src.gh_pr_phase_monitor.main.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.main.get_issues_from_repositories") as mock_get_issues:
+            # Mock response: repos with no PRs but with issues
+            mock_get_repos.return_value = [
+                {
+                    "name": "test-repo",
+                    "owner": "testuser",
+                    "openIssueCount": 10,
+                }
+            ]
+
+            # Mock issue response
+            mock_get_issues.return_value = [
+                {
+                    "title": f"Issue {i}",
+                    "url": f"https://github.com/testuser/test-repo/issues/{i}",
+                    "number": i,
+                    "updatedAt": f"2024-01-{i:02d}T00:00:00Z",
+                    "author": {"login": "contributor1"},
+                    "repository": {"owner": "testuser", "name": "test-repo"},
+                }
+                for i in range(1, 6)
+            ]
+
+            # Create config with custom issue_display_limit
+            config = {"assign_to_copilot": {"enabled": False}, "issue_display_limit": 5}
+
+            # Call the function with config
+            display_issues_from_repos_without_prs(config)
+
+            # Verify that the function fetched repos without PRs
+            mock_get_repos.assert_called_once()
+
+            # Verify that issues were fetched with the custom limit
+            mock_get_issues.assert_called_once()
+            call_args = mock_get_issues.call_args
+            assert call_args[1]["limit"] == 5
+
+
 if __name__ == "__main__":
     test_display_issues_when_no_repos_with_prs()
     print("✓ Test 1 passed: display_issues_when_no_repos_with_prs")
@@ -180,5 +223,8 @@ if __name__ == "__main__":
 
     test_display_issues_with_assign_disabled()
     print("✓ Test 4 passed: display_issues_with_assign_disabled")
+
+    test_display_issues_with_custom_limit()
+    print("✓ Test 5 passed: display_issues_with_custom_limit")
 
     print("\n✅ All tests passed!")

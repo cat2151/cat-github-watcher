@@ -57,12 +57,9 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
 
                 if good_first_issues:
                     issue = good_first_issues[0]
-                    repo_info = issue["repository"]
                     print("\n  Found top 'good first issue' (sorted by last update, descending):")
-                    print(f"  [{repo_info['owner']}/{repo_info['name']}] #{issue['number']}: {issue['title']}")
+                    print(f"  #{issue['number']}: {issue['title']}")
                     print(f"     URL: {issue['url']}")
-                    print(f"     Author: {issue['author']['login']}")
-                    print(f"     Updated: {issue['updatedAt']}")
                     # Safely join labels, ensuring they are all strings
                     labels = issue.get('labels', [])
                     label_str = ', '.join(str(label) for label in labels)
@@ -81,23 +78,23 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                 print("To enable, set 'assign_to_copilot.enabled = true' in config.toml")
                 print(f"{'=' * 50}")
 
-            # Then, show top 10 issues from these repositories
+            # Get the issue display limit from config (default: 10)
+            issue_limit = config.get("issue_display_limit", 10)
+
+            # Then, show top N issues from these repositories
             print(f"\n{'=' * 50}")
-            print("Fetching top 10 issues from these repositories...")
+            print(f"Fetching top {issue_limit} issues from these repositories...")
             print(f"{'=' * 50}")
 
-            top_issues = get_issues_from_repositories(repos_with_issues, limit=10)
+            top_issues = get_issues_from_repositories(repos_with_issues, limit=issue_limit)
 
             if not top_issues:
                 print("  No issues found")
             else:
                 print(f"\n  Top {len(top_issues)} issues (sorted by last update, descending):\n")
                 for idx, issue in enumerate(top_issues, 1):
-                    repo_info = issue["repository"]
-                    print(f"  {idx}. [{repo_info['owner']}/{repo_info['name']}] #{issue['number']}: {issue['title']}")
+                    print(f"  {idx}. #{issue['number']}: {issue['title']}")
                     print(f"     URL: {issue['url']}")
-                    print(f"     Author: {issue['author']['login']}")
-                    print(f"     Updated: {issue['updatedAt']}")
                     print()
     except Exception as e:
         print(f"  Error fetching issues: {e}")

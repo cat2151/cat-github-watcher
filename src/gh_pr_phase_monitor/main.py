@@ -8,6 +8,7 @@ import time
 import traceback
 from typing import Any, Dict, Optional
 
+from .colors import colorize_phase
 from .config import load_config, parse_interval
 from .github_client import (
     assign_issue_to_copilot,
@@ -32,8 +33,6 @@ def display_status_summary(all_prs, pr_phases, repos_with_prs):
         pr_phases: List of phase strings corresponding to all_prs
         repos_with_prs: List of repositories with open PRs
     """
-    from .colors import colorize_phase
-    
     print(f"\n{'=' * 50}")
     print("Status Summary:")
     print(f"{'=' * 50}")

@@ -14,7 +14,7 @@ from src.gh_pr_phase_monitor.main import (
     format_elapsed_time,
     _pr_state_times,
 )
-from src.gh_pr_phase_monitor.phase_detector import PHASE_LLM_WORKING
+from src.gh_pr_phase_monitor.phase_detector import PHASE_LLM_WORKING, PHASE_1
 
 
 class TestElapsedTimeDisplay:
@@ -117,8 +117,6 @@ class TestElapsedTimeDisplay:
         assert state_key_1 in _pr_state_times
 
         # Simulate phase change by calling with a different phase
-        from src.gh_pr_phase_monitor.phase_detector import PHASE_1
-
         pr_phases = [PHASE_1]
         with patch("builtins.print"):
             display_status_summary(all_prs, pr_phases, repos_with_prs)

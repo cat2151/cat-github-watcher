@@ -6,7 +6,7 @@ import signal
 import sys
 import time
 import traceback
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .colors import colorize_phase
 from .config import load_config, parse_interval
@@ -22,7 +22,7 @@ from .pr_actions import process_pr
 
 # Track PR states and detection times
 # Key: (pr_url, phase), Value: timestamp when first detected
-_pr_state_times: Dict[tuple, float] = {}
+_pr_state_times: Dict[Tuple[str, str], float] = {}
 
 
 def format_elapsed_time(seconds: float) -> str:
@@ -43,7 +43,7 @@ def format_elapsed_time(seconds: float) -> str:
         return f"{secs}秒"
 
 
-def wait_with_countdown(interval_seconds: int, interval_str: str):
+def wait_with_countdown(interval_seconds: int, interval_str: str) -> None:
     """Wait for the specified interval with a live countdown display
     
     Args:
@@ -69,7 +69,7 @@ def wait_with_countdown(interval_seconds: int, interval_str: str):
     print()  # New line after countdown completes
 
 
-def cleanup_old_pr_states(current_prs_with_phases):
+def cleanup_old_pr_states(current_prs_with_phases: List[Tuple[str, str]]) -> None:
     """Clean up PR state tracking for PRs that no longer exist or changed phase
     
     Args:
@@ -81,7 +81,7 @@ def cleanup_old_pr_states(current_prs_with_phases):
         del _pr_state_times[key]
 
 
-def display_status_summary(all_prs, pr_phases, repos_with_prs):
+def display_status_summary(all_prs: List[Dict[str, Any]], pr_phases: List[str], repos_with_prs: List[Dict[str, Any]]) -> None:
     """Display a concise summary of current PR status
     
     This summary helps users understand the overall status at a glance,

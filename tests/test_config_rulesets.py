@@ -2,6 +2,8 @@
 Tests for ruleset-based configuration resolution
 """
 
+import pytest
+
 from src.gh_pr_phase_monitor.config import resolve_execution_config_for_repo
 
 
@@ -313,8 +315,6 @@ class TestBooleanValidation:
 
     def test_rejects_string_value_in_global_config(self):
         """Should raise ValueError when global config has string instead of boolean"""
-        import pytest
-        
         config = {
             "enable_execution_phase1_to_phase2": "true",  # String instead of boolean
         }
@@ -327,8 +327,6 @@ class TestBooleanValidation:
 
     def test_rejects_integer_value_in_global_config(self):
         """Should raise ValueError when global config has integer instead of boolean"""
-        import pytest
-        
         config = {
             "enable_execution_phase2_to_phase3": 1,  # Integer instead of boolean
         }
@@ -341,8 +339,6 @@ class TestBooleanValidation:
 
     def test_rejects_string_value_in_ruleset(self):
         """Should raise ValueError when ruleset has string instead of boolean"""
-        import pytest
-        
         config = {
             "enable_execution_phase1_to_phase2": False,
             "rulesets": [
@@ -361,8 +357,6 @@ class TestBooleanValidation:
 
     def test_rejects_integer_value_in_ruleset(self):
         """Should raise ValueError when ruleset has integer instead of boolean"""
-        import pytest
-        
         config = {
             "enable_execution_phase3_send_ntfy": False,
             "rulesets": [
@@ -403,8 +397,6 @@ class TestBooleanValidation:
 
     def test_validation_does_not_affect_non_matching_rulesets(self):
         """Validation should only occur for rulesets that match the repository"""
-        import pytest
-        
         config = {
             "enable_execution_phase1_to_phase2": False,
             "rulesets": [

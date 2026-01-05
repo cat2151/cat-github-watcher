@@ -114,11 +114,9 @@ def resolve_execution_config_for_repo(
     def get_validated_flag(flag_name: str, default: bool = False) -> bool:
         """Get and validate a global configuration flag"""
         value = config.get(flag_name, default)
-        if value is not default and not isinstance(value, bool):
-            raise ValueError(
-                f"Global configuration flag '{flag_name}' must be a boolean (true/false), "
-                f"got {type(value).__name__}: {value}"
-            )
+        # Only validate if the value was actually provided in config (not using default)
+        if flag_name in config:
+            return _validate_boolean_flag(value, flag_name)
         return value
 
     result = {

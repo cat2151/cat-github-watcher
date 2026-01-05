@@ -16,8 +16,57 @@ from .github_client import (
     get_repositories_with_no_prs_and_open_issues,
     get_repositories_with_open_prs,
 )
-from .phase_detector import PHASE_LLM_WORKING, determine_phase
+from .phase_detector import PHASE_LLM_WORKING, PHASE_1, PHASE_2, PHASE_3, determine_phase
 from .pr_actions import process_pr
+
+
+def display_status_summary(all_prs, pr_phases, repos_with_prs):
+    """Display a concise summary of current PR status
+    
+    This summary helps users understand the overall status at a glance,
+    especially useful on terminals with limited display lines.
+    
+    Args:
+        all_prs: List of all PRs
+        pr_phases: List of phase strings corresponding to all_prs
+        repos_with_prs: List of repositories with open PRs
+    """
+    print(f"\n{'=' * 50}")
+    print("Status Summary:")
+    print(f"{'=' * 50}")
+    
+    if not all_prs:
+        print("  No open PRs to monitor")
+        return
+    
+    # Count PRs by phase
+    phase_counts = {
+        PHASE_1: 0,
+        PHASE_2: 0,
+        PHASE_3: 0,
+        PHASE_LLM_WORKING: 0
+    }
+    
+    for phase in pr_phases:
+        if phase in phase_counts:
+            phase_counts[phase] += 1
+    
+    # Display summary
+    total_prs = len(all_prs)
+    print(f"  Total open PRs: {total_prs}")
+    
+    if phase_counts[PHASE_1] > 0:
+        print(f"  - Phase 1 (Draft): {phase_counts[PHASE_1]} PR(s)")
+    if phase_counts[PHASE_2] > 0:
+        print(f"  - Phase 2 (Addressing review comments): {phase_counts[PHASE_2]} PR(s)")
+    if phase_counts[PHASE_3] > 0:
+        print(f"  - Phase 3 (Waiting for review): {phase_counts[PHASE_3]} PR(s)")
+    if phase_counts[PHASE_LLM_WORKING] > 0:
+        print(f"  - LLM working: {phase_counts[PHASE_LLM_WORKING]} PR(s)")
+    
+    # Show repository count
+    if repos_with_prs:
+        print(f"  Monitoring {len(repos_with_prs)} repositories")
 
 
 def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = None):
@@ -151,6 +200,11 @@ def main():
         print(f"Check #{iteration} - {time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'=' * 50}")
 
+        # Initialize variables to track status for summary
+        all_prs = []
+        pr_phases = []
+        repos_with_prs = []
+
         try:
             # Phase 1: Get all repositories with open PRs (lightweight query)
             print("\nPhase 1: Fetching repositories with open PRs...")
@@ -178,7 +232,6 @@ def main():
                     print(f"{'=' * 50}")
 
                     # Track phases to detect if all PRs are in "LLM working"
-                    pr_phases = []
                     for pr in all_prs:
                         phase = determine_phase(pr)
                         pr_phases.append(phase)
@@ -209,6 +262,11 @@ def main():
             if consecutive_failures >= 3:
                 print("\nEncountered 3 consecutive unexpected errors; exiting to avoid an infinite error loop.")
                 sys.exit(1)
+
+        # Display status summary before waiting
+        # This helps users understand the current state at a glance,
+        # especially on terminals with limited display lines
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
         print(f"\n{'=' * 50}")
         print(f"Waiting {interval_str} until next check...")

@@ -265,7 +265,10 @@ def main():
 
         # Display status summary before waiting
         # This helps users understand the current state at a glance,
-        # especially on terminals with limited display lines
+        # especially on terminals with limited display lines.
+        # Note: If an error occurred during data collection, the summary will show
+        # incomplete or empty data, which is acceptable as it reflects the actual
+        # state that was successfully retrieved before the error.
         display_status_summary(all_prs, pr_phases, repos_with_prs)
 
         print(f"\n{'=' * 50}")

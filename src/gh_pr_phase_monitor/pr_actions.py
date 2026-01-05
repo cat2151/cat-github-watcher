@@ -77,19 +77,29 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
 
     # Mark PR as ready for review when in phase 1
     if phase == PHASE_1:
-        print("    Marking PR as ready for review...")
-        if mark_pr_ready(url, None):
-            print("    PR marked as ready successfully")
+        # Check if execution is enabled
+        execution_enabled = config.get("enable_execution_phase1_to_phase2", False) if config else False
+        if execution_enabled:
+            print("    Marking PR as ready for review...")
+            if mark_pr_ready(url, None):
+                print("    PR marked as ready successfully")
+            else:
+                print("    Failed to mark PR as ready")
         else:
-            print("    Failed to mark PR as ready")
+            print("    [DRY-RUN] Would mark PR as ready for review (enable_execution_phase1_to_phase2=false)")
 
     # Post comment when in phase 2
     if phase == PHASE_2:
-        print("    Posting comment for phase2...")
-        if post_phase2_comment(pr, None):
-            print("    Comment posted successfully")
+        # Check if execution is enabled
+        execution_enabled = config.get("enable_execution_phase2_to_phase3", False) if config else False
+        if execution_enabled:
+            print("    Posting comment for phase2...")
+            if post_phase2_comment(pr, None):
+                print("    Comment posted successfully")
+            else:
+                print("    Failed to post comment")
         else:
-            print("    Failed to post comment")
+            print("    [DRY-RUN] Would post comment for phase2 (enable_execution_phase2_to_phase3=false)")
 
     # Open browser and send notification when in phase 3
     if phase == PHASE_3:
@@ -112,12 +122,18 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
             # Mark as attempted regardless of outcome to avoid repeated checks
             _notifications_sent.add(notification_key)
 
-            if config and config.get("ntfy", {}).get("enabled", False):
+            # Check if ntfy execution is enabled
+            execution_enabled = config.get("enable_execution_phase3_send_ntfy", False) if config else False
+            ntfy_configured = config and config.get("ntfy", {}).get("enabled", False)
+
+            if ntfy_configured and execution_enabled:
                 print("    Sending ntfy notification...")
                 if send_phase3_notification(config, url, title):
                     print("    Notification sent successfully")
                 else:
                     print("    Failed to send notification")
+            elif ntfy_configured and not execution_enabled:
+                print("    [DRY-RUN] Would send ntfy notification (enable_execution_phase3_send_ntfy=false)")
 
 
 def process_repository(repo_dir: Path, config: Dict[str, Any] = None) -> None:

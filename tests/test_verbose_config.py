@@ -3,7 +3,6 @@ Tests for verbose configuration printing functionality
 """
 
 import io
-import sys
 from contextlib import redirect_stdout
 
 from src.gh_pr_phase_monitor.config import print_config, print_repo_execution_config

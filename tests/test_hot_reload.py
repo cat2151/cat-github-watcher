@@ -37,8 +37,13 @@ class TestConfigMtime:
 
     def test_get_config_mtime_file_not_found(self):
         """Test that FileNotFoundError is raised for non-existent file"""
+        # Use tempfile to get a valid path that doesn't exist
+        with tempfile.NamedTemporaryFile(suffix=".toml", delete=True) as f:
+            nonexistent_path = f.name
+        
+        # Now the file is deleted, test that it raises FileNotFoundError
         with pytest.raises(FileNotFoundError):
-            get_config_mtime("/tmp/nonexistent_config_file.toml")
+            get_config_mtime(nonexistent_path)
 
     def test_config_mtime_changes_on_modification(self):
         """Test that modification time changes when file is modified"""

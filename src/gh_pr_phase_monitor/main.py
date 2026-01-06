@@ -78,10 +78,15 @@ def wait_with_countdown(
     current_mtime = last_config_mtime
     config_was_reloaded = False
     
+    # Track actual elapsed time from the start of wait
+    wait_start_time = time.time()
+    
     # Display countdown with updates every second using ANSI escape sequences
     remaining = interval_seconds
     while remaining > 0:
-        elapsed_str = format_elapsed_time(interval_seconds - remaining)
+        # Calculate actual elapsed time
+        actual_elapsed = time.time() - wait_start_time
+        elapsed_str = format_elapsed_time(actual_elapsed)
         # Print countdown on same line using carriage return
         print(f"\r待機中... 経過時間: {elapsed_str}     ", end="", flush=True)
         time.sleep(1)
@@ -141,8 +146,9 @@ def wait_with_countdown(
             # File system errors (e.g., permission issues), ignore and continue
             pass
     
-    # Final update
-    elapsed_str = format_elapsed_time(interval_seconds)
+    # Final update - show actual elapsed time
+    actual_elapsed = time.time() - wait_start_time
+    elapsed_str = format_elapsed_time(actual_elapsed)
     print(f"\r待機中... 経過時間: {elapsed_str}     ", flush=True)
     print()  # New line after countdown completes
     

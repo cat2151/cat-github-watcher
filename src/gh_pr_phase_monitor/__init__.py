@@ -9,7 +9,7 @@ from .comment_manager import (
     has_copilot_apply_comment,
     post_phase2_comment,
 )
-from .config import load_config, parse_interval
+from .config import get_config_mtime, load_config, parse_interval
 from .github_client import (
     get_current_user,
     get_existing_comments,
@@ -30,6 +30,7 @@ __all__ = [
     "Colors",
     "colorize_phase",
     # Config
+    "get_config_mtime",
     "load_config",
     "parse_interval",
     # GitHub Client

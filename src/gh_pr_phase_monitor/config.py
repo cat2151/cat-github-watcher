@@ -2,6 +2,7 @@
 Configuration loading and parsing utilities
 """
 
+import os
 import re
 from typing import Any, Dict
 
@@ -70,6 +71,21 @@ def _validate_boolean_flag(value: Any, flag_name: str) -> bool:
             f"got {type(value).__name__}: {value}"
         )
     return value
+
+
+def get_config_mtime(config_path: str = "config.toml") -> float:
+    """Get the modification time of the configuration file
+
+    Args:
+        config_path: Path to the TOML configuration file
+
+    Returns:
+        Modification time as a timestamp (seconds since epoch)
+
+    Raises:
+        FileNotFoundError: If the configuration file is not found
+    """
+    return os.path.getmtime(config_path)
 
 
 def load_config(config_path: str = "config.toml") -> Dict[str, Any]:

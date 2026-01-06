@@ -7,9 +7,11 @@ import webbrowser
 from pathlib import Path
 from typing import Any, Dict, Set, Tuple
 
+from .browser_automation import merge_pr_automated
 from .colors import colorize_phase
 from .comment_manager import (
     post_phase2_comment,
+    post_phase3_comment,
 )
 from .config import resolve_execution_config_for_repo
 from .notifier import send_phase3_notification
@@ -20,6 +22,9 @@ _browser_opened: Set[Tuple[str, str]] = set()
 
 # Track which PRs have had notifications sent: set of (url, phase) tuples
 _notifications_sent: Set[Tuple[str, str]] = set()
+
+# Track which PRs have been merged: set of PR URLs
+_merged_prs: Set[str] = set()
 
 
 def mark_pr_ready(pr_url: str, repo_dir: Path = None) -> bool:
@@ -39,6 +44,32 @@ def mark_pr_ready(pr_url: str, repo_dir: Path = None) -> bool:
         return True
     except subprocess.CalledProcessError as e:
         print(f"    Error marking PR as ready: {e}")
+        stderr = getattr(e, "stderr", "No stderr available")
+        print(f"    stderr: {stderr}")
+        return False
+
+
+def merge_pr(pr_url: str, repo_dir: Path = None) -> bool:
+    """Merge a PR using gh command
+
+    Args:
+        pr_url: URL of the PR
+        repo_dir: Repository directory (optional, not used when working with URLs)
+
+    Returns:
+        True if PR was successfully merged, False otherwise
+
+    Note:
+        Uses --squash for a clean commit history. Does not use --auto flag
+        because phase3 detection already implies all required checks have passed.
+    """
+    cmd = ["gh", "pr", "merge", pr_url, "--squash"]
+
+    try:
+        subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"    Error merging PR: {e}")
         stderr = getattr(e, "stderr", "No stderr available")
         print(f"    stderr: {stderr}")
         return False
@@ -84,6 +115,7 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
             "enable_execution_phase1_to_phase2": False,
             "enable_execution_phase2_to_phase3": False,
             "enable_execution_phase3_send_ntfy": False,
+            "enable_execution_phase3_to_merge": False,
         }
 
     # Mark PR as ready for review when in phase 1
@@ -146,6 +178,50 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
                     print("    Failed to send notification")
         elif ntfy_configured and not execution_enabled:
             print("    [DRY-RUN] Would send ntfy notification (enable_execution_phase3_send_ntfy=false)")
+
+        # Merge PR if configured and not already merged
+        merge_key = url
+        merge_execution_enabled = exec_config["enable_execution_phase3_to_merge"]
+        merge_configured = config and config.get("phase3_merge", {}).get("enabled", False)
+
+        if merge_configured and merge_execution_enabled:
+            if merge_key not in _merged_prs:
+                # Post comment before merging
+                merge_comment = config.get("phase3_merge", {}).get("comment", "All checks passed. Merging PR.")
+                print(f"    Posting pre-merge comment: '{merge_comment}'...")
+                comment_posted = post_phase3_comment(pr, merge_comment, None)
+
+                if not comment_posted:
+                    print("    Failed to post pre-merge comment")
+                    print("    Skipping merge because pre-merge comment could not be posted")
+                    return  # Early return - do not add to merged_prs, allow retry
+
+                print("    Pre-merge comment posted successfully")
+
+                # Check if automated merge is enabled
+                merge_automated = config.get("phase3_merge", {}).get("automated", False)
+
+                merge_success = False
+                if merge_automated:
+                    print("    Merging PR using browser automation...")
+                    if merge_pr_automated(url, config):
+                        print("    PR merged successfully via browser automation")
+                        merge_success = True
+                    else:
+                        print("    Failed to merge PR via browser automation")
+                else:
+                    print("    Merging PR using gh CLI...")
+                    if merge_pr(url, None):
+                        print("    PR merged successfully via gh CLI")
+                        merge_success = True
+                    else:
+                        print("    Failed to merge PR via gh CLI")
+
+                # Only mark as merged if the merge was successful
+                if merge_success:
+                    _merged_prs.add(merge_key)
+        elif merge_configured and not merge_execution_enabled:
+            print("    [DRY-RUN] Would merge PR (enable_execution_phase3_to_merge=false)")
 
 
 def process_repository(repo_dir: Path, config: Dict[str, Any] = None) -> None:

@@ -21,7 +21,8 @@ except ImportError:
 
 # Playwright imports are optional
 try:
-    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.sync_api import sync_playwright
     PLAYWRIGHT_AVAILABLE = True
 except ImportError:
     PLAYWRIGHT_AVAILABLE = False
@@ -49,6 +50,26 @@ def is_playwright_available() -> bool:
     return PLAYWRIGHT_AVAILABLE
 
 
+def _validate_wait_seconds(config: Dict[str, Any]) -> int:
+    """Validate and get wait_seconds from configuration
+
+    Args:
+        config: Configuration dict with wait_seconds setting
+
+    Returns:
+        Validated wait_seconds value (defaults to 10 if invalid)
+    """
+    try:
+        wait_seconds = int(config.get("wait_seconds", 10))
+        if wait_seconds < 0:
+            print("  ⚠ wait_seconds must be positive, using default: 10")
+            wait_seconds = 10
+    except (ValueError, TypeError):
+        print("  ⚠ Invalid wait_seconds value in config, using default: 10")
+        wait_seconds = 10
+    return wait_seconds
+
+
 def assign_issue_to_copilot_automated(
     issue_url: str,
     config: Optional[Dict[str, Any]] = None
@@ -73,14 +94,48 @@ def assign_issue_to_copilot_automated(
         config = {}
 
     assign_config = config.get("assign_to_copilot", {})
-    
+
     # Get automation backend (selenium or playwright)
     backend = assign_config.get("automation_backend", "selenium").lower()
-    
+
     if backend == "playwright":
         return _assign_with_playwright(issue_url, assign_config)
     else:
         return _assign_with_selenium(issue_url, assign_config)
+
+
+def merge_pr_automated(
+    pr_url: str,
+    config: Optional[Dict[str, Any]] = None
+) -> bool:
+    """Automatically merge a PR by clicking the merge button in browser
+
+    This function uses Selenium WebDriver or Playwright to:
+    1. Open the PR in a browser
+    2. Wait for the configured time (default 10 seconds)
+    3. Click the "Merge pull request" button
+    4. Click the "Confirm merge" button
+
+    Args:
+        pr_url: The URL of the GitHub PR
+        config: Optional configuration dict with automation settings
+
+    Returns:
+        True if automation was successful, False otherwise
+    """
+    # Get configuration settings
+    if config is None:
+        config = {}
+
+    merge_config = config.get("phase3_merge", {})
+
+    # Get automation backend (selenium or playwright)
+    backend = merge_config.get("automation_backend", "selenium").lower()
+
+    if backend == "playwright":
+        return _merge_pr_with_playwright(pr_url, merge_config)
+    else:
+        return _merge_pr_with_selenium(pr_url, merge_config)
 
 
 def _assign_with_selenium(
@@ -101,14 +156,7 @@ def _assign_with_selenium(
         return False
 
     # Validate and get wait_seconds
-    try:
-        wait_seconds = int(assign_config.get("wait_seconds", 10))
-        if wait_seconds < 0:
-            print("  ⚠ wait_seconds must be positive, using default: 10")
-            wait_seconds = 10
-    except (ValueError, TypeError):
-        print("  ⚠ Invalid wait_seconds value in config, using default: 10")
-        wait_seconds = 10
+    wait_seconds = _validate_wait_seconds(assign_config)
 
     browser_type = assign_config.get("browser", "edge").lower()
     headless = assign_config.get("headless", False)
@@ -186,14 +234,7 @@ def _assign_with_playwright(
         return False
 
     # Validate and get wait_seconds
-    try:
-        wait_seconds = int(assign_config.get("wait_seconds", 10))
-        if wait_seconds < 0:
-            print("  ⚠ wait_seconds must be positive, using default: 10")
-            wait_seconds = 10
-    except (ValueError, TypeError):
-        print("  ⚠ Invalid wait_seconds value in config, using default: 10")
-        wait_seconds = 10
+    wait_seconds = _validate_wait_seconds(assign_config)
 
     browser_type = assign_config.get("browser", "chromium").lower()
     headless = assign_config.get("headless", False)
@@ -202,7 +243,7 @@ def _assign_with_playwright(
         with sync_playwright() as p:
             # Initialize the browser
             print(f"  → [Playwright] Opening issue in {browser_type} browser...")
-            
+
             if browser_type == "firefox":
                 browser = p.firefox.launch(headless=headless)
             elif browser_type == "webkit":
@@ -249,7 +290,7 @@ def _assign_with_playwright(
             return True
 
     except PlaywrightTimeoutError as e:
-        print(f"  ✗ Playwright timeout error: Page elements not found within timeout period")
+        print("  ✗ Playwright timeout error: Page elements not found within timeout period")
         print(f"     Details: {e}")
         return False
     except Exception as e:
@@ -380,4 +421,165 @@ def _click_button_playwright(page, button_text: str, timeout: int = 10000) -> bo
 
     except Exception as e:
         print(f"  ✗ Error clicking button '{button_text}': {e}")
+        return False
+
+
+def _merge_pr_with_selenium(
+    pr_url: str,
+    merge_config: Dict[str, Any]
+) -> bool:
+    """Merge PR using Selenium WebDriver
+
+    Args:
+        pr_url: The URL of the GitHub PR
+        merge_config: Configuration dict with automation settings
+
+    Returns:
+        True if automation was successful, False otherwise
+    """
+    if not SELENIUM_AVAILABLE:
+        print("  ✗ Selenium is not installed. Install with: pip install selenium webdriver-manager")
+        return False
+
+    # Validate and get wait_seconds
+    wait_seconds = _validate_wait_seconds(merge_config)
+
+    browser_type = merge_config.get("browser", "edge").lower()
+    headless = merge_config.get("headless", False)
+
+    driver = None
+
+    try:
+        # Initialize the browser driver
+        driver = _create_browser_driver(browser_type, headless)
+        if driver is None:
+            return False
+
+        print(f"  → [Selenium] Opening PR in {browser_type} browser...")
+        driver.get(pr_url)
+
+        # Wait for the configured time
+        print(f"  → Waiting {wait_seconds} seconds for page to load...")
+        time.sleep(wait_seconds)
+
+        # Click "Merge pull request" button
+        print("  → Looking for 'Merge pull request' button...")
+        if not _click_button_selenium(driver, "Merge pull request"):
+            print("  ✗ Could not find or click 'Merge pull request' button")
+            return False
+
+        print("  ✓ Clicked 'Merge pull request' button")
+
+        # Wait a bit for the confirmation UI to appear
+        time.sleep(2)
+
+        # Click "Confirm merge" button
+        print("  → Looking for 'Confirm merge' button...")
+        if not _click_button_selenium(driver, "Confirm merge"):
+            print("  ✗ Could not find or click 'Confirm merge' button")
+            return False
+
+        print("  ✓ Clicked 'Confirm merge' button")
+        print("  ✓ [Selenium] Successfully automated PR merge")
+
+        # Wait a bit before closing
+        time.sleep(2)
+
+        return True
+
+    except WebDriverException as e:
+        print(f"  ✗ Browser automation error: {e}")
+        return False
+    except Exception as e:
+        print(f"  ✗ Failed to automate button clicks: {e}")
+        return False
+    finally:
+        # Clean up - close the browser
+        if driver is not None:
+            try:
+                driver.quit()
+            except Exception:
+                pass  # Ignore errors when closing
+
+
+def _merge_pr_with_playwright(
+    pr_url: str,
+    merge_config: Dict[str, Any]
+) -> bool:
+    """Merge PR using Playwright
+
+    Args:
+        pr_url: The URL of the GitHub PR
+        merge_config: Configuration dict with automation settings
+
+    Returns:
+        True if automation was successful, False otherwise
+    """
+    if not PLAYWRIGHT_AVAILABLE:
+        print("  ✗ Playwright is not installed. Install with: pip install playwright && playwright install")
+        return False
+
+    # Validate and get wait_seconds
+    wait_seconds = _validate_wait_seconds(merge_config)
+
+    browser_type = merge_config.get("browser", "chromium").lower()
+    headless = merge_config.get("headless", False)
+
+    try:
+        with sync_playwright() as p:
+            # Initialize the browser
+            print(f"  → [Playwright] Opening PR in {browser_type} browser...")
+
+            if browser_type == "firefox":
+                browser = p.firefox.launch(headless=headless)
+            elif browser_type == "webkit":
+                browser = p.webkit.launch(headless=headless)
+            else:  # default to chromium (includes chrome and edge)
+                browser = p.chromium.launch(headless=headless)
+
+            try:
+                context = browser.new_context()
+                page = context.new_page()
+
+                # Navigate to the PR
+                page.goto(pr_url)
+
+                # Wait for the configured time
+                print(f"  → Waiting {wait_seconds} seconds for page to load...")
+                time.sleep(wait_seconds)
+
+                # Click "Merge pull request" button
+                print("  → Looking for 'Merge pull request' button...")
+                if not _click_button_playwright(page, "Merge pull request"):
+                    print("  ✗ Could not find or click 'Merge pull request' button")
+                    return False
+
+                print("  ✓ Clicked 'Merge pull request' button")
+
+                # Wait a bit for the confirmation UI to appear
+                time.sleep(2)
+
+                # Click "Confirm merge" button
+                print("  → Looking for 'Confirm merge' button...")
+                if not _click_button_playwright(page, "Confirm merge"):
+                    print("  ✗ Could not find or click 'Confirm merge' button")
+                    return False
+
+                print("  ✓ Clicked 'Confirm merge' button")
+                print("  ✓ [Playwright] Successfully automated PR merge")
+
+                # Wait a bit before closing
+                time.sleep(2)
+
+                return True
+            finally:
+                # Always close the browser, even on early returns or exceptions
+                browser.close()
+
+    except PlaywrightTimeoutError as e:
+        print("  ✗ Playwright timeout error: Page elements not found within timeout period")
+        print(f"     Details: {e}")
+        return False
+    except Exception as e:
+        print(f"  ✗ Failed to automate button clicks with Playwright: {e}")
         return False

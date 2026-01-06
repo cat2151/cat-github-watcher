@@ -76,6 +76,7 @@ def wait_with_countdown(
     current_interval_seconds = interval_seconds
     current_interval_str = interval_str
     current_mtime = last_config_mtime
+    config_was_reloaded = False
     
     # Display countdown with updates every second using ANSI escape sequences
     remaining = interval_seconds
@@ -105,6 +106,7 @@ def wait_with_countdown(
                     current_interval_seconds = new_interval_seconds
                     current_interval_str = new_interval_str
                     current_mtime = new_mtime
+                    config_was_reloaded = True
                     
                     print(f"設定を再読み込みしました。")
                     print(f"新しい監視間隔: {new_interval_str} ({new_interval_seconds}秒)")
@@ -117,8 +119,16 @@ def wait_with_countdown(
                     print(f"Waiting {current_interval_str} until next check...")
                     print(f"{'=' * 50}")
                     
-                except Exception as e:
+                except (ValueError, KeyError) as e:
+                    # Config file has invalid format or missing required fields
                     print(f"設定ファイルの再読み込みに失敗しました: {e}")
+                    print("前の設定を使い続けます。")
+                    print(f"{'=' * 50}")
+                    print(f"Waiting {current_interval_str} until next check...")
+                    print(f"{'=' * 50}")
+                except Exception as e:
+                    # Unexpected error during config reload
+                    print(f"予期しないエラーが発生しました: {e}")
                     print("前の設定を使い続けます。")
                     print(f"{'=' * 50}")
                     print(f"Waiting {current_interval_str} until next check...")
@@ -127,8 +137,8 @@ def wait_with_countdown(
         except FileNotFoundError:
             # Config file was deleted, continue with current config
             pass
-        except Exception as e:
-            # Ignore errors during config check to avoid interrupting the wait
+        except (OSError, PermissionError):
+            # File system errors (e.g., permission issues), ignore and continue
             pass
     
     # Final update
@@ -487,6 +497,7 @@ def main():
         )
         
         # Update config and interval if they were reloaded
+        # new_config will be non-empty only if config was successfully reloaded during wait
         if new_config:
             config = new_config
         interval_seconds = new_interval_seconds

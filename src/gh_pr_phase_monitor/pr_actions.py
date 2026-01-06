@@ -58,8 +58,12 @@ def merge_pr(pr_url: str, repo_dir: Path = None) -> bool:
 
     Returns:
         True if PR was successfully merged, False otherwise
+
+    Note:
+        Uses --squash for a clean commit history. Does not use --auto flag
+        because phase3 detection already implies all required checks have passed.
     """
-    cmd = ["gh", "pr", "merge", pr_url, "--auto", "--squash"]
+    cmd = ["gh", "pr", "merge", pr_url, "--squash"]
 
     try:
         subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
@@ -182,32 +186,40 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
 
         if merge_configured and merge_execution_enabled:
             if merge_key not in _merged_prs:
-                # Mark as attempted to avoid repeated merges
-                _merged_prs.add(merge_key)
-
                 # Post comment before merging
                 merge_comment = config.get("phase3_merge", {}).get("comment", "All checks passed. Merging PR.")
                 print(f"    Posting pre-merge comment: '{merge_comment}'...")
-                if post_phase3_comment(pr, merge_comment, None):
-                    print("    Pre-merge comment posted successfully")
-                else:
+                comment_posted = post_phase3_comment(pr, merge_comment, None)
+
+                if not comment_posted:
                     print("    Failed to post pre-merge comment")
+                    print("    Skipping merge because pre-merge comment could not be posted")
+                    return  # Early return - do not add to merged_prs, allow retry
+
+                print("    Pre-merge comment posted successfully")
 
                 # Check if automated merge is enabled
                 merge_automated = config.get("phase3_merge", {}).get("automated", False)
 
+                merge_success = False
                 if merge_automated:
                     print("    Merging PR using browser automation...")
                     if merge_pr_automated(url, config):
                         print("    PR merged successfully via browser automation")
+                        merge_success = True
                     else:
                         print("    Failed to merge PR via browser automation")
                 else:
                     print("    Merging PR using gh CLI...")
                     if merge_pr(url, None):
                         print("    PR merged successfully via gh CLI")
+                        merge_success = True
                     else:
                         print("    Failed to merge PR via gh CLI")
+
+                # Only mark as merged if the merge was successful
+                if merge_success:
+                    _merged_prs.add(merge_key)
         elif merge_configured and not merge_execution_enabled:
             print("    [DRY-RUN] Would merge PR (enable_execution_phase3_to_merge=false)")
 

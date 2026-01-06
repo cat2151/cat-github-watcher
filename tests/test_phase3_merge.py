@@ -237,3 +237,135 @@ class TestPhase3Merge:
             # Merge should not be attempted in dry-run mode
             mock_merge.assert_not_called()
             mock_comment.assert_not_called()
+
+    def test_merge_skipped_when_comment_fails(self):
+        """Merge should be skipped when comment posting fails"""
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED", "body": "Looks good!"}
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"}],
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "Test PR",
+            "url": "https://github.com/test-owner/test-repo/pull/1",
+        }
+        config = {
+            "phase3_merge": {
+                "enabled": True,
+                "comment": "Merging",
+                "automated": False,
+            },
+            "enable_execution_phase3_to_merge": True,
+        }
+
+        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser"), patch(
+            "src.gh_pr_phase_monitor.pr_actions.merge_pr"
+        ) as mock_merge, patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment:
+            mock_comment.return_value = False  # Comment posting fails
+            process_pr(pr, config)
+            # Comment should be attempted
+            mock_comment.assert_called_once()
+            # Merge should NOT be attempted when comment fails
+            mock_merge.assert_not_called()
+            # PR should NOT be added to merged_prs set (allowing retry)
+            assert "https://github.com/test-owner/test-repo/pull/1" not in pr_actions._merged_prs
+
+    def test_merge_failure_allows_retry_cli(self):
+        """When CLI merge fails, PR should not be marked as merged (allows retry)"""
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED", "body": "Looks good!"}
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"}],
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "Test PR",
+            "url": "https://github.com/test-owner/test-repo/pull/1",
+        }
+        config = {
+            "phase3_merge": {
+                "enabled": True,
+                "comment": "Merging",
+                "automated": False,
+            },
+            "enable_execution_phase3_to_merge": True,
+        }
+
+        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser"), patch(
+            "src.gh_pr_phase_monitor.pr_actions.merge_pr"
+        ) as mock_merge, patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment:
+            mock_comment.return_value = True
+            mock_merge.return_value = False  # Merge fails
+            process_pr(pr, config)
+            # Comment and merge should be attempted
+            mock_comment.assert_called_once()
+            mock_merge.assert_called_once()
+            # PR should NOT be in merged_prs set (allows retry)
+            assert "https://github.com/test-owner/test-repo/pull/1" not in pr_actions._merged_prs
+
+    def test_merge_failure_allows_retry_automation(self):
+        """When browser automation merge fails, PR should not be marked as merged (allows retry)"""
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED", "body": "Looks good!"}
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"}],
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "Test PR",
+            "url": "https://github.com/test-owner/test-repo/pull/1",
+        }
+        config = {
+            "phase3_merge": {
+                "enabled": True,
+                "comment": "Merging",
+                "automated": True,
+            },
+            "enable_execution_phase3_to_merge": True,
+        }
+
+        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser"), patch(
+            "src.gh_pr_phase_monitor.pr_actions.merge_pr_automated"
+        ) as mock_merge_auto, patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment:
+            mock_comment.return_value = True
+            mock_merge_auto.return_value = False  # Merge fails
+            process_pr(pr, config)
+            # Comment and merge should be attempted
+            mock_comment.assert_called_once()
+            mock_merge_auto.assert_called_once()
+            # PR should NOT be in merged_prs set (allows retry)
+            assert "https://github.com/test-owner/test-repo/pull/1" not in pr_actions._merged_prs
+
+    def test_successful_merge_marks_pr_as_merged(self):
+        """When merge succeeds, PR should be marked as merged (prevents duplicates)"""
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED", "body": "Looks good!"}
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"}],
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "Test PR",
+            "url": "https://github.com/test-owner/test-repo/pull/1",
+        }
+        config = {
+            "phase3_merge": {
+                "enabled": True,
+                "comment": "Merging",
+                "automated": False,
+            },
+            "enable_execution_phase3_to_merge": True,
+        }
+
+        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser"), patch(
+            "src.gh_pr_phase_monitor.pr_actions.merge_pr"
+        ) as mock_merge, patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment:
+            mock_comment.return_value = True
+            mock_merge.return_value = True  # Merge succeeds
+            process_pr(pr, config)
+            # Comment and merge should be attempted
+            mock_comment.assert_called_once()
+            mock_merge.assert_called_once()
+            # PR SHOULD be in merged_prs set (prevents duplicate merges)
+            assert "https://github.com/test-owner/test-repo/pull/1" in pr_actions._merged_prs

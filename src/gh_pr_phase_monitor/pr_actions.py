@@ -121,6 +121,8 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
             "enable_execution_phase2_to_phase3": False,
             "enable_execution_phase3_send_ntfy": False,
             "enable_execution_phase3_to_merge": False,
+            "phase3_merge": {},
+            "assign_to_copilot": {},
         }
 
     # Mark PR as ready for review when in phase 1
@@ -187,12 +189,14 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         # Merge PR if configured and not already merged
         merge_key = url
         merge_execution_enabled = exec_config["enable_execution_phase3_to_merge"]
-        merge_configured = config and config.get("phase3_merge", {}).get("enabled", False)
+        # Use per-repo resolved phase3_merge configuration
+        phase3_merge_config = exec_config.get("phase3_merge", {})
+        merge_configured = phase3_merge_config.get("enabled", False)
 
         if merge_configured and merge_execution_enabled:
             if merge_key not in _merged_prs:
                 # Post comment before merging
-                merge_comment = config.get("phase3_merge", {}).get("comment", "All checks passed. Merging PR.")
+                merge_comment = phase3_merge_config.get("comment", "All checks passed. Merging PR.")
                 print(f"    Posting pre-merge comment: '{merge_comment}'...")
                 comment_posted = post_phase3_comment(pr, merge_comment, None)
 
@@ -204,12 +208,14 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
                 print("    Pre-merge comment posted successfully")
 
                 # Check if automated merge is enabled
-                merge_automated = config.get("phase3_merge", {}).get("automated", False)
+                merge_automated = phase3_merge_config.get("automated", False)
 
                 merge_success = False
                 if merge_automated:
                     print("    Merging PR using browser automation...")
-                    if merge_pr_automated(url, config):
+                    # Create a temporary config dict with the resolved phase3_merge settings
+                    temp_config = {"phase3_merge": phase3_merge_config}
+                    if merge_pr_automated(url, temp_config):
                         print("    PR merged successfully via browser automation")
                         merge_success = True
                     else:

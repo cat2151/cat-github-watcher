@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import tomli
 
 from .colors import colorize_phase
-from .config import get_config_mtime, load_config, parse_interval, print_config
+from .config import get_config_mtime, load_config, parse_interval, print_config, resolve_execution_config_for_repo
 from .github_client import (
     assign_issue_to_copilot,
     get_issues_from_repositories,
@@ -312,6 +312,8 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                 print(f"    - {repo['owner']}/{repo['name']}: {repo['openIssueCount']} open issue(s)")
 
             # Check if auto-assign feature is enabled in config
+            # We need to check per repository since it can be configured per ruleset
+            # For the global check, we use the global config settings
             assign_enabled = False
             assign_lowest_number = False
             if config:
@@ -343,8 +345,20 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         print(f"     Labels: {label_str}")
                         print("\n  Attempting to assign to Copilot...")
 
+                        # Get repository-specific configuration
+                        repo_info = issue.get("repository", {})
+                        repo_owner = repo_info.get("owner", "")
+                        repo_name = repo_info.get("name", "")
+                        
+                        if repo_owner and repo_name:
+                            exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
+                            # Create a temporary config with the resolved assign_to_copilot settings
+                            temp_config = {"assign_to_copilot": exec_config.get("assign_to_copilot", {})}
+                        else:
+                            temp_config = config
+                        
                         # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, config)
+                        success = assign_issue_to_copilot(issue, temp_config)
                         if not success:
                             print("  Assignment failed - will retry on next iteration")
                     else:
@@ -370,8 +384,20 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         print(f"     Labels: {label_str}")
                         print("\n  Attempting to assign to Copilot...")
 
+                        # Get repository-specific configuration
+                        repo_info = issue.get("repository", {})
+                        repo_owner = repo_info.get("owner", "")
+                        repo_name = repo_info.get("name", "")
+                        
+                        if repo_owner and repo_name:
+                            exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
+                            # Create a temporary config with the resolved assign_to_copilot settings
+                            temp_config = {"assign_to_copilot": exec_config.get("assign_to_copilot", {})}
+                        else:
+                            temp_config = config
+                        
                         # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, config)
+                        success = assign_issue_to_copilot(issue, temp_config)
                         if not success:
                             print("  Assignment failed - will retry on next iteration")
                     else:

@@ -43,6 +43,9 @@ enable_execution_phase3_to_merge = false   # Set to true to merge phase3 PRs
 # Rulesets are applied in order, with later rulesets overriding earlier ones
 # Each ruleset can specify different execution settings for different repositories
 #
+# You can also configure phase3_merge and assign_to_copilot settings per ruleset,
+# allowing different repositories to have different merge or auto-assign behaviors.
+#
 # Example configurations:
 #
 # [[rulesets]]
@@ -75,6 +78,34 @@ enable_execution_phase3_to_merge = false   # Set to true to merge phase3 PRs
 # repositories = ["my-repo"]  # Matches any owner/my-repo
 # enable_execution_phase1_to_phase2 = true
 # enable_execution_phase3_to_merge = true
+#
+# Per-ruleset phase3_merge and assign_to_copilot configuration examples:
+#
+# [[rulesets]]
+# name = "Custom merge settings for specific repo"
+# repositories = ["owner/test-repo"]
+# enable_execution_phase3_to_merge = true
+# [rulesets.phase3_merge]
+# enabled = true
+# comment = "Custom merge comment for test repo"
+# automated = true
+# automation_backend = "playwright"
+# wait_seconds = 15
+# browser = "chromium"
+# headless = true
+#
+# [[rulesets]]
+# name = "Custom auto-assign settings for another repo"
+# repositories = ["owner/another-repo"]
+# [rulesets.assign_to_copilot]
+# enabled = true
+# assign_lowest_number_issue = true
+# automated = true
+# automation_backend = "selenium"
+# wait_seconds = 5
+# browser = "chrome"
+# headless = false
+
 
 # ntfy.sh notification settings (optional)
 # Sends mobile notifications when phase3 is detected

@@ -24,6 +24,10 @@ from .pr_actions import process_pr
 # Key: (pr_url, phase), Value: timestamp when first detected
 _pr_state_times: Dict[Tuple[str, str], float] = {}
 
+# Track when all PRs entered phase3
+# Value: timestamp when all PRs first detected as phase3, or None if not all phase3
+_all_phase3_start_time: Optional[float] = None
+
 
 def format_elapsed_time(seconds: float) -> str:
     """Format elapsed time in Japanese style
@@ -139,6 +143,62 @@ def display_status_summary(all_prs: List[Dict[str, Any]], pr_phases: List[str], 
     
     # Clean up old PR states that are no longer present
     cleanup_old_pr_states(current_states)
+
+
+def check_all_phase3_timeout(
+    all_prs: List[Dict[str, Any]], 
+    pr_phases: List[str], 
+    config: Optional[Dict[str, Any]] = None
+) -> None:
+    """Check if all PRs have been in phase3 for too long and exit if timeout reached
+    
+    Args:
+        all_prs: List of all PRs
+        pr_phases: List of phase strings corresponding to all_prs
+        config: Configuration dictionary (optional)
+    """
+    global _all_phase3_start_time
+    
+    # Get timeout setting from config
+    timeout_str = ""
+    if config:
+        timeout_str = config.get("all_phase3_timeout", "")
+    
+    # If timeout is not configured or empty, don't check
+    if not timeout_str:
+        _all_phase3_start_time = None
+        return
+    
+    # Parse timeout to seconds
+    try:
+        timeout_seconds = parse_interval(timeout_str)
+    except ValueError as e:
+        print(f"Warning: Invalid all_phase3_timeout format: {e}")
+        _all_phase3_start_time = None
+        return
+    
+    current_time = time.time()
+    
+    # Check if all PRs are in phase3
+    if all_prs and pr_phases and all(phase == PHASE_3 for phase in pr_phases):
+        # All PRs are in phase3
+        if _all_phase3_start_time is None:
+            # First time all PRs are in phase3
+            _all_phase3_start_time = current_time
+        else:
+            # Check if timeout has been reached
+            elapsed = current_time - _all_phase3_start_time
+            if elapsed >= timeout_seconds:
+                # Timeout reached - display message and exit
+                elapsed_str = format_elapsed_time(elapsed)
+                print(f"\n{'=' * 50}")
+                print(f"すべてのPRがphase3（レビュー待ち）の状態が{timeout_str}（{elapsed_str}）続きました。")
+                print("API利用の浪費を防止するため、アプリケーションを終了します。")
+                print(f"{'=' * 50}")
+                sys.exit(0)
+    else:
+        # Not all PRs are in phase3, reset the timer
+        _all_phase3_start_time = None
 
 
 def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = None):
@@ -342,6 +402,9 @@ def main():
         # incomplete or empty data, which is acceptable as it reflects the actual
         # state that was successfully retrieved before the error.
         display_status_summary(all_prs, pr_phases, repos_with_prs)
+        
+        # Check if all PRs are in phase3 for too long and exit if timeout reached
+        check_all_phase3_timeout(all_prs, pr_phases, config)
 
         # Wait with countdown display
         wait_with_countdown(interval_seconds, interval_str)

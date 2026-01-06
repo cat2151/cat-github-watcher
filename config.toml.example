@@ -81,10 +81,15 @@ enable_execution_phase3_to_merge = false   # Set to true to merge phase3 PRs
 #
 # Per-ruleset phase3_merge and assign_to_copilot configuration examples:
 #
+# Note: The [rulesets.phase3_merge] and [rulesets.assign_to_copilot] sections
+# belong to the [[rulesets]] array element immediately above them. This is TOML's
+# syntax for defining sub-tables within array elements.
+#
 # [[rulesets]]
 # name = "Custom merge settings for specific repo"
 # repositories = ["owner/test-repo"]
 # enable_execution_phase3_to_merge = true
+# # The following [rulesets.phase3_merge] section belongs to the ruleset above
 # [rulesets.phase3_merge]
 # enabled = true
 # comment = "Custom merge comment for test repo"
@@ -97,6 +102,7 @@ enable_execution_phase3_to_merge = false   # Set to true to merge phase3 PRs
 # [[rulesets]]
 # name = "Custom auto-assign settings for another repo"
 # repositories = ["owner/another-repo"]
+# # The following [rulesets.assign_to_copilot] section belongs to the ruleset above
 # [rulesets.assign_to_copilot]
 # enabled = true
 # assign_lowest_number_issue = true

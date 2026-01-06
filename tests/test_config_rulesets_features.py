@@ -2,8 +2,6 @@
 Tests for ruleset-based phase3_merge and assign_to_copilot configuration resolution
 """
 
-import pytest
-
 from src.gh_pr_phase_monitor.config import resolve_execution_config_for_repo
 
 

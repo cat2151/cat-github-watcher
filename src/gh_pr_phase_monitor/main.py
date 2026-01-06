@@ -293,6 +293,29 @@ def check_all_phase3_timeout(
         _all_phase3_start_time = None
 
 
+def _resolve_assign_to_copilot_config(issue: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    """Resolve assign_to_copilot configuration for a specific issue's repository
+    
+    Args:
+        issue: Issue dictionary with repository information
+        config: Global configuration dictionary
+        
+    Returns:
+        Configuration dictionary with resolved assign_to_copilot settings
+    """
+    # Get repository-specific configuration
+    repo_info = issue.get("repository", {})
+    repo_owner = repo_info.get("owner", "")
+    repo_name = repo_info.get("name", "")
+    
+    if repo_owner and repo_name:
+        exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
+        # Create a temporary config with the resolved assign_to_copilot settings
+        return {"assign_to_copilot": exec_config.get("assign_to_copilot", {})}
+    else:
+        return config
+
+
 def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = None):
     """Display issues from repositories with no open PRs
 
@@ -346,16 +369,7 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         print("\n  Attempting to assign to Copilot...")
 
                         # Get repository-specific configuration
-                        repo_info = issue.get("repository", {})
-                        repo_owner = repo_info.get("owner", "")
-                        repo_name = repo_info.get("name", "")
-                        
-                        if repo_owner and repo_name:
-                            exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
-                            # Create a temporary config with the resolved assign_to_copilot settings
-                            temp_config = {"assign_to_copilot": exec_config.get("assign_to_copilot", {})}
-                        else:
-                            temp_config = config
+                        temp_config = _resolve_assign_to_copilot_config(issue, config)
                         
                         # Assign the issue to Copilot and check the result
                         success = assign_issue_to_copilot(issue, temp_config)
@@ -385,16 +399,7 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         print("\n  Attempting to assign to Copilot...")
 
                         # Get repository-specific configuration
-                        repo_info = issue.get("repository", {})
-                        repo_owner = repo_info.get("owner", "")
-                        repo_name = repo_info.get("name", "")
-                        
-                        if repo_owner and repo_name:
-                            exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
-                            # Create a temporary config with the resolved assign_to_copilot settings
-                            temp_config = {"assign_to_copilot": exec_config.get("assign_to_copilot", {})}
-                        else:
-                            temp_config = config
+                        temp_config = _resolve_assign_to_copilot_config(issue, config)
                         
                         # Assign the issue to Copilot and check the result
                         success = assign_issue_to_copilot(issue, temp_config)

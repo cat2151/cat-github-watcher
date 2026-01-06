@@ -1,4 +1,4 @@
-Last updated: 2026-01-06
+Last updated: 2026-01-07
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -201,6 +201,8 @@ Last updated: 2026-01-06
 - .gitignore
 - .vscode/settings.json
 - LICENSE
+- MERGE_CONFIGURATION_EXAMPLES.md
+- PHASE3_MERGE_IMPLEMENTATION.md
 - README.ja.md
 - README.md
 - STRUCTURE.md
@@ -238,37 +240,97 @@ Last updated: 2026-01-06
 - src/gh_pr_phase_monitor/pr_actions.py
 - src/gh_pr_phase_monitor/pr_fetcher.py
 - src/gh_pr_phase_monitor/repository_fetcher.py
+- tests/test_all_phase3_timeout.py
 - tests/test_browser_automation.py
 - tests/test_config_rulesets.py
+- tests/test_elapsed_time_display.py
+- tests/test_hot_reload.py
 - tests/test_integration_issue_fetching.py
 - tests/test_interval_parsing.py
 - tests/test_issue_fetching.py
 - tests/test_no_open_prs_issue_display.py
 - tests/test_notification.py
+- tests/test_phase3_merge.py
 - tests/test_phase_detection.py
 - tests/test_post_comment.py
+- tests/test_post_phase3_comment.py
 - tests/test_pr_actions.py
 - tests/test_pr_actions_with_rulesets.py
+- tests/test_status_summary.py
+- tests/test_verbose_config.py
 
 ## 現在のオープンIssues
-## [Issue #75](../issue-notes/75.md): Add status summary before wait state for limited terminals
-## Implementation Complete ✅
+## [Issue #94](../issue-notes/94.md): Add assign_lowest_number_issue option to assign issues by number instead of "good first issue" label
+## Implementation Plan for Issue Assignment by Lowest Number Feature
 
-- [x] Understand the current code flow and where the waiting state is entered
-- [x] Design a function to collect and display LLM working status summary
-- [x] Add summary display before entering the waiting state
-- [x] Create comprehensive tests for the new summary funct...
+- [x] Explore repository structure and understand current implementation
+- [x] Add new configuration option `assign_lowest_number_issue` in `config.toml.example` (default: false)
+- [x] Update `config.py` to display the new configu...
 ラベル: 
---- issue-notes/75.md の内容 ---
+--- issue-notes/94.md の内容 ---
 
 ```markdown
 
 ```
 
-## [Issue #74](../issue-notes/74.md): 行数の少ないterminalでもuserがLLM working情報を把握しやすいように、最後にLLM working状況の概要を表示してから、待機状態に入る
+## [Issue #93](../issue-notes/93.md): toml rulesets repositories について、ownerは不要なので削除し、リポジトリ名だけを書くようにして、userの混乱を減らす
 
 ラベル: 
---- issue-notes/74.md の内容 ---
+--- issue-notes/93.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #92](../issue-notes/92.md): tomlについて、enable_execution_phase1_to_phase2 , enable_execution_phase2_to_phase3 , enable_execution_phase3_send_ntfy , enable_execution_phase3_to_merge はrulesetsの内部でのみ記述できるようにし、userの混乱を減らす
+
+ラベル: 
+--- issue-notes/92.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #91](../issue-notes/91.md): tomlについて、phase3_merge と assign_to_copilot は rulesetsごとに定義可能にする
+
+ラベル: 
+--- issue-notes/91.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #87](../issue-notes/87.md): 大幅な仕様変更をしたのでドッグフーディングする
+
+ラベル: 
+--- issue-notes/87.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #85](../issue-notes/85.md): all_phase3_timeout  のデフォルトは安全性優先で30mにする
+
+ラベル: 
+--- issue-notes/85.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #83](../issue-notes/83.md): 「Goot first issue有無に関わらず、最も番号の小さいissueを1つAssignする機能」を新たにtomlでon/offできるようにする。デフォルトはoff
+
+ラベル: 
+--- issue-notes/83.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #80](../issue-notes/80.md): 「すべてphase3」になったら、ntfyで通知を送る。文言はtomlで指定する
+
+ラベル: 
+--- issue-notes/80.md の内容 ---
 
 ```markdown
 
@@ -278,15 +340,6 @@ Last updated: 2026-01-06
 
 ラベル: good first issue
 --- issue-notes/32.md の内容 ---
-
-```markdown
-
-```
-
-## [Issue #21](../issue-notes/21.md): 前回とまったく同じ表示内容であれば、表示内容を変更し、「現在、検知してから3分20秒経過」のような表示をする。さらに、その表示時と、待ち時間中は1秒ごと、エスケープシーケンスを利用し、前回の「3分19秒経過」を消して「3分20秒経過」のように書き換える
-
-ラベル: good first issue
---- issue-notes/21.md の内容 ---
 
 ```markdown
 
@@ -468,63 +521,83 @@ jobs:
 {% endraw %}
 ```
 
-### .github/actions-tmp/issue-notes/21.md
+### .github/actions-tmp/issue-notes/3.md
 ```md
 {% raw %}
-# issue project-summary の development-status 生成時、project-overviewが生成済みのproject-overview.mdもpromptに添付、を試す #21
-[issues #21](https://github.com/cat2151/github-actions/issues/21)
+# issue GitHub Actions「issue note生成」を共通ワークフロー化する #3
+[issues #3](https://github.com/cat2151/github-actions/issues/3)
 
-# 何が困るの？
-- project-overview.mdがpromptに添付されていたほうが、Geminiの生成品質が改善できる可能性がある。
-    - メリットは、ファイル一覧、関数一覧、をGeminiにわたせること
+- 前提
+  - userは、translateのworkflowを共通ワークフロー化し、動くようにしたので、共通ワークフロー化の知識がある
+  - よって、今回は、promptでplanさせ、そのplanをuserがレビューし、planの改善を指示できるので、ハルシネーションのリスクを下げることができる
 
-# 検討事項
-- 課題、その一覧に付記されている「ファイルや関数の要約」は、Geminiが「ファイル名や関数名を元に生成しただけ」で、「ファイル内容や関数内容を参照せずに生成した」可能性が高い
-    - 対策、project-overview.mdに依存しない。
-        - 方法、新規関数をagentに実装させる
-            - 新規関数で、ファイル一覧と関数一覧を生成する
-        - 根拠、そのほうが、シンプルに目的を達成できる可能性が高そう。
-        - 根拠、project-overview.mdだと、不具合として.github 配下のymlがlistに含まれておらず、ymlに関するissue、に関する生成、をするとき不具合の可能性がありそう。そういった、別機能の不具合に影響されがち。
-- 課題、早期に実施したほうが毎日好影響が出る可能性がある
-    - 対策、上記検討事項の対処は後回しにして、先に実装してみる
-    - agentに投げる
-- 課題、ProjectSummaryCoordinator をみたところ、並列処理されている
-    - なので、project-overview.mdを参照したいときに、まだ生成されていない、という可能性が高い
-    - 対策、前述の、新規関数で、ファイル一覧と関数一覧を生成させる
+- prompt
+```
+あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
+このymlはまだ共通ワークフロー化されず、
+呼び出し元からコピーされたままの状態です。
+このymlファイル名のまま、
+中身を共通ワークフロー化してください。
+呼び出し元ymlは別途書きますので気にしないでください。
+まずplanしてください
+```
 
-# agentに投げるための整理
-- 編集対象ファイル
-    - prompt
-        - .github_automation/project_summary/prompts/development-status-prompt.md
-        - 編集内容
-            - projectのファイル一覧を埋め込む用の、プレースホルダーを追加する
-    - source
-        - .github_automation/project_summary/scripts/development/DevelopmentStatusGenerator.cjs
-        - 編集内容
-            - projectのファイル一覧を生成する関数、を実装し、
-            - それを前述のプレースホルダーに埋め込む
+- plan 生成結果
+```
+共通ワークフロー化のためのplanは以下の通りです。
 
-# agentに投げて実装させた
+1. 目的
+現在の issue-note.yml を「共通ワークフロー」として再設計し、他リポジトリや他ワークフローから workflow_call で呼び出せるようにする。
+2. 主な変更点
+on: トリガーを workflow_call に変更（直接イベントで起動しない）。
+必要な入力（inputs）やシークレット（secrets）を workflow_call セクションで定義。
+github.event.issue などのイベント依存部分を、inputs経由で受け取る形に修正。
+既存の処理（issueノート生成、コミット、issue body更新）はそのまま活かすが、パラメータ化する。
+3. 具体的な修正内容
+on: issues: → on: workflow_call: に変更。
+inputs で必要な値（例: issue_title, issue_number, issue_body, issue_url など）を受け取る。
+スクリプト内の ${{ github.event.issue.xxx }} を ${{ inputs.xxx }} に置換。
+github-script ステップも同様にinputsを参照。
+必要に応じて secrets も workflow_call で受け取れるようにする。
+4. ファイル名・配置
+ファイル名はそのまま issue-note.yml。
+配置場所は workflows でOK（共通ワークフローとしてもこの場所で良い）。
+5. 呼び出し元への影響
+呼び出し元ワークフローで uses: <repo>/.github/workflows/issue-note.yml@main のように参照し、inputsを渡す形になる。
+このplanで進めます。次に、実際の共通ワークフロー化のためのyml修正案を作成しますか？
+```
 
-# test結果
-- 以下が不要
-    - .git/
-    - node_modules/
+- userがplanレビューし、OKを出した
+- agentに生成結果ymlをレビューさせた、OKとなった
+  - userはこのレビューは認知負荷が高いのでskipとする（単純な細かい間違い探し作業になるので、それはagentに任せた）
+-  エラー。呼び出し元ymlのエラーがあり修正。共通ワークフローのエラー指摘があり、共通ワークフロー側の修正が必要となった
+```
+原因の分析：
 
-# どうする？
-- agentに上記を変更させた
-- testする
+呼び出し元（tonejs-mml-to-jsonのissue-note.yml）は、reusable workflow（cat2151/github-actions/.github/workflows/issue-note.yml@main）をusesで呼び出し、inputsをwithで渡しています。
+共通ワークフロー（reusable workflow）は inputs を workflow_call で受け取り、各ステップで ${{ inputs.xxx }} で参照しています。
+しかし、エラーが発生したのは actions/github-script@v7 の script 内です。
+エラーの本質的な原因：
 
-# 結果
-- test greenとなった
+actions/github-script の script: で ${{ inputs.issue_number }} のような式を直接 JavaScript テンプレートリテラル内で使っていますが、これはサポートされていません。
+script: の中は JavaScript であり、YAMLの ${{ ... }} は展開されません（または意図通りに展開されません）。
+そのため、inputs 変数は script 内の JavaScript で未定義となり、ReferenceError になります。
+正しい書き方：
 
-# まとめ
-- issueのtitleからは仕様変更した。
-    - projectのfile一覧をpromptに含める、とした。
-    - そのほうがpromptとして、よい生成結果が期待できる、と判断した。
-- test greenとなった
+actions/github-script の script: でワークフローの inputs を使いたい場合は、with: で input を environment 変数や script の引数として渡し、JavaScript で process.env から取得するか、github-script の input 機能を使う必要があります。
+例（修正版）：
 
-# closeとする
+このように、inputs の値を env で渡し、script 内では process.env で参照してください。
+
+まとめ：
+
+actions/github-script の script 内で ${{ inputs.xxx }} を直接使うと ReferenceError になる
+env: で値を渡し、process.env で参照するのが正しい
+修正が必要です。修正版のワークフローが必要な場合はお知らせください。
+```
+
+- test green
+- closeとする
 
 {% endraw %}
 ```
@@ -675,46 +748,482 @@ jobs:
 {% endraw %}
 ```
 
+### .github/actions-tmp/issue-notes/7.md
+```md
+{% raw %}
+# issue issue note生成できるかのtest用 #7
+[issues #7](https://github.com/cat2151/github-actions/issues/7)
+
+- 生成できた
+- closeとする
+
+{% endraw %}
+```
+
+### config.toml.example
+```example
+{% raw %}
+# GitHub PR Phase Monitor Configuration
+
+# Check interval - how often to check the repositories
+# Supported formats:
+#   - "30s" = 30 seconds
+#   - "1m"  = 1 minute
+#   - "5m"  = 5 minutes
+#   - "1h"  = 1 hour
+#   - "1d"  = 1 day
+interval = "1m" # default
+
+# Number of issues to display from repositories without open PRs
+# Default is 10, but can be changed to any positive number (e.g., 5, 15, 20)
+issue_display_limit = 10
+
+# Timeout for "all PRs in phase3" state
+# If all PRs remain in phase3 for this duration, the application will exit
+# to prevent wasting API usage. Set to empty string "" to disable.
+# Supported formats: "30s", "1m", "5m", "30m", "1h", "1d"
+# Default: "" (disabled)
+all_phase3_timeout = ""
+
+# Verbose mode - Print detailed configuration information
+# When enabled, prints all settings at startup and per-repository settings during execution
+# This helps detect configuration mistakes
+# Default: false
+verbose = false
+
+# Note: This tool monitors user-owned repositories under the current GitHub user account
+# It uses GraphQL API to efficiently fetch all repositories with open PRs
+# Organization repositories are NOT included (YAGNI principle - keeping it simple)
+# No need to specify repository directories!
+
+# Execution control flags - Dry-run mode by default
+# Set these to true to enable actual actions (marking PRs ready, posting comments, sending notifications)
+# These global flags are used when no rulesets are defined or when rulesets don't apply
+enable_execution_phase1_to_phase2 = false  # Set to true to mark draft PRs as ready
+enable_execution_phase2_to_phase3 = false  # Set to true to post phase2 comments
+enable_execution_phase3_send_ntfy = false  # Set to true to send ntfy notifications
+enable_execution_phase3_to_merge = false   # Set to true to merge phase3 PRs
+
+# Rulesets - Fine-grained control per repository or group of repositories
+# Rulesets are applied in order, with later rulesets overriding earlier ones
+# Each ruleset can specify different execution settings for different repositories
+#
+# Example configurations:
+#
+# [[rulesets]]
+# name = "All repositories default"
+# repositories = ["all"]  # "all" matches all repositories
+# enable_execution_phase1_to_phase2 = false
+# enable_execution_phase2_to_phase3 = false
+# enable_execution_phase3_send_ntfy = false
+# enable_execution_phase3_to_merge = false
+#
+# [[rulesets]]
+# name = "Enable automation for test repository"
+# repositories = ["owner/test-repo"]  # Specific repository with owner/name format
+# enable_execution_phase1_to_phase2 = true
+# enable_execution_phase2_to_phase3 = true
+# enable_execution_phase3_send_ntfy = true
+# enable_execution_phase3_to_merge = true
+#
+# [[rulesets]]
+# name = "Enable only notifications for production repos"
+# repositories = ["owner/prod-repo1", "owner/prod-repo2"]  # Multiple repositories
+# enable_execution_phase1_to_phase2 = false
+# enable_execution_phase2_to_phase3 = false
+# enable_execution_phase3_send_ntfy = true
+# enable_execution_phase3_to_merge = false
+#
+# You can also use just the repository name without the owner (matches any owner):
+# [[rulesets]]
+# name = "Example with repo name only"
+# repositories = ["my-repo"]  # Matches any owner/my-repo
+# enable_execution_phase1_to_phase2 = true
+# enable_execution_phase3_to_merge = true
+
+# ntfy.sh notification settings (optional)
+# Sends mobile notifications when phase3 is detected
+# Notifications include a clickable action button to open the PR
+[ntfy]
+enabled = false  # Set to true to enable notifications
+topic = "<your-ntfy.sh-topic-name>" # Use a hard-to-guess topic name for security
+message = "PR is ready for review: {url}"  # Message template, {url} will be replaced with PR URL
+priority = 4  # Optional: notification priority (1=min, 3=default, 4=high, 5=max)
+
+# Phase3 merge settings (optional)
+# Automatically merge PRs when they reach phase3 (ready for review)
+# Before merging, a comment defined below will be posted to the PR
+[phase3_merge]
+enabled = false  # Set to true to enable automatic merging (also requires enable_execution_phase3_to_merge = true)
+comment = "All checks passed. Merging PR."  # Comment to post before merging
+automated = false  # Set to true to use browser automation to click the merge button
+automation_backend = "selenium"  # Backend to use: "selenium" or "playwright" (automated mode only)
+wait_seconds = 10  # How long to wait after opening the browser before clicking (automated mode only)
+browser = "edge"  # Browser to use: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
+headless = false  # Run browser in headless mode (no visible window, automated mode only)
+# Note: Feature branch is automatically deleted after successful merge
+
+# Auto-assign "good first issue" issues to Copilot (optional)
+# When enabled, the tool will automatically open the issue in your browser.
+# You can then manually click the "Assign to Copilot" button on the GitHub issue page.
+# 
+# Automated mode (requires Selenium or Playwright):
+# If 'automated' is set to true, the tool will use browser automation to
+# automatically click the buttons after waiting for the specified time.
+# 
+# Selenium backend:
+#   Install: pip install selenium webdriver-manager
+#   Browsers: "edge", "chrome", or "firefox"
+# 
+# Playwright backend:
+#   Install: pip install playwright && playwright install
+#   Browsers: "chromium", "firefox", or "webkit"
+[assign_to_copilot]
+enabled = false  # Set to true to enable auto-assignment feature
+automated = false  # Set to true to enable automated button clicking
+automation_backend = "selenium"  # Backend to use: "selenium" or "playwright"
+wait_seconds = 10  # How long to wait after opening the browser before clicking (automated mode only)
+browser = "edge"  # Browser to use: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
+headless = false  # Run browser in headless mode (no visible window, automated mode only)
+
+{% endraw %}
+```
+
+### src/gh_pr_phase_monitor/config.py
+```py
+{% raw %}
+"""
+Configuration loading and parsing utilities
+"""
+
+import os
+import re
+from typing import Any, Dict
+
+import tomli
+
+
+def parse_interval(interval_str: str) -> int:
+    """Parse interval string like '1m', '30s', '2h' to seconds
+
+    Args:
+        interval_str: String like '1m', '30s', '2h', '1d'
+
+    Returns:
+        Number of seconds
+
+    Raises:
+        ValueError: If the interval string format is invalid
+    """
+    # Type validation for common misconfiguration
+    if not isinstance(interval_str, str):
+        raise ValueError(
+            f"Interval must be a string (e.g., '1m', '30s'), got {type(interval_str).__name__}: {interval_str}"
+        )
+
+    interval_str = interval_str.strip().lower()
+
+    # Match pattern like "30s", "1m", "2h", "1d"
+    match = re.match(r"^(\d+)([smhd])$", interval_str)
+
+    if not match:
+        raise ValueError(
+            f"Invalid interval format: '{interval_str}'. "
+            "Expected format: <number><unit> (e.g., '30s', '1m', '2h', '1d')"
+        )
+
+    value = int(match.group(1))
+    unit = match.group(2)
+
+    # Convert to seconds
+    if unit == "s":
+        return value
+    elif unit == "m":
+        return value * 60
+    elif unit == "h":
+        return value * 3600
+    else:  # unit == "d"
+        return value * 86400
+
+
+def _validate_boolean_flag(value: Any, flag_name: str) -> bool:
+    """Validate that a configuration flag is a boolean value
+
+    Args:
+        value: The value to validate
+        flag_name: Name of the flag for error messages
+
+    Returns:
+        The boolean value
+
+    Raises:
+        ValueError: If the value is not a boolean
+    """
+    if not isinstance(value, bool):
+        raise ValueError(
+            f"Configuration flag '{flag_name}' must be a boolean (true/false), "
+            f"got {type(value).__name__}: {value}"
+        )
+    return value
+
+
+def get_config_mtime(config_path: str = "config.toml") -> float:
+    """Get the modification time of the configuration file
+
+    Args:
+        config_path: Path to the TOML configuration file
+
+    Returns:
+        Modification time as a timestamp (seconds since epoch)
+
+    Raises:
+        FileNotFoundError: If the configuration file is not found
+    """
+    return os.path.getmtime(config_path)
+
+
+def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
+    """Load configuration from TOML file
+
+    Args:
+        config_path: Path to the TOML configuration file
+
+    Returns:
+        Dictionary containing configuration data
+
+    Raises:
+        FileNotFoundError: If the configuration file is not found
+    """
+    with open(config_path, "rb") as f:
+        return tomli.load(f)
+
+
+def print_config(config: Dict[str, Any]) -> None:
+    """Print all configuration settings in a readable format
+
+    Args:
+        config: Configuration dictionary loaded from TOML
+    """
+    print("\n" + "=" * 50)
+    print("Configuration Settings:")
+    print("=" * 50)
+    
+    # Print main settings
+    print("\n[Main Settings]")
+    print(f"  interval: {config.get('interval', '1m')}")
+    print(f"  issue_display_limit: {config.get('issue_display_limit', 10)}")
+    print(f"  all_phase3_timeout: {config.get('all_phase3_timeout', '')}")
+    print(f"  verbose: {config.get('verbose', False)}")
+    
+    # Print execution flags
+    print("\n[Global Execution Flags]")
+    print(f"  enable_execution_phase1_to_phase2: {config.get('enable_execution_phase1_to_phase2', False)}")
+    print(f"  enable_execution_phase2_to_phase3: {config.get('enable_execution_phase2_to_phase3', False)}")
+    print(f"  enable_execution_phase3_send_ntfy: {config.get('enable_execution_phase3_send_ntfy', False)}")
+    print(f"  enable_execution_phase3_to_merge: {config.get('enable_execution_phase3_to_merge', False)}")
+    
+    # Print rulesets
+    rulesets = config.get("rulesets", [])
+    if rulesets and isinstance(rulesets, list):
+        print("\n[Rulesets]")
+        for i, ruleset in enumerate(rulesets, 1):
+            if isinstance(ruleset, dict):
+                print(f"\n  Ruleset #{i}:")
+                print(f"    name: {ruleset.get('name', 'N/A')}")
+                print(f"    repositories: {ruleset.get('repositories', [])}")
+                print(f"    enable_execution_phase1_to_phase2: {ruleset.get('enable_execution_phase1_to_phase2', 'not set')}")
+                print(f"    enable_execution_phase2_to_phase3: {ruleset.get('enable_execution_phase2_to_phase3', 'not set')}")
+                print(f"    enable_execution_phase3_send_ntfy: {ruleset.get('enable_execution_phase3_send_ntfy', 'not set')}")
+                print(f"    enable_execution_phase3_to_merge: {ruleset.get('enable_execution_phase3_to_merge', 'not set')}")
+    else:
+        print("\n[Rulesets]")
+        print("  No rulesets configured")
+    
+    # Print ntfy settings
+    ntfy = config.get("ntfy")
+    if ntfy and isinstance(ntfy, dict):
+        print("\n[ntfy.sh Notification Settings]")
+        print(f"  enabled: {ntfy.get('enabled', False)}")
+        if ntfy.get('enabled', False):
+            print(f"  topic: {ntfy.get('topic', 'N/A')}")
+            print(f"  message: {ntfy.get('message', 'N/A')}")
+            print(f"  priority: {ntfy.get('priority', 4)}")
+    
+    # Print phase3_merge settings
+    phase3_merge = config.get("phase3_merge")
+    if phase3_merge and isinstance(phase3_merge, dict):
+        print("\n[Phase3 Merge Settings]")
+        print(f"  enabled: {phase3_merge.get('enabled', False)}")
+        if phase3_merge.get('enabled', False):
+            print(f"  comment: {phase3_merge.get('comment', 'N/A')}")
+            print(f"  automated: {phase3_merge.get('automated', False)}")
+            if phase3_merge.get('automated', False):
+                print(f"  automation_backend: {phase3_merge.get('automation_backend', 'selenium')}")
+                print(f"  wait_seconds: {phase3_merge.get('wait_seconds', 10)}")
+                print(f"  browser: {phase3_merge.get('browser', 'edge')}")
+                print(f"  headless: {phase3_merge.get('headless', False)}")
+    
+    # Print assign_to_copilot settings
+    assign_to_copilot = config.get("assign_to_copilot")
+    if assign_to_copilot and isinstance(assign_to_copilot, dict):
+        print("\n[Auto-assign to Copilot Settings]")
+        print(f"  enabled: {assign_to_copilot.get('enabled', False)}")
+        if assign_to_copilot.get('enabled', False):
+            print(f"  automated: {assign_to_copilot.get('automated', False)}")
+            if assign_to_copilot.get('automated', False):
+                print(f"  automation_backend: {assign_to_copilot.get('automation_backend', 'selenium')}")
+                print(f"  wait_seconds: {assign_to_copilot.get('wait_seconds', 10)}")
+                print(f"  browser: {assign_to_copilot.get('browser', 'edge')}")
+                print(f"  headless: {assign_to_copilot.get('headless', False)}")
+    
+    print("\n" + "=" * 50)
+
+
+def resolve_execution_config_for_repo(
+    config: Dict[str, Any], repo_owner: str, repo_name: str
+) -> Dict[str, bool]:
+    """Resolve execution configuration for a specific repository using rulesets
+
+    This function applies rulesets in order, with later rulesets overriding earlier ones.
+    First applies global settings, then applies matching rulesets.
+
+    Args:
+        config: Configuration dictionary loaded from TOML
+        repo_owner: Repository owner
+        repo_name: Repository name
+
+    Returns:
+        Dictionary with execution flags:
+        - enable_execution_phase1_to_phase2
+        - enable_execution_phase2_to_phase3
+        - enable_execution_phase3_send_ntfy
+        - enable_execution_phase3_to_merge
+    """
+    # Full repository identifier
+    repo_full_name = f"{repo_owner}/{repo_name}"
+
+    # Start with global defaults (backward compatibility) with validation
+    def get_validated_flag(flag_name: str, default: bool = False) -> bool:
+        """Get and validate a global configuration flag"""
+        value = config.get(flag_name, default)
+        # Only validate if the value was actually provided in config (not using default)
+        if flag_name in config:
+            return _validate_boolean_flag(value, flag_name)
+        return value
+
+    result = {
+        "enable_execution_phase1_to_phase2": get_validated_flag("enable_execution_phase1_to_phase2", False),
+        "enable_execution_phase2_to_phase3": get_validated_flag("enable_execution_phase2_to_phase3", False),
+        "enable_execution_phase3_send_ntfy": get_validated_flag("enable_execution_phase3_send_ntfy", False),
+        "enable_execution_phase3_to_merge": get_validated_flag("enable_execution_phase3_to_merge", False),
+    }
+
+    # Apply rulesets if they exist
+    rulesets = config.get("rulesets", [])
+    if not isinstance(rulesets, list):
+        return result
+
+    for ruleset in rulesets:
+        if not isinstance(ruleset, dict):
+            continue
+
+        # Get target repositories for this ruleset
+        repositories = ruleset.get("repositories", [])
+        if not isinstance(repositories, list):
+            continue
+
+        # Check if this ruleset applies to the current repository
+        applies = False
+        for repo_pattern in repositories:
+            if not isinstance(repo_pattern, str):
+                continue
+            # "all" matches all repositories
+            if repo_pattern.lower() == "all":
+                applies = True
+                break
+            # Exact match with full name (owner/repo)
+            if repo_pattern == repo_full_name:
+                applies = True
+                break
+            # Match just the repo name (for backward compatibility)
+            if repo_pattern == repo_name:
+                applies = True
+                break
+
+        # If this ruleset applies, override execution flags with validation
+        if applies:
+            if "enable_execution_phase1_to_phase2" in ruleset:
+                result["enable_execution_phase1_to_phase2"] = _validate_boolean_flag(
+                    ruleset["enable_execution_phase1_to_phase2"], "enable_execution_phase1_to_phase2"
+                )
+            if "enable_execution_phase2_to_phase3" in ruleset:
+                result["enable_execution_phase2_to_phase3"] = _validate_boolean_flag(
+                    ruleset["enable_execution_phase2_to_phase3"], "enable_execution_phase2_to_phase3"
+                )
+            if "enable_execution_phase3_send_ntfy" in ruleset:
+                result["enable_execution_phase3_send_ntfy"] = _validate_boolean_flag(
+                    ruleset["enable_execution_phase3_send_ntfy"], "enable_execution_phase3_send_ntfy"
+                )
+            if "enable_execution_phase3_to_merge" in ruleset:
+                result["enable_execution_phase3_to_merge"] = _validate_boolean_flag(
+                    ruleset["enable_execution_phase3_to_merge"], "enable_execution_phase3_to_merge"
+                )
+
+    return result
+
+
+def print_repo_execution_config(
+    repo_owner: str, repo_name: str, exec_config: Dict[str, bool]
+) -> None:
+    """Print execution configuration for a specific repository
+
+    Args:
+        repo_owner: Repository owner
+        repo_name: Repository name
+        exec_config: Execution configuration dictionary
+    """
+    print(f"    [Execution Config for {repo_owner}/{repo_name}]")
+    print(f"      enable_execution_phase1_to_phase2: {exec_config.get('enable_execution_phase1_to_phase2', False)}")
+    print(f"      enable_execution_phase2_to_phase3: {exec_config.get('enable_execution_phase2_to_phase3', False)}")
+    print(f"      enable_execution_phase3_send_ntfy: {exec_config.get('enable_execution_phase3_send_ntfy', False)}")
+    print(f"      enable_execution_phase3_to_merge: {exec_config.get('enable_execution_phase3_to_merge', False)}")
+
+{% endraw %}
+```
+
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-5406b07 Merge pull request #73 from cat2151/copilot/remove-list-display-user-load
-4fc21ca Fix AttributeError when config is None in issue display
-ee88744 Implement configurable issue display with reduced cognitive load
-3f706f7 Initial plan
-a72b1c1 Merge pull request #72 from cat2151/copilot/add-rulesets-management-in-toml
-5c3c152 Refactor validation logic and fix code review issues
-254ce91 Add type validation for boolean configuration flags
-0136ae9 Fix unused imports in config.py
-f6fbfc1 Add comprehensive documentation for ruleset-based configuration
-1f799f4 Implement ruleset-based configuration for per-repository execution control
+5a33c59 Merge pull request #90 from cat2151/copilot/implement-hot-reload-functionality
+e357667 Clean up imports - move threading to top level
+9ada7a4 Address PR review feedback - fix tests, improve countdown logic, and add integration tests
+89dfe1e Improve exception handling specificity and remove unused variable
+611a049 Fix elapsed time tracking and improve test portability
+be049e6 Improve exception handling and add code review feedback
+9a5a3d5 Add hot reload functionality to detect and reload config changes during wait
+4f5845d Initial plan
+493a6ac Merge pull request #88 from cat2151/copilot/add-verbose-print-configuration
+463fedf Remove unused sys import from test_verbose_config.py
 
 ### 変更されたファイル:
+MERGE_CONFIGURATION_EXAMPLES.md
+PHASE3_MERGE_IMPLEMENTATION.md
 README.ja.md
 README.md
 config.toml.example
-demo_automation.py
-demo_comparison.py
-docs/IMPLEMENTATION_SUMMARY.ja.md
-docs/IMPLEMENTATION_SUMMARY.md
-docs/PR67_IMPLEMENTATION.md
-docs/RULESETS.md
-docs/VERIFICATION_GUIDE.en.md
-docs/VERIFICATION_GUIDE.md
-docs/browser-automation-approaches.en.md
-docs/browser-automation-approaches.md
-requirements-automation.txt
+src/gh_pr_phase_monitor/__init__.py
 src/gh_pr_phase_monitor/browser_automation.py
+src/gh_pr_phase_monitor/comment_manager.py
 src/gh_pr_phase_monitor/config.py
-src/gh_pr_phase_monitor/issue_fetcher.py
 src/gh_pr_phase_monitor/main.py
 src/gh_pr_phase_monitor/pr_actions.py
+tests/test_all_phase3_timeout.py
 tests/test_browser_automation.py
-tests/test_config_rulesets.py
-tests/test_issue_fetching.py
-tests/test_no_open_prs_issue_display.py
-tests/test_pr_actions.py
-tests/test_pr_actions_with_rulesets.py
+tests/test_elapsed_time_display.py
+tests/test_hot_reload.py
+tests/test_phase3_merge.py
+tests/test_post_phase3_comment.py
+tests/test_verbose_config.py
 
 
 ---
-Generated at: 2026-01-06 07:01:33 JST
+Generated at: 2026-01-07 07:02:07 JST

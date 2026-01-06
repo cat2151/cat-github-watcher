@@ -1,4 +1,4 @@
-Last updated: 2026-01-06
+Last updated: 2026-01-07
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -154,16 +154,17 @@ cat-github-watcher/
    cp config.toml.example config.toml
    ```
 
-3. `config.toml` を編集して、監視間隔や実行モード、ntfy.sh通知、Copilot自動割り当てを設定（オプション）：
+3. `config.toml` を編集して、監視間隔や実行モード、ntfy.sh通知、Copilot自動割り当て、自動マージを設定（オプション）：
    ```toml
    # チェック間隔（"30s", "1m", "5m", "1h", "1d"など）
    interval = "1m"
    
    # 実行制御フラグ - デフォルトはDry-runモード
-   # 実際のアクション（PRのReady化、コメント投稿、通知送信）を有効にするにはtrueに設定
+   # 実際のアクション（PRのReady化、コメント投稿、通知送信、マージ）を有効にするにはtrueに設定
    enable_execution_phase1_to_phase2 = false  # trueにするとdraft PRをready化
    enable_execution_phase2_to_phase3 = false  # trueにするとphase2コメント投稿
    enable_execution_phase3_send_ntfy = false  # trueにするとntfy通知送信
+   enable_execution_phase3_to_merge = false   # trueにするとphase3 PRをマージ
    
    # ntfy.sh通知設定（オプション）
    # 通知にはPRを開くためのクリック可能なアクションボタンが含まれます
@@ -172,6 +173,19 @@ cat-github-watcher/
    topic = "<ここにntfy.shのトピック名を書く>"  # 誰でも読み書きできるので、推測されない文字列にしてください
    message = "PR is ready for review: {url}"  # メッセージテンプレート
    priority = 4  # 通知の優先度（1=最低、3=デフォルト、4=高、5=最高）
+   
+   # Phase3自動マージ設定（オプション）
+   # PRがphase3（レビュー待ち）に達したら自動的にマージします
+   # マージ前に、以下で定義したコメントがPRに投稿されます
+   # マージ成功後、自動的にfeature branchが削除されます
+   [phase3_merge]
+   enabled = false  # trueにすると自動マージを有効化（enable_execution_phase3_to_merge = trueも必要）
+   comment = "All checks passed. Merging PR."  # マージ前に投稿するコメント
+   automated = false  # trueにするとブラウザ自動操縦でマージボタンをクリック
+   automation_backend = "selenium"  # 自動操縦バックエンド: "selenium" または "playwright"
+   wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
+   browser = "edge"  # 使用するブラウザ: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
+   headless = false  # ヘッドレスモードで実行（ウィンドウを表示しない）
    
    # "good first issue"のissueをCopilotに自動割り当て（オプション）
    # 有効にすると、issueをブラウザで開き、"Assign to Copilot"ボタンを押すよう促します
@@ -220,7 +234,7 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
 4. **アクション実行**:
    - **phase1**: デフォルトはDry-run（`enable_execution_phase1_to_phase2 = true`でDraft PRをReady状態に変更）
    - **phase2**: デフォルトはDry-run（`enable_execution_phase2_to_phase3 = true`でCopilotに変更適用を依頼するコメントを投稿）
-   - **phase3**: ブラウザでPRページを開く（`enable_execution_phase3_send_ntfy = true`でntfy.sh通知も送信）
+   - **phase3**: ブラウザでPRページを開く（`enable_execution_phase3_send_ntfy = true`でntfy.sh通知も送信、`enable_execution_phase3_to_merge = true`でPRを自動マージ）
    - **LLM working**: 待機（全PRがこの状態の場合、オープンPRのないリポジトリのissueを表示）
 5. **繰り返し**: 設定された間隔で監視を継続
 
@@ -231,12 +245,14 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
 - **Phase1（Draft → Ready化）**: `[DRY-RUN] Would mark PR as ready for review` と表示されるが、実際には何もしない
 - **Phase2（コメント投稿）**: `[DRY-RUN] Would post comment for phase2` と表示されるが、実際には何もしない
 - **Phase3（ntfy通知）**: `[DRY-RUN] Would send ntfy notification` と表示されるが、実際には何もしない
+- **Phase3（マージ）**: `[DRY-RUN] Would merge PR` と表示されるが、実際には何もしない
 
 実際のアクションを有効にするには、`config.toml`で以下のフラグを`true`に設定します：
 ```toml
 enable_execution_phase1_to_phase2 = true  # Draft PRをReady化
 enable_execution_phase2_to_phase3 = true  # Phase2コメント投稿
 enable_execution_phase3_send_ntfy = true  # ntfy通知送信
+enable_execution_phase3_to_merge = true   # Phase3 PRをマージ
 ```
 
 ### 停止
@@ -277,6 +293,8 @@ MIT License - 詳細はLICENSEファイルを参照してください
 📁 .vscode/
   📊 settings.json
 📄 LICENSE
+📖 MERGE_CONFIGURATION_EXAMPLES.md
+📖 PHASE3_MERGE_IMPLEMENTATION.md
 📖 README.ja.md
 📖 README.md
 📖 STRUCTURE.md
@@ -318,17 +336,24 @@ MIT License - 詳細はLICENSEファイルを参照してください
     📄 pr_fetcher.py
     📄 repository_fetcher.py
 📁 tests/
+  📄 test_all_phase3_timeout.py
   📄 test_browser_automation.py
   📄 test_config_rulesets.py
+  📄 test_elapsed_time_display.py
+  📄 test_hot_reload.py
   📄 test_integration_issue_fetching.py
   📄 test_interval_parsing.py
   📄 test_issue_fetching.py
   📄 test_no_open_prs_issue_display.py
   📄 test_notification.py
+  📄 test_phase3_merge.py
   📄 test_phase_detection.py
   📄 test_post_comment.py
+  📄 test_post_phase3_comment.py
   📄 test_pr_actions.py
   📄 test_pr_actions_with_rulesets.py
+  📄 test_status_summary.py
+  📄 test_verbose_config.py
 
 ## ファイル詳細分析
 
@@ -338,6 +363,8 @@ MIT License - 詳細はLICENSEファイルを参照してください
 
 ## プロジェクト構造（ファイル一覧）
 .vscode/settings.json
+MERGE_CONFIGURATION_EXAMPLES.md
+PHASE3_MERGE_IMPLEMENTATION.md
 README.ja.md
 README.md
 STRUCTURE.md
@@ -360,4 +387,4 @@ docs/browser-automation-approaches.md
 
 
 ---
-Generated at: 2026-01-06 07:01:32 JST
+Generated at: 2026-01-07 07:02:06 JST

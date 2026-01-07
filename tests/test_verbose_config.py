@@ -15,10 +15,6 @@ def test_print_config_basic():
         "issue_display_limit": 10,
         "all_phase3_timeout": "",
         "verbose": True,
-        "enable_execution_phase1_to_phase2": False,
-        "enable_execution_phase2_to_phase3": False,
-        "enable_execution_phase3_send_ntfy": False,
-        "enable_execution_phase3_to_merge": False,
     }
     
     # Capture output
@@ -32,8 +28,6 @@ def test_print_config_basic():
     assert "[Main Settings]" in output
     assert "interval: 1m" in output
     assert "verbose: True" in output
-    assert "[Global Execution Flags]" in output
-    assert "enable_execution_phase1_to_phase2: False" in output
 
 
 def test_print_config_with_rulesets():

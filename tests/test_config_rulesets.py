@@ -307,34 +307,23 @@ class TestResolveExecutionConfigForRepo:
 class TestBooleanValidation:
     """Test validation of boolean configuration values"""
 
-    def test_rejects_string_value_in_global_config(self):
-        """Should raise ValueError when global config has string instead of boolean"""
+    def test_global_config_ignored_no_validation(self):
+        """Global config values are ignored without validation"""
         config = {
-            "enable_execution_phase1_to_phase2": "true",  # String instead of boolean
+            "enable_execution_phase1_to_phase2": "true",  # String - would be invalid if checked
+            "enable_execution_phase2_to_phase3": 1,  # Integer - would be invalid if checked
         }
         
-        with pytest.raises(ValueError) as exc_info:
-            resolve_execution_config_for_repo(config, "owner", "repo")
+        # Should not raise an error because global flags are ignored
+        result = resolve_execution_config_for_repo(config, "owner", "repo")
         
-        assert "must be a boolean" in str(exc_info.value)
-        assert "enable_execution_phase1_to_phase2" in str(exc_info.value)
-
-    def test_rejects_integer_value_in_global_config(self):
-        """Should raise ValueError when global config has integer instead of boolean"""
-        config = {
-            "enable_execution_phase2_to_phase3": 1,  # Integer instead of boolean
-        }
-        
-        with pytest.raises(ValueError) as exc_info:
-            resolve_execution_config_for_repo(config, "owner", "repo")
-        
-        assert "must be a boolean" in str(exc_info.value)
-        assert "enable_execution_phase2_to_phase3" in str(exc_info.value)
+        # All should be False (default) because global flags are ignored
+        assert result["enable_execution_phase1_to_phase2"] is False
+        assert result["enable_execution_phase2_to_phase3"] is False
 
     def test_rejects_string_value_in_ruleset(self):
         """Should raise ValueError when ruleset has string instead of boolean"""
         config = {
-            "enable_execution_phase1_to_phase2": False,
             "rulesets": [
                 {
                     "repositories": ["test-repo"],
@@ -352,7 +341,6 @@ class TestBooleanValidation:
     def test_rejects_integer_value_in_ruleset(self):
         """Should raise ValueError when ruleset has integer instead of boolean"""
         config = {
-            "enable_execution_phase3_send_ntfy": False,
             "rulesets": [
                 {
                     "repositories": ["test-repo"],
@@ -370,8 +358,6 @@ class TestBooleanValidation:
     def test_accepts_valid_boolean_values(self):
         """Should accept proper boolean values"""
         config = {
-            "enable_execution_phase1_to_phase2": True,
-            "enable_execution_phase2_to_phase3": False,
             "rulesets": [
                 {
                     "repositories": ["test-repo"],
@@ -392,7 +378,6 @@ class TestBooleanValidation:
     def test_validation_does_not_affect_non_matching_rulesets(self):
         """Validation should only occur for rulesets that match the repository"""
         config = {
-            "enable_execution_phase1_to_phase2": False,
             "rulesets": [
                 {
                     "repositories": ["other-repo"],

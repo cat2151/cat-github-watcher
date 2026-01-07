@@ -9,7 +9,7 @@ from src.gh_pr_phase_monitor.config import print_config, print_repo_execution_co
 
 
 def test_print_config_basic():
-    """Test basic configuration printing"""
+    """Test basic configuration printing with deprecated global flags"""
     config = {
         "interval": "1m",
         "issue_display_limit": 10,
@@ -32,8 +32,10 @@ def test_print_config_basic():
     assert "[Main Settings]" in output
     assert "interval: 1m" in output
     assert "verbose: True" in output
-    assert "[Global Execution Flags]" in output
-    assert "enable_execution_phase1_to_phase2: False" in output
+    # Verify that deprecated global flags are shown with warning
+    assert "[WARNING] Global Execution Flags (DEPRECATED)" in output
+    assert "enable_execution_phase1_to_phase2: False (IGNORED)" in output
+    assert "Please move these settings inside [[rulesets]] sections" in output
 
 
 def test_print_config_with_rulesets():

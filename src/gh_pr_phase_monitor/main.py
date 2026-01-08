@@ -254,7 +254,7 @@ def check_all_phase3_timeout(
     else:
         timeout_str = "30m"
 
-    # If timeout is not configured or empty, don't check
+    # If timeout is explicitly set to empty string (disabled), don't check
     if not timeout_str:
         _all_phase3_start_time = None
         return

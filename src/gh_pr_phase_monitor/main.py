@@ -19,6 +19,7 @@ from .github_client import (
     get_repositories_with_no_prs_and_open_issues,
     get_repositories_with_open_prs,
 )
+from .notifier import send_all_phase3_notification
 from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
 from .pr_actions import process_pr
 
@@ -241,6 +242,8 @@ def check_all_phase3_timeout(
 ) -> None:
     """Check if all PRs have been in phase3 for too long and exit if timeout reached
     
+    Also sends a notification when all PRs first become phase3.
+    
     Args:
         all_prs: List of all PRs
         pr_phases: List of phase strings corresponding to all_prs
@@ -275,6 +278,16 @@ def check_all_phase3_timeout(
         if _all_phase3_start_time is None:
             # First time all PRs are in phase3
             _all_phase3_start_time = current_time
+            
+            # Send notification when all PRs become phase3
+            if config:
+                ntfy_config = config.get("ntfy", {})
+                if ntfy_config.get("enabled", False):
+                    print("\n    All PRs are now in phase3, sending notification...")
+                    if send_all_phase3_notification(config):
+                        print("    All-phase3 notification sent successfully")
+                    else:
+                        print("    Failed to send all-phase3 notification")
         else:
             # Check if timeout has been reached
             elapsed = current_time - _all_phase3_start_time

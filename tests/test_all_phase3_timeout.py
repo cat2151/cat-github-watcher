@@ -184,3 +184,88 @@ class TestAllPhase3Timeout:
         
         # Should not exit or crash, just reset timer due to mismatch
         check_all_phase3_timeout(all_prs, pr_phases, config)
+
+    @patch("src.gh_pr_phase_monitor.main.send_all_phase3_notification")
+    def test_all_phase3_notification_sent_on_first_detection(self, mock_send):
+        """Test that notification is sent when all PRs first become phase3"""
+        mock_send.return_value = True
+        all_prs = [
+            {"title": "PR 1", "url": "https://github.com/owner/repo1/pulls/1", "repository": {"name": "repo1", "owner": "owner"}},
+            {"title": "PR 2", "url": "https://github.com/owner/repo1/pulls/2", "repository": {"name": "repo1", "owner": "owner"}},
+        ]
+        pr_phases = [PHASE_3, PHASE_3]
+        config = {
+            "all_phase3_timeout": "30m",
+            "ntfy": {"enabled": True, "topic": "test-topic"}
+        }
+        
+        # First call: should send notification
+        check_all_phase3_timeout(all_prs, pr_phases, config)
+        
+        # Verify notification was sent
+        mock_send.assert_called_once_with(config)
+
+    @patch("src.gh_pr_phase_monitor.main.send_all_phase3_notification")
+    def test_all_phase3_notification_not_sent_when_ntfy_disabled(self, mock_send):
+        """Test that notification is not sent when ntfy is disabled"""
+        all_prs = [
+            {"title": "PR 1", "url": "https://github.com/owner/repo1/pulls/1", "repository": {"name": "repo1", "owner": "owner"}},
+        ]
+        pr_phases = [PHASE_3]
+        config = {
+            "all_phase3_timeout": "30m",
+            "ntfy": {"enabled": False, "topic": "test-topic"}
+        }
+        
+        # Should not send notification
+        check_all_phase3_timeout(all_prs, pr_phases, config)
+        
+        # Verify notification was not sent
+        mock_send.assert_not_called()
+
+    @patch("src.gh_pr_phase_monitor.main.send_all_phase3_notification")
+    def test_all_phase3_notification_sent_only_once(self, mock_send):
+        """Test that notification is sent only once per all-phase3 period"""
+        mock_send.return_value = True
+        all_prs = [
+            {"title": "PR 1", "url": "https://github.com/owner/repo1/pulls/1", "repository": {"name": "repo1", "owner": "owner"}},
+        ]
+        pr_phases = [PHASE_3]
+        config = {
+            "all_phase3_timeout": "30m",
+            "ntfy": {"enabled": True, "topic": "test-topic"}
+        }
+        
+        # First call: should send notification
+        check_all_phase3_timeout(all_prs, pr_phases, config)
+        assert mock_send.call_count == 1
+        
+        # Second call: should not send notification again
+        check_all_phase3_timeout(all_prs, pr_phases, config)
+        assert mock_send.call_count == 1
+
+    @patch("src.gh_pr_phase_monitor.main.send_all_phase3_notification")
+    def test_all_phase3_notification_resent_after_phase_change(self, mock_send):
+        """Test that notification is sent again if PRs leave phase3 and return"""
+        mock_send.return_value = True
+        all_prs = [
+            {"title": "PR 1", "url": "https://github.com/owner/repo1/pulls/1", "repository": {"name": "repo1", "owner": "owner"}},
+        ]
+        config = {
+            "all_phase3_timeout": "30m",
+            "ntfy": {"enabled": True, "topic": "test-topic"}
+        }
+        
+        # First call: all phase3, should send notification
+        pr_phases = [PHASE_3]
+        check_all_phase3_timeout(all_prs, pr_phases, config)
+        assert mock_send.call_count == 1
+        
+        # Second call: not all phase3, should reset
+        pr_phases = [PHASE_2]
+        check_all_phase3_timeout(all_prs, pr_phases, config)
+        
+        # Third call: all phase3 again, should send notification again
+        pr_phases = [PHASE_3]
+        check_all_phase3_timeout(all_prs, pr_phases, config)
+        assert mock_send.call_count == 2

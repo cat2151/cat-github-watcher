@@ -33,7 +33,9 @@ def post_phase2_comment(pr: Dict[str, Any], repo_dir: Path = None) -> Optional[b
         repo_dir: Repository directory (optional, not used when working with URLs)
 
     Returns:
-        True if comment was posted successfully, None if skipped, False on failure
+        True if comment was posted successfully
+        None if comment already exists (skipped)
+        False if posting failed (e.g., invalid PR URL, subprocess error)
     """
     pr_url = pr.get("url", "")
     if not pr_url:

@@ -149,7 +149,8 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
                 print("    Comment posted successfully")
             elif result is False:
                 print("    Failed to post comment")
-            # If result is None, the function already printed "Comment already exists, skipping"
+            # If result is None, post_phase2_comment already printed "Comment already exists, skipping"
+            # (see comment_manager.py line 45)
         else:
             print("    [DRY-RUN] Would post comment for phase2 (enable_execution_phase2_to_phase3=false)")
 

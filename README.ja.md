@@ -36,6 +36,8 @@ GitHub Copilotが自動実装を行うPRのフェーズを監視し、適切な�
 - **自動コメント投稿**: フェーズに応じて適切なコメントを自動投稿（要：設定ファイルで有効化）
 - **Draft PR自動Ready化**: phase2でのレビュー指摘対応のため、Draft PRを自動的にReady状態に変更（要：設定ファイルで有効化）
 - **モバイル通知**: ntfy.shを利用してphase3（レビュー待ち）を検知したらモバイル端末に通知（要：設定ファイルで有効化）
+  - 個別のPRがphase3になったときに通知
+  - すべてのPRがphase3になったときにも通知（メッセージはtomlで設定可能）
 - **issue一覧表示**: 全PRが「LLM working」の場合、オープンPRのないリポジトリのissue上位10件を表示
 
 ## アーキテクチャ
@@ -116,6 +118,7 @@ cat-github-watcher/
    topic = "<ここにntfy.shのトピック名を書く>"  # 誰でも読み書きできるので、推測されない文字列にしてください
    message = "PR is ready for review: {url}"  # メッセージテンプレート
    priority = 4  # 通知の優先度（1=最低、3=デフォルト、4=高、5=最高）
+   all_phase3_message = "All PRs are now in phase3 (ready for review)"  # すべてのPRがphase3になったときのメッセージ
    
    # Phase3自動マージ設定（オプション）
    # PRがphase3（レビュー待ち）に達したら自動的にマージします

@@ -19,6 +19,7 @@ from .github_client import (
     get_repositories_with_no_prs_and_open_issues,
     get_repositories_with_open_prs,
 )
+from .notifier import send_all_phase3_notification
 from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
 from .pr_actions import process_pr
 
@@ -29,6 +30,10 @@ _pr_state_times: Dict[Tuple[str, str], float] = {}
 # Track when all PRs entered phase3
 # Value: timestamp when all PRs first detected as phase3, or None if not all phase3
 _all_phase3_start_time: Optional[float] = None
+
+# Track whether all-phase3 notification has been sent
+# Value: True if notification has been sent, False otherwise
+_all_phase3_notification_sent: bool = False
 
 
 def format_elapsed_time(seconds: float) -> str:
@@ -241,12 +246,14 @@ def check_all_phase3_timeout(
 ) -> None:
     """Check if all PRs have been in phase3 for too long and exit if timeout reached
     
+    Also sends a notification when all PRs first become phase3.
+    
     Args:
         all_prs: List of all PRs
         pr_phases: List of phase strings corresponding to all_prs
         config: Configuration dictionary (optional)
     """
-    global _all_phase3_start_time
+    global _all_phase3_start_time, _all_phase3_notification_sent
 
     # Get timeout setting from config with default of "30m"
     timeout_str = (config or {}).get("all_phase3_timeout", "30m")
@@ -254,6 +261,7 @@ def check_all_phase3_timeout(
     # If timeout is explicitly set to empty string (disabled), don't check
     if not timeout_str:
         _all_phase3_start_time = None
+        _all_phase3_notification_sent = False
         return
 
     # Parse timeout to seconds
@@ -262,6 +270,7 @@ def check_all_phase3_timeout(
     except ValueError as e:
         print(f"Warning: Invalid all_phase3_timeout format: {e}")
         _all_phase3_start_time = None
+        _all_phase3_notification_sent = False
         return
 
     current_time = time.time()
@@ -275,6 +284,18 @@ def check_all_phase3_timeout(
         if _all_phase3_start_time is None:
             # First time all PRs are in phase3
             _all_phase3_start_time = current_time
+            _all_phase3_notification_sent = False
+            
+            # Send notification when all PRs become phase3
+            if config:
+                ntfy_config = config.get("ntfy", {})
+                if ntfy_config.get("enabled", False):
+                    print("\n    All PRs are now in phase3, sending notification...")
+                    if send_all_phase3_notification(config):
+                        print("    All-phase3 notification sent successfully")
+                        _all_phase3_notification_sent = True
+                    else:
+                        print("    Failed to send all-phase3 notification")
         else:
             # Check if timeout has been reached
             elapsed = current_time - _all_phase3_start_time
@@ -287,8 +308,9 @@ def check_all_phase3_timeout(
                 print(f"{'=' * 50}")
                 sys.exit(0)
     else:
-        # Not all PRs are in phase3, reset the timer
+        # Not all PRs are in phase3, reset the timer and notification flag
         _all_phase3_start_time = None
+        _all_phase3_notification_sent = False
 
 
 def _resolve_assign_to_copilot_config(issue: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:

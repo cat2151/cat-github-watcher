@@ -221,3 +221,30 @@ def send_phase3_notification(config: Dict[str, Any], pr_url: str, pr_title: str)
 
     # Send notification with PR title as the notification title and action button
     return send_ntfy_notification(topic, message, title=pr_title, priority=priority, actions=actions)
+
+
+def send_all_phase3_notification(config: Dict[str, Any]) -> bool:
+    """Send notification when all PRs become phase3
+
+    Args:
+        config: Configuration dictionary
+
+    Returns:
+        True if notification was sent successfully, False otherwise
+    """
+    # Check if ntfy is configured and enabled
+    ntfy_config = config.get("ntfy", {})
+    if not ntfy_config.get("enabled", False):
+        return False
+
+    topic = ntfy_config.get("topic")
+    message = ntfy_config.get("all_phase3_message", "All PRs are now in phase3 (ready for review)")
+    priority = ntfy_config.get("priority", 4)  # Default to 4 (high), configurable
+
+    if not topic:
+        print("    Warning: ntfy.topic not configured")
+        return False
+
+    # Send notification with default title
+    title = "All PRs Ready for Review"
+    return send_ntfy_notification(topic, message, title=title, priority=priority)

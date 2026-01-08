@@ -1,50 +1,56 @@
-Last updated: 2026-01-08
+Last updated: 2026-01-09
 
 # Development Status
 
 ## 現在のIssues
-- [Issue #93](../issue-notes/93.md) ではTOML `rulesets.repositories` 設定の簡素化、[Issue #87](../issue-notes/87.md) では大規模変更後のドッグフーディングが求められています。
-- [Issue #85](../issue-notes/85.md) は`all_phase3_timeout`のデフォルト値を30分に設定する安全性向上の提案です。
-- [Issue #80](../issue-notes/80.md) は全PR Phase3時のntfy通知機能の実装、[Issue #32](../issue-notes/32.md) は冗長なコメントログ表示の改善を目指します。
+- [Issue #93](../issue-notes/93.md) は、`config.toml`のrulesets repositories設定から`owner`フィールドを削除し、リポジトリ名のみで指定するよう改善し、ユーザーの混乱を軽減することを目指しています。
+- [Issue #87](../issue-notes/87.md) は、最近の大幅な仕様変更を受けて、実際の運用環境での動作確認（ドッグフーディング）を通じてシステムの安定性と機能性を検証する必要があることを示しています。
+- これらのIssueは、設定ファイルの明確化と、主要機能の総合的なテスト・検証が喫緊の課題であることを示唆しています。
 
 ## 次の一手候補
-1. TOML rulesets repositoriesからownerを削除し簡素化する [Issue #93](../issue-notes/93.md)
-   - 最初の小さな一歩: `config.toml.example` を開き、`[[rulesets.repositories]]` セクションで `owner` キーがどのように記述されているかを確認する。
+1. [Issue #93](../issue-notes/93.md) `config.toml.example`から`rulesets.repositories`の`owner`フィールドを削除する
+   - 最初の小さな一歩: `config.toml.example`ファイルを開き、`[rulesets.repositories]`セクション内の`owner = "..."`の行を削除し、`repository = "..."`の形式のみが残るように修正する。
    - Agent実行プロンプ:
      ```
-     対象ファイル: `config.toml.example`, `src/gh_pr_phase_monitor/config.py`
+     対象ファイル: `config.toml.example`
 
-     実行内容: `config.toml.example` 内の `[[rulesets.repositories]]` セクションから `owner` キーを削除し、リポジトリ名のみを記述するように変更する。また、`src/gh_pr_phase_monitor/config.py` 内でこの変更に対応するために、リポジトリ設定をパースするロジックがどのように影響を受けるかを確認し、必要に応じて修正案を提案する。
+     実行内容: `config.toml.example`の`[rulesets.repositories]`セクションにおいて、`owner = "..."`の行を削除し、`repository = "..."`の形式でリポジトリ名が指定されるように修正してください。例えば、`repository = "my-org/my-repo"`を`repository = "my-repo"`のようにしてください。
 
-     確認事項: `owner` キー削除が既存のテストや他の設定に影響を与えないか確認する。`config.py` でリポジトリ名をどのように取得しているか、変更後も正しく動作するか検証する。
+     確認事項: 既存の`[rulesets.repositories]`の構造が壊れていないこと。TOMLファイルの構文規則に則っていること。
 
-     期待する出力: `config.toml.example` の変更差分と、`src/gh_pr_phase_monitor/config.py` の修正案（または修正不要の確認）をMarkdown形式で出力してください。特に、`config.py` 内で`owner`情報が不要になったことによるコードの簡素化の可能性があれば言及してください。
+     期待する出力: 修正後の`config.toml.example`ファイルの内容をmarkdown形式で出力してください。
      ```
 
-2. `all_phase3_timeout` のデフォルト値を安全性優先で30mに設定する [Issue #85](../issue-notes/85.md)
-   - 最初の小さな一歩: `src/gh_pr_phase_monitor/config.py` ファイル内で `all_phase3_timeout` の現在のデフォルト値がどこで定義されているか、またはどのように設定されているかを確認する。
-   - Agent実行プロンプト:
+2. [Issue #87](../issue-notes/87.md) 大幅な仕様変更後のドッグフーディングに向けた初期設定と実行フローの確認
+   - 最初の小さな一歩: `config.toml.example`を参考に、最新の仕様（特にルールセット関連）を反映した`config.toml`を作成し、`src/gh_pr_phase_monitor/main.py`を手動で実行する準備を行う。
+   - Agent実行プロンプ:
      ```
-     対象ファイル: `src/gh_pr_phase_monitor/config.py`, `config.toml.example`
+     対象ファイル: `src/gh_pr_phase_monitor/main.py`, `config.toml.example` (参考)
 
-     実行内容: `src/gh_pr_phase_monitor/config.py` 内の `all_phase3_timeout` のデフォルト値を30分 (`30m`) に変更する。また、`config.toml.example` にこの設定項目の例を明示的に記述し、ユーザーが設定を変更できることを示す。
+     実行内容:
+     1. `config.toml.example`を参考に、現在の仕様（特にルールセット関連の変更）を反映した`config.toml`を新規作成または更新するためのガイダンスを提供してください。
+     2. `src/gh_pr_phase_monitor/main.py`をローカル環境で実行するための最低限の手順（依存ライブラリのインストール、環境変数の設定など）を記述してください。
+     3. 上記手順で実行した場合に、どのようなログ出力や動作が期待されるか、一般的なシナリオを説明してください。
 
-     確認事項: 既存のテストケース (`tests/test_all_phase3_timeout.py` など、もしあれば) や、`all_phase3_timeout` を利用している箇所に影響がないか確認する。値のパースロジックが `30m` という形式を正しく扱えるか検証する。
+     確認事項: 必須設定項目（GitHubトークン、リポジトリ設定など）が適切に記述されていること。依存パッケージがインストールされていること。
 
-     期待する出力: `src/gh_pr_phase_monitor/config.py` および `config.toml.example` の変更差分をMarkdown形式で出力してください。変更後のコードが意図通りに動作するかの簡単な説明も加えてください。
+     期待する出力: `config.toml`の雛形と、`main.py`をローカルで実行し、基本的な動作を確認するための手順書をmarkdown形式で出力してください。
      ```
 
-3. 「すべてphase3」になったらntfyで通知を送る機能を実装する [Issue #80](../issue-notes/80.md)
-   - 最初の小さな一歩: `src/gh_pr_phase_monitor/notifier.py` や `src/gh_pr_phase_monitor/main.py` を開き、既存の通知メカニズムがどのように実装されているか、また通知のトリガー箇所を特定する。
-   - Agent実行プロンプト:
+3. [Issue #87](../issue-notes/87.md) 大幅な仕様変更のドッグフーディング - テストスイートのレビューと拡張
+   - 最初の小さな一歩: `tests/test_config_rulesets.py`と`tests/test_pr_actions_rulesets_features.py`をレビューし、[Issue #93](../issue-notes/93.md)で指摘された`owner`フィールドの削除がこれらのテストに影響を与えないか確認する。
+   - Agent実行プロンプ:
      ```
-     対象ファイル: `src/gh_pr_phase_monitor/notifier.py`, `src/gh_pr_phase_monitor/main.py`, `src/gh_pr_phase_monitor/phase_detector.py`, `config.toml.example`
+     対象ファイル: `tests/test_config_rulesets.py`, `tests/test_pr_actions_rulesets_features.py`, `src/gh_pr_phase_monitor/config.py` (参照用)
 
-     実行内容: 全てのPRがPhase3になったことを検出した場合に、`ntfy` を用いて通知を送る機能を実装する。通知文言は `config.toml.example` で設定可能とする。具体的には、`phase_detector.py` で「すべてphase3」の状態を検出し、その情報を `main.py` または `notifier.py` に渡し、`notifier.py` で `ntfy` を利用した通知処理を追加する。`config.toml.example` には `ntfy_topic` と `all_phase3_notification_message` の設定例を追加する。
+     実行内容:
+     1. `tests/test_config_rulesets.py`および`tests/test_pr_actions_rulesets_features.py`を分析し、これらのテストが`[rulesets.repositories]`設定における`owner`フィールドの有無にどのように依存しているかを確認してください。
+     2. `owner`フィールドが不要になった新しい仕様 ([Issue #93](../issue-notes/93.md)) に基づき、既存のテストコードが適切に機能するか、または更新が必要か評価してください。
+     3. 必要であれば、新しい仕様に準拠するようテストコードの修正案を提案してください。
 
-     確認事項: `ntfy` を使用するためのライブラリの依存関係（`requirements-automation.txt` への追加が必要か）を確認する。通知メッセージがTOMLファイルから正しく読み込まれるか、全PR Phase3の検出ロジックが正確か検証する。既存の通知機能と競合しないか確認する。
+     確認事項: `src/gh_pr_phase_monitor/config.py`で`rulesets.repositories`がどのようにパースされるかを理解していること。
 
-     期待する出力: `src/gh_pr_phase_monitor/notifier.py`, `src/gh_pr_phase_monitor/main.py`, `src/gh_pr_phase_monitor/phase_detector.py` の変更差分と、`config.toml.example` の更新、`requirements-automation.txt` への追記が必要な場合はその内容をMarkdown形式で出力してください。ntfy通知のテスト方法についても簡単に言及してください。
+     期待する出力: 分析結果と、もし必要であればテストコードの修正案をmarkdown形式で出力してください。
 
 ---
-Generated at: 2026-01-08 07:01:50 JST
+Generated at: 2026-01-09 07:01:52 JST

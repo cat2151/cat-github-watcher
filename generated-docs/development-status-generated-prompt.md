@@ -1,4 +1,4 @@
-Last updated: 2026-01-08
+Last updated: 2026-01-09
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -280,209 +280,7 @@ Last updated: 2026-01-08
 
 ```
 
-## [Issue #85](../issue-notes/85.md): all_phase3_timeout  のデフォルトは安全性優先で30mにする
-
-ラベル: 
---- issue-notes/85.md の内容 ---
-
-```markdown
-
-```
-
-## [Issue #80](../issue-notes/80.md): 「すべてphase3」になったら、ntfyで通知を送る。文言はtomlで指定する
-
-ラベル: 
---- issue-notes/80.md の内容 ---
-
-```markdown
-
-```
-
-## [Issue #32](../issue-notes/32.md): 「Posting comment for phase2... / Comment already exists, skipping / Comment posted successfully」と表示され、userが混乱する。skippingのあとはpostedを表示しないようにする
-
-ラベル: good first issue
---- issue-notes/32.md の内容 ---
-
-```markdown
-
-```
-
 ## ドキュメントで言及されているファイルの内容
-### .github/actions-tmp/issue-notes/2.md
-```md
-{% raw %}
-# issue GitHub Actions「関数コールグラフhtmlビジュアライズ生成」を共通ワークフロー化する #2
-[issues #2](https://github.com/cat2151/github-actions/issues/2)
-
-
-# prompt
-```
-あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
-このymlファイルを、以下の2つのファイルに分割してください。
-1. 共通ワークフロー       cat2151/github-actions/.github/workflows/callgraph_enhanced.yml
-2. 呼び出し元ワークフロー cat2151/github-actions/.github/workflows/call-callgraph_enhanced.yml
-まずplanしてください
-```
-
-# 結果
-- indent
-    - linter？がindentのエラーを出しているがyml内容は見た感じOK
-    - テキストエディタとagentの相性問題と判断する
-    - 別のテキストエディタでsaveしなおし、テキストエディタをreload
-    - indentのエラーは解消した
-- LLMレビュー
-    - agent以外の複数のLLMにレビューさせる
-    - prompt
-```
-あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
-以下の2つのファイルをレビューしてください。最優先で、エラーが発生するかどうかだけレビューしてください。エラー以外の改善事項のチェックをするかわりに、エラー発生有無チェックに最大限注力してください。
-
---- 共通ワークフロー
-
-# GitHub Actions Reusable Workflow for Call Graph Generation
-name: Generate Call Graph
-
-# TODO Windowsネイティブでのtestをしていた名残が残っているので、今後整理していく。今はWSL act でtestしており、Windowsネイティブ環境依存問題が解決した
-#  ChatGPTにレビューさせるとそこそこ有用そうな提案が得られたので、今後それをやる予定
-#  agentに自己チェックさせる手も、セカンドオピニオンとして選択肢に入れておく
-
-on:
-  workflow_call:
-
-jobs:
-  check-commits:
-    runs-on: ubuntu-latest
-    outputs:
-      should-run: ${{ steps.check.outputs.should-run }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 50 # 過去のコミットを取得
-
-      - name: Check for user commits in last 24 hours
-        id: check
-        run: |
-          node .github/scripts/callgraph_enhanced/check-commits.cjs
-
-  generate-callgraph:
-    needs: check-commits
-    if: needs.check-commits.outputs.should-run == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      security-events: write
-      actions: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set Git identity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Remove old CodeQL packages cache
-        run: rm -rf ~/.codeql/packages
-
-      - name: Check Node.js version
-        run: |
-          node .github/scripts/callgraph_enhanced/check-node-version.cjs
-
-      - name: Install CodeQL CLI
-        run: |
-          wget https://github.com/github/codeql-cli-binaries/releases/download/v2.22.1/codeql-linux64.zip
-          unzip codeql-linux64.zip
-          sudo mv codeql /opt/codeql
-          echo "/opt/codeql" >> $GITHUB_PATH
-
-      - name: Install CodeQL query packs
-        run: |
-          /opt/codeql/codeql pack install .github/codeql-queries
-
-      - name: Check CodeQL exists
-        run: |
-          node .github/scripts/callgraph_enhanced/check-codeql-exists.cjs
-
-      - name: Verify CodeQL Configuration
-        run: |
-          node .github/scripts/callgraph_enhanced/analyze-codeql.cjs verify-config
-
-      - name: Remove existing CodeQL DB (if any)
-        run: |
-          rm -rf codeql-db
-
-      - name: Perform CodeQL Analysis
-        run: |
-          node .github/scripts/callgraph_enhanced/analyze-codeql.cjs analyze
-
-      - name: Check CodeQL Analysis Results
-        run: |
-          node .github/scripts/callgraph_enhanced/analyze-codeql.cjs check-results
-
-      - name: Debug CodeQL execution
-        run: |
-          node .github/scripts/callgraph_enhanced/analyze-codeql.cjs debug
-
-      - name: Wait for CodeQL results
-        run: |
-          node -e "setTimeout(()=>{}, 10000)"
-
-      - name: Find and process CodeQL results
-        run: |
-          node .github/scripts/callgraph_enhanced/find-process-results.cjs
-
-      - name: Generate HTML graph
-        run: |
-          node .github/scripts/callgraph_enhanced/generate-html-graph.cjs
-
-      - name: Copy files to generated-docs and commit results
-        run: |
-          node .github/scripts/callgraph_enhanced/copy-commit-results.cjs
-
---- 呼び出し元
-# 呼び出し元ワークフロー: call-callgraph_enhanced.yml
-name: Call Call Graph Enhanced
-
-on:
-  schedule:
-    # 毎日午前5時(JST) = UTC 20:00前日
-    - cron: '0 20 * * *'
-  workflow_dispatch:
-
-jobs:
-  call-callgraph-enhanced:
-    # uses: cat2151/github-actions/.github/workflows/callgraph_enhanced.yml
-    uses: ./.github/workflows/callgraph_enhanced.yml # ローカルでのテスト用
-```
-
-# レビュー結果OKと判断する
-- レビュー結果を人力でレビューした形になった
-
-# test
-- #4 同様にローカル WSL + act でtestする
-- エラー。userのtest設計ミス。
-  - scriptの挙動 : src/ がある前提
-  - 今回の共通ワークフローのリポジトリ : src/ がない
-  - 今回testで実現したいこと
-    - 仮のソースでよいので、関数コールグラフを生成させる
-  - 対策
-    - src/ にダミーを配置する
-- test green
-  - ただしcommit pushはしてないので、html内容が0件NG、といったケースの検知はできない
-  - もしそうなったら別issueとしよう
-
-# test green
-
-# commit用に、yml 呼び出し元 uses をlocal用から本番用に書き換える
-
-# closeとする
-- もしhtml内容が0件NG、などになったら、別issueとするつもり
-
-{% endraw %}
-```
-
 ### .github/actions-tmp/issue-notes/3.md
 ```md
 {% raw %}
@@ -578,16 +376,16 @@ env: で値を渡し、process.env で参照するのが正しい
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-5ba0ce5 Auto-translate README.ja.md to README.md [auto]
-39439a5 Merge pull request #96 from cat2151/copilot/restrict-rulesets-internal-usage
-2f3f1eb Remove deprecation warning for global flags
-d51c05b Add test to verify no deprecation warning without global flags
-8ea9198 Update tests to reflect ruleset-only configuration
-57a2b3f Update documentation to reflect ruleset-only configuration
-af148d3 Remove global execution flags support, enforce ruleset-only configuration
-9d35cb0 Initial plan
-7ad3043 Merge pull request #95 from cat2151/copilot/update-toml-rulesets
-047a394 Simplify per-ruleset configuration to only on/off flags using global settings
+f08e3cd Merge pull request #99 from cat2151/copilot/fix-comment-posting-messages
+7941590 Fix incorrect line reference in comment - remove specific line number
+99e47f7 Improve documentation for return value semantics and comments
+749df76 Add type annotation to post_phase2_comment return value
+bac6b4d Fix confusing log messages when comment already exists
+d5b7d2b Auto-translate README.ja.md to README.md [auto]
+36e8c59 Initial plan
+9d5e483 Merge pull request #98 from cat2151/copilot/send-notification-when-phase3
+88eccec Move send_all_phase3_notification import to module level and remove unused MagicMock import
+d3573d8 Remove redundant _all_phase3_notification_sent variable
 
 ### 変更されたファイル:
 README.ja.md
@@ -598,21 +396,17 @@ generated-docs/development-status-generated-prompt.md
 generated-docs/development-status.md
 generated-docs/project-overview-generated-prompt.md
 generated-docs/project-overview.md
-src/gh_pr_phase_monitor/__init__.py
+src/gh_pr_phase_monitor/comment_manager.py
 src/gh_pr_phase_monitor/config.py
-src/gh_pr_phase_monitor/issue_fetcher.py
 src/gh_pr_phase_monitor/main.py
+src/gh_pr_phase_monitor/notifier.py
 src/gh_pr_phase_monitor/pr_actions.py
+tests/test_all_phase3_timeout.py
 tests/test_config_rulesets.py
-tests/test_config_rulesets_features.py
-tests/test_elapsed_time_display.py
-tests/test_hot_reload.py
-tests/test_issue_fetching.py
-tests/test_no_open_prs_issue_display.py
-tests/test_phase3_merge.py
-tests/test_pr_actions_rulesets_features.py
+tests/test_notification.py
+tests/test_post_comment.py
 tests/test_verbose_config.py
 
 
 ---
-Generated at: 2026-01-08 07:01:32 JST
+Generated at: 2026-01-09 07:01:37 JST

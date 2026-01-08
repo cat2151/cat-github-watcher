@@ -4,7 +4,7 @@ Comment management for posting and checking PR comments
 
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .github_client import get_existing_comments
 
@@ -25,7 +25,7 @@ def has_copilot_apply_comment(comments: List[Dict[str, Any]]) -> bool:
     return False
 
 
-def post_phase2_comment(pr: Dict[str, Any], repo_dir: Path = None):
+def post_phase2_comment(pr: Dict[str, Any], repo_dir: Path = None) -> Optional[bool]:
     """Post a comment to PR when phase2 is detected
 
     Args:

@@ -248,12 +248,10 @@ def check_all_phase3_timeout(
     """
     global _all_phase3_start_time
 
-    # Get timeout setting from config
-    timeout_str = ""
-    if config:
-        timeout_str = config.get("all_phase3_timeout", "")
+    # Get timeout setting from config with default of "30m"
+    timeout_str = (config or {}).get("all_phase3_timeout", "30m")
 
-    # If timeout is not configured or empty, don't check
+    # If timeout is explicitly set to empty string (disabled), don't check
     if not timeout_str:
         _all_phase3_start_time = None
         return

@@ -31,10 +31,6 @@ _pr_state_times: Dict[Tuple[str, str], float] = {}
 # Value: timestamp when all PRs first detected as phase3, or None if not all phase3
 _all_phase3_start_time: Optional[float] = None
 
-# Track whether all-phase3 notification has been sent
-# Value: True if notification has been sent, False otherwise
-_all_phase3_notification_sent: bool = False
-
 
 def format_elapsed_time(seconds: float) -> str:
     """Format elapsed time in Japanese style
@@ -253,7 +249,7 @@ def check_all_phase3_timeout(
         pr_phases: List of phase strings corresponding to all_prs
         config: Configuration dictionary (optional)
     """
-    global _all_phase3_start_time, _all_phase3_notification_sent
+    global _all_phase3_start_time
 
     # Get timeout setting from config with default of "30m"
     timeout_str = (config or {}).get("all_phase3_timeout", "30m")
@@ -261,7 +257,6 @@ def check_all_phase3_timeout(
     # If timeout is explicitly set to empty string (disabled), don't check
     if not timeout_str:
         _all_phase3_start_time = None
-        _all_phase3_notification_sent = False
         return
 
     # Parse timeout to seconds
@@ -270,7 +265,6 @@ def check_all_phase3_timeout(
     except ValueError as e:
         print(f"Warning: Invalid all_phase3_timeout format: {e}")
         _all_phase3_start_time = None
-        _all_phase3_notification_sent = False
         return
 
     current_time = time.time()
@@ -284,7 +278,6 @@ def check_all_phase3_timeout(
         if _all_phase3_start_time is None:
             # First time all PRs are in phase3
             _all_phase3_start_time = current_time
-            _all_phase3_notification_sent = False
             
             # Send notification when all PRs become phase3
             if config:
@@ -293,7 +286,6 @@ def check_all_phase3_timeout(
                     print("\n    All PRs are now in phase3, sending notification...")
                     if send_all_phase3_notification(config):
                         print("    All-phase3 notification sent successfully")
-                        _all_phase3_notification_sent = True
                     else:
                         print("    Failed to send all-phase3 notification")
         else:
@@ -308,9 +300,8 @@ def check_all_phase3_timeout(
                 print(f"{'=' * 50}")
                 sys.exit(0)
     else:
-        # Not all PRs are in phase3, reset the timer and notification flag
+        # Not all PRs are in phase3, reset the timer
         _all_phase3_start_time = None
-        _all_phase3_notification_sent = False
 
 
 def _resolve_assign_to_copilot_config(issue: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:

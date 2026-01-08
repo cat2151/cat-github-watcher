@@ -18,7 +18,6 @@ class TestAllPhase3Timeout:
     def setup_method(self):
         """Reset global state before each test"""
         main._all_phase3_start_time = None
-        main._all_phase3_notification_sent = False
 
     def test_default_timeout_when_config_not_set(self):
         """Test that default 30m timeout is used when all_phase3_timeout is not configured"""

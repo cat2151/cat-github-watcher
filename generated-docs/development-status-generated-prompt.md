@@ -1,4 +1,4 @@
-Last updated: 2026-01-09
+Last updated: 2026-01-10
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -240,7 +240,6 @@ Last updated: 2026-01-09
 - src/gh_pr_phase_monitor/pr_actions.py
 - src/gh_pr_phase_monitor/pr_fetcher.py
 - src/gh_pr_phase_monitor/repository_fetcher.py
-- tests/test_no_change_timeout.py
 - tests/test_browser_automation.py
 - tests/test_config_rulesets.py
 - tests/test_config_rulesets_features.py
@@ -249,6 +248,7 @@ Last updated: 2026-01-09
 - tests/test_integration_issue_fetching.py
 - tests/test_interval_parsing.py
 - tests/test_issue_fetching.py
+- tests/test_no_change_timeout.py
 - tests/test_no_open_prs_issue_display.py
 - tests/test_notification.py
 - tests/test_phase3_merge.py
@@ -262,15 +262,6 @@ Last updated: 2026-01-09
 - tests/test_verbose_config.py
 
 ## 現在のオープンIssues
-## [Issue #93](../issue-notes/93.md): toml rulesets repositories について、ownerは不要なので削除し、リポジトリ名だけを書くようにして、userの混乱を減らす
-
-ラベル: 
---- issue-notes/93.md の内容 ---
-
-```markdown
-
-```
-
 ## [Issue #87](../issue-notes/87.md): 大幅な仕様変更をしたのでドッグフーディングする
 
 ラベル: 
@@ -281,87 +272,6 @@ Last updated: 2026-01-09
 ```
 
 ## ドキュメントで言及されているファイルの内容
-### .github/actions-tmp/issue-notes/3.md
-```md
-{% raw %}
-# issue GitHub Actions「issue note生成」を共通ワークフロー化する #3
-[issues #3](https://github.com/cat2151/github-actions/issues/3)
-
-- 前提
-  - userは、translateのworkflowを共通ワークフロー化し、動くようにしたので、共通ワークフロー化の知識がある
-  - よって、今回は、promptでplanさせ、そのplanをuserがレビューし、planの改善を指示できるので、ハルシネーションのリスクを下げることができる
-
-- prompt
-```
-あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
-このymlはまだ共通ワークフロー化されず、
-呼び出し元からコピーされたままの状態です。
-このymlファイル名のまま、
-中身を共通ワークフロー化してください。
-呼び出し元ymlは別途書きますので気にしないでください。
-まずplanしてください
-```
-
-- plan 生成結果
-```
-共通ワークフロー化のためのplanは以下の通りです。
-
-1. 目的
-現在の issue-note.yml を「共通ワークフロー」として再設計し、他リポジトリや他ワークフローから workflow_call で呼び出せるようにする。
-2. 主な変更点
-on: トリガーを workflow_call に変更（直接イベントで起動しない）。
-必要な入力（inputs）やシークレット（secrets）を workflow_call セクションで定義。
-github.event.issue などのイベント依存部分を、inputs経由で受け取る形に修正。
-既存の処理（issueノート生成、コミット、issue body更新）はそのまま活かすが、パラメータ化する。
-3. 具体的な修正内容
-on: issues: → on: workflow_call: に変更。
-inputs で必要な値（例: issue_title, issue_number, issue_body, issue_url など）を受け取る。
-スクリプト内の ${{ github.event.issue.xxx }} を ${{ inputs.xxx }} に置換。
-github-script ステップも同様にinputsを参照。
-必要に応じて secrets も workflow_call で受け取れるようにする。
-4. ファイル名・配置
-ファイル名はそのまま issue-note.yml。
-配置場所は workflows でOK（共通ワークフローとしてもこの場所で良い）。
-5. 呼び出し元への影響
-呼び出し元ワークフローで uses: <repo>/.github/workflows/issue-note.yml@main のように参照し、inputsを渡す形になる。
-このplanで進めます。次に、実際の共通ワークフロー化のためのyml修正案を作成しますか？
-```
-
-- userがplanレビューし、OKを出した
-- agentに生成結果ymlをレビューさせた、OKとなった
-  - userはこのレビューは認知負荷が高いのでskipとする（単純な細かい間違い探し作業になるので、それはagentに任せた）
--  エラー。呼び出し元ymlのエラーがあり修正。共通ワークフローのエラー指摘があり、共通ワークフロー側の修正が必要となった
-```
-原因の分析：
-
-呼び出し元（tonejs-mml-to-jsonのissue-note.yml）は、reusable workflow（cat2151/github-actions/.github/workflows/issue-note.yml@main）をusesで呼び出し、inputsをwithで渡しています。
-共通ワークフロー（reusable workflow）は inputs を workflow_call で受け取り、各ステップで ${{ inputs.xxx }} で参照しています。
-しかし、エラーが発生したのは actions/github-script@v7 の script 内です。
-エラーの本質的な原因：
-
-actions/github-script の script: で ${{ inputs.issue_number }} のような式を直接 JavaScript テンプレートリテラル内で使っていますが、これはサポートされていません。
-script: の中は JavaScript であり、YAMLの ${{ ... }} は展開されません（または意図通りに展開されません）。
-そのため、inputs 変数は script 内の JavaScript で未定義となり、ReferenceError になります。
-正しい書き方：
-
-actions/github-script の script: でワークフローの inputs を使いたい場合は、with: で input を environment 変数や script の引数として渡し、JavaScript で process.env から取得するか、github-script の input 機能を使う必要があります。
-例（修正版）：
-
-このように、inputs の値を env で渡し、script 内では process.env で参照してください。
-
-まとめ：
-
-actions/github-script の script 内で ${{ inputs.xxx }} を直接使うと ReferenceError になる
-env: で値を渡し、process.env で参照するのが正しい
-修正が必要です。修正版のワークフローが必要な場合はお知らせください。
-```
-
-- test green
-- closeとする
-
-{% endraw %}
-```
-
 ### .github/actions-tmp/issue-notes/7.md
 ```md
 {% raw %}
@@ -376,18 +286,20 @@ env: で値を渡し、process.env で参照するのが正しい
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
+e89deff Merge pull request #102 from cat2151/copilot/remove-owner-from-toml-rulesets
+56556f7 Remove owner/repo format from rulesets, use repository name only
+e210b24 Initial plan
+ff8c32a Merge pull request #101 from cat2151/copilot/update-issue-79-logic
+9b548a8 Update generated docs to reference new test file name
+950800d Rename timeout from all_phase3_timeout to no_change_timeout with new logic
+ab52837 Initial plan
+fb3c0e0 Update project summaries (overview & development status) [auto]
 f08e3cd Merge pull request #99 from cat2151/copilot/fix-comment-posting-messages
 7941590 Fix incorrect line reference in comment - remove specific line number
-99e47f7 Improve documentation for return value semantics and comments
-749df76 Add type annotation to post_phase2_comment return value
-bac6b4d Fix confusing log messages when comment already exists
-d5b7d2b Auto-translate README.ja.md to README.md [auto]
-36e8c59 Initial plan
-9d5e483 Merge pull request #98 from cat2151/copilot/send-notification-when-phase3
-88eccec Move send_all_phase3_notification import to module level and remove unused MagicMock import
-d3573d8 Remove redundant _all_phase3_notification_sent variable
 
 ### 変更されたファイル:
+MERGE_CONFIGURATION_EXAMPLES.md
+PHASE3_MERGE_IMPLEMENTATION.md
 README.ja.md
 README.md
 config.toml.example
@@ -401,12 +313,16 @@ src/gh_pr_phase_monitor/config.py
 src/gh_pr_phase_monitor/main.py
 src/gh_pr_phase_monitor/notifier.py
 src/gh_pr_phase_monitor/pr_actions.py
-tests/test_no_change_timeout.py
+tests/test_all_phase3_timeout.py
 tests/test_config_rulesets.py
+tests/test_config_rulesets_features.py
+tests/test_no_change_timeout.py
 tests/test_notification.py
 tests/test_post_comment.py
+tests/test_pr_actions_rulesets_features.py
+tests/test_pr_actions_with_rulesets.py
 tests/test_verbose_config.py
 
 
 ---
-Generated at: 2026-01-09 07:01:37 JST
+Generated at: 2026-01-10 07:01:25 JST

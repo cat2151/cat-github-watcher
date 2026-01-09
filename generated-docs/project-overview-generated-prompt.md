@@ -1,4 +1,4 @@
-Last updated: 2026-01-09
+Last updated: 2026-01-10
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -345,7 +345,6 @@ MIT License - 詳細はLICENSEファイルを参照してください
     📄 pr_fetcher.py
     📄 repository_fetcher.py
 📁 tests/
-  📄 test_no_change_timeout.py
   📄 test_browser_automation.py
   📄 test_config_rulesets.py
   📄 test_config_rulesets_features.py
@@ -354,6 +353,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_integration_issue_fetching.py
   📄 test_interval_parsing.py
   📄 test_issue_fetching.py
+  📄 test_no_change_timeout.py
   📄 test_no_open_prs_issue_display.py
   📄 test_notification.py
   📄 test_phase3_merge.py
@@ -398,4 +398,4 @@ docs/browser-automation-approaches.md
 
 
 ---
-Generated at: 2026-01-09 07:01:36 JST
+Generated at: 2026-01-10 07:01:25 JST

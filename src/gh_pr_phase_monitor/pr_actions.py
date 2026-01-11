@@ -195,12 +195,12 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         # Use global phase3_merge configuration
         phase3_merge_config = config.get("phase3_merge", {}) if config else {}
         # Check if phase3_merge is enabled:
-        # - If enable_phase3_merge is None (not set by rulesets), default to enabled (use global settings)
+        # - If enable_phase3_merge is None (not set by rulesets), check if config section exists
         # - If enable_phase3_merge is explicitly True/False from rulesets, respect that
         enable_phase3_merge_flag = exec_config.get("enable_phase3_merge")
         if enable_phase3_merge_flag is None:
-            # Not set by rulesets, default to enabled (use global settings)
-            merge_configured = True
+            # Not set by rulesets, only enable if phase3_merge config section exists
+            merge_configured = bool(phase3_merge_config)
         else:
             # Ruleset explicitly sets it
             merge_configured = enable_phase3_merge_flag

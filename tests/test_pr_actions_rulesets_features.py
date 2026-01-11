@@ -181,8 +181,8 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             mock_merge.assert_not_called()
             mock_comment.assert_not_called()
 
-    def test_no_merge_when_global_phase3_merge_disabled(self):
-        """Merge should happen by default when phase3_merge config exists (global enabled flag removed)"""
+    def test_merge_happens_when_enabled_via_ruleset(self):
+        """Merge should happen when enabled via ruleset and phase3_merge config exists"""
         pr = {
             "isDraft": False,
             "reviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"}],
@@ -214,3 +214,32 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             # Merge SHOULD be attempted now (global enabled flag removed)
             mock_merge.assert_called_once()
             mock_comment.assert_called_once()
+
+    def test_no_merge_when_phase3_merge_config_missing(self):
+        """Merge should not happen when phase3_merge config section doesn't exist"""
+        pr = {
+            "isDraft": False,
+            "reviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"}],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"}],
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "Test PR",
+            "url": "https://github.com/test-owner/test-repo/pull/1",
+        }
+        config = {
+            # No phase3_merge section
+            "enable_execution_phase3_to_merge": False,
+            "rulesets": [
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_phase3_to_merge": True,
+                }
+            ],
+        }
+
+        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser"), patch(
+            "src.gh_pr_phase_monitor.pr_actions.merge_pr"
+        ) as mock_merge, patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment:
+            process_pr(pr, config)
+            # Merge should NOT be attempted when config section doesn't exist
+            mock_merge.assert_not_called()
+            mock_comment.assert_not_called()

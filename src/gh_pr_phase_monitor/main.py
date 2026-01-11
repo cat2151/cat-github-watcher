@@ -32,7 +32,7 @@ _pr_state_times: Dict[Tuple[str, str], float] = {}
 _last_state: Optional[Tuple[frozenset, float]] = None
 
 # Track the current monitoring mode
-# True = reduced frequency mode (1h interval), False = normal mode
+# True = reduced frequency mode (uses the configured reduced_frequency_interval), False = normal mode
 _reduced_frequency_mode: bool = False
 
 
@@ -248,7 +248,7 @@ def check_no_state_change_timeout(
     
     This tracks when ANY change happens in the PR state (phase changes, PRs added/removed).
     Timer starts when the state first becomes stable and resets on any state change.
-    When timeout is reached, monitoring switches to reduced frequency mode (1h interval).
+    When timeout is reached, monitoring switches to reduced frequency mode (using the configured reduced-frequency interval).
     When changes are detected, monitoring returns to normal frequency mode.
     
     Args:
@@ -263,6 +263,9 @@ def check_no_state_change_timeout(
 
     # Get timeout setting from config with default of "30m"
     timeout_str = (config or {}).get("no_change_timeout", "30m")
+    
+    # Get reduced frequency interval setting from config with default of "1h"
+    reduced_interval_str = (config or {}).get("reduced_frequency_interval", "1h")
 
     # If timeout is explicitly set to empty string (disabled), don't check
     if not timeout_str:
@@ -317,7 +320,7 @@ def check_no_state_change_timeout(
             elapsed_str = format_elapsed_time(elapsed)
             print(f"\n{'=' * 50}")
             print(f"PRの状態に変化がない状態が{timeout_str}（{elapsed_str}）続きました。")
-            print("API利用の浪費を防止するため、監視間隔を1時間に変更します。")
+            print(f"API利用の浪費を防止するため、監視間隔を{reduced_interval_str}に変更します。")
             print("変化があったら元の監視間隔に戻ります。")
             print(f"{'=' * 50}")
             _reduced_frequency_mode = True
@@ -616,9 +619,8 @@ def main():
                 current_interval_seconds = reduced_interval_seconds
                 current_interval_str = reduced_interval_str
             except ValueError as e:
-                print(f"Warning: Invalid reduced_frequency_interval format: {e}, using default 1h")
-                current_interval_seconds = 3600  # 1 hour
-                current_interval_str = "1h"
+                print(f"Error: Invalid reduced_frequency_interval format: {e}", file=sys.stderr)
+                sys.exit(1)
         else:
             # Use normal interval
             current_interval_seconds = interval_seconds

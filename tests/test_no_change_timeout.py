@@ -201,7 +201,7 @@ class TestNoChangeTimeout:
             output = " ".join(calls)
             assert "変化がない" in output
             assert "API利用の浪費を防止" in output
-            assert "監視間隔を1時間に変更" in output
+            assert "監視間隔を" in output  # Check for the interval change message without hardcoding the interval
 
     def test_mismatched_list_lengths(self):
         """Test that mismatched all_prs and pr_phases lengths are handled correctly"""

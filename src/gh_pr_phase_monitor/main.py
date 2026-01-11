@@ -613,7 +613,7 @@ def main():
         # Determine which interval to use
         if use_reduced_frequency:
             # Use reduced frequency interval (default: 1h)
-            reduced_interval_str = config.get("reduced_frequency_interval", "1h")
+            reduced_interval_str = (config or {}).get("reduced_frequency_interval", "1h")
             try:
                 reduced_interval_seconds = parse_interval(reduced_interval_str)
                 current_interval_seconds = reduced_interval_seconds

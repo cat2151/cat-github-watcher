@@ -167,29 +167,57 @@ cat-github-watcher/
    headless = false  # ヘッドレスモードで実行（ウィンドウを表示しない）
    ```
 
-4. ブラウザ自動操縦のため、SeleniumまたはPlaywrightをインストール：
+4. **ボタンスクリーンショットの準備（自動化を使用する場合のみ）**:
    
-   **Seleniumを使用する場合:**
+   自動化機能（`automated = true` または `assign_to_copilot` / `phase3_merge` の有効化）を使用する場合、
+   PyAutoGUIがクリックするボタンのスクリーンショットが必要です。
+   
+   **必要なスクリーンショット:**
+   
+   issueの自動割り当て用（`assign_to_copilot` 機能）:
+   - `assign_to_copilot.png` - "Assign to Copilot" ボタンのスクリーンショット
+   - `assign.png` - "Assign" ボタンのスクリーンショット
+   
+   PRの自動マージ用（`phase3_merge` 機能で `automated = true` の場合）:
+   - `merge_pull_request.png` - "Merge pull request" ボタンのスクリーンショット
+   - `confirm_merge.png` - "Confirm merge" ボタンのスクリーンショット
+   - `delete_branch.png` - "Delete branch" ボタンのスクリーンショット（オプション）
+   
+   **スクリーンショットの撮り方:**
+   
+   a. GitHubのissueまたはPRをブラウザで開く
+   b. 自動化したいボタンを見つける
+   c. **ボタンだけ**のスクリーンショットを撮る（画面全体ではなく）
+   d. PNG形式で `screenshots` ディレクトリに保存する
+   e. 上記の正確なファイル名を使用する
+   
+   **ヒント:**
+   - スクリーンショットはボタンのみを含め、小さな余白を含める
+   - OSのスクリーンショットツールを使用する（Windows: Snipping Tool、Mac: Cmd+Shift+4）
+   - ボタンがはっきり見え、隠れていないことを確認
+   - ボタンの見た目が変わる場合（テーマ変更など）、スクリーンショットを更新する必要があります
+   - 画像認識の信頼度を調整する場合は `confidence` 設定を使用（DPI scalingやテーマによる）
+   
+   **重要な要件:**
+   - デフォルトブラウザで**GitHubに既にログイン済み**である必要があります
+   - 自動化は既存のブラウザセッションを使用します（新しい認証は行いません）
+   - ボタンクリック時に正しいGitHubウィンドウ/タブがフォーカスされ、画面に表示されていることを確認してください
+   - 複数のGitHubページが開いている場合、最初に見つかったボタンがクリックされます
+   
+   **スクリーンショットディレクトリの作成:**
+   ```bash
+   mkdir screenshots
+   ```
+
+5. PyAutoGUIをインストール（自動化を使用する場合のみ）：
+   
    ```bash
    pip install -r requirements-automation.txt
    ```
    または
    ```bash
-   pip install selenium webdriver-manager
+   pip install pyautogui pillow
    ```
-   
-   使用するブラウザのドライバー：
-   - **Edge**: Windows 10/11に標準搭載（追加インストール不要）
-   - **Chrome**: ChromeDriverが自動的にダウンロードされます
-   - **Firefox**: GeckoDriverが自動的にダウンロードされます
-   
-   **Playwrightを使用する場合:**
-   ```bash
-   pip install playwright
-   playwright install
-   ```
-   
-   Playwrightは chromium、firefox、webkit ブラウザをサポートします。
 
 ### 実行
 
@@ -221,8 +249,8 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
    - rulesetsで`assign_good_first_old = true`とすると最も古い"good first issue"を自動割り当て（issue番号順）
    - rulesetsで`assign_old = true`とすると最も古いissueを自動割り当て（issue番号順、ラベル不問）
    - 両方がtrueの場合、"good first issue"を優先
-   - デフォルト動作: ブラウザ自動操縦で自動的にボタンをクリック（`[assign_to_copilot]`セクションは不要）
-   - 必須: SeleniumまたはPlaywrightのインストールが必要
+   - デフォルト動作: PyAutoGUIで自動的にボタンをクリック（`[assign_to_copilot]`セクションは不要）
+   - 必須: PyAutoGUIのインストールとボタンスクリーンショットの準備が必要
 6. **繰り返し**: 設定された間隔で監視を継続
 
 ### Dry-runモード

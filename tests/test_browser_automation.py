@@ -1,0 +1,282 @@
+"""Tests for browser automation module"""
+
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+from src.gh_pr_phase_monitor.browser_automation import (
+    assign_issue_to_copilot_automated,
+    is_pyautogui_available,
+    merge_pr_automated,
+)
+
+
+class TestIsPyAutoGUIAvailable:
+    """Tests for is_pyautogui_available function"""
+
+    def test_returns_bool(self):
+        """Test that function returns correct availability status"""
+        # This will be True or False depending on whether PyAutoGUI is installed
+        result = is_pyautogui_available()
+        assert isinstance(result, bool)
+
+
+class TestAssignIssueToCopilotAutomated:
+    """Tests for assign_issue_to_copilot_automated function"""
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", False)
+    def test_returns_false_when_pyautogui_unavailable(self):
+        """Test that function returns False when PyAutoGUI is not available"""
+        result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", {})
+        assert result is False
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_successful_assignment(self, mock_sleep, mock_click, mock_webbrowser):
+        """Test successful assignment flow"""
+        # Mock successful button clicks
+        mock_click.return_value = True
+
+        config = {"assign_to_copilot": {"wait_seconds": 5}}
+
+        result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", config)
+
+        # Should succeed
+        assert result is True
+
+        # Verify browser was opened
+        mock_webbrowser.open.assert_called_once_with("https://github.com/test/repo/issues/1")
+
+        # Verify two button clicks were attempted
+        assert mock_click.call_count == 2
+        call_args_list = [call[0][0] for call in mock_click.call_args_list]
+        assert "assign_to_copilot" in call_args_list
+        assert "assign" in call_args_list
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    def test_handles_invalid_wait_seconds_string(self, mock_click, mock_webbrowser):
+        """Test that function handles invalid wait_seconds (string) gracefully"""
+        mock_click.return_value = False
+
+        config = {"assign_to_copilot": {"wait_seconds": "invalid"}}
+
+        result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", config)
+
+        # Should use default value and fail (because buttons not found)
+        assert result is False
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    def test_handles_negative_wait_seconds(self, mock_click, mock_webbrowser):
+        """Test that function handles negative wait_seconds gracefully"""
+        mock_click.return_value = False
+
+        config = {"assign_to_copilot": {"wait_seconds": -5}}
+
+        result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", config)
+
+        # Should use default value (10) instead of -5
+        assert result is False
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    def test_accepts_valid_wait_seconds(self, mock_click, mock_webbrowser):
+        """Test that function accepts valid wait_seconds"""
+        mock_click.return_value = True
+
+        config = {"assign_to_copilot": {"wait_seconds": 5}}
+
+        result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", config)
+
+        assert result is True
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    def test_handles_float_wait_seconds(self, mock_click, mock_webbrowser):
+        """Test that function converts float wait_seconds to int"""
+        mock_click.return_value = True
+
+        config = {"assign_to_copilot": {"wait_seconds": 5.7}}
+
+        result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", config)
+
+        # Should convert to int (5)
+        assert result is True
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    def test_fails_if_first_button_not_found(self, mock_click, mock_webbrowser):
+        """Test that function fails if first button is not found"""
+
+        def click_side_effect(button_name, config, confidence=0.8):
+            if button_name == "assign_to_copilot":
+                return False  # First button not found
+            return True
+
+        mock_click.side_effect = click_side_effect
+
+        config = {"assign_to_copilot": {"wait_seconds": 1}}
+
+        result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", config)
+
+        # Should fail
+        assert result is False
+        assert mock_click.call_count == 1  # Only tried first button
+
+
+class TestMergePrAutomated:
+    """Tests for merge_pr_automated function"""
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", False)
+    def test_returns_false_when_pyautogui_unavailable(self):
+        """Test that function returns False when PyAutoGUI is not available"""
+        result = merge_pr_automated("https://github.com/test/repo/pull/1", {})
+        assert result is False
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_clicks_delete_branch_button_after_merge(self, mock_sleep, mock_click, mock_webbrowser):
+        """Test that function attempts to click Delete branch button after merge"""
+        # Mock click function to succeed for all buttons
+        mock_click.return_value = True
+
+        config = {"phase3_merge": {"wait_seconds": 1}}
+
+        result = merge_pr_automated("https://github.com/test/repo/pull/1", config)
+
+        # Should succeed
+        assert result is True
+
+        # Verify the three button clicks: merge_pull_request, confirm_merge, delete_branch
+        assert mock_click.call_count == 3
+        call_args_list = [call[0][0] for call in mock_click.call_args_list]
+        assert "merge_pull_request" in call_args_list
+        assert "confirm_merge" in call_args_list
+        assert "delete_branch" in call_args_list
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_succeeds_even_if_delete_branch_button_not_found(self, mock_sleep, mock_click, mock_webbrowser):
+        """Test that function succeeds even if Delete branch button is not found"""
+
+        def click_side_effect(button_name, config, confidence=0.8):
+            if button_name == "delete_branch":
+                return False  # Button not found
+            return True
+
+        mock_click.side_effect = click_side_effect
+
+        config = {"phase3_merge": {"wait_seconds": 1}}
+
+        result = merge_pr_automated("https://github.com/test/repo/pull/1", config)
+
+        # Should still succeed (merge was successful, branch deletion is optional)
+        assert result is True
+        assert mock_click.call_count == 3
+
+
+class TestClickButtonWithImage:
+    """Tests for _click_button_with_image helper function"""
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
+    def test_returns_false_when_screenshot_not_found(self, mock_get_path):
+        """Test that function returns False when screenshot is not found"""
+        from src.gh_pr_phase_monitor.browser_automation import _click_button_with_image
+
+        mock_get_path.return_value = None
+
+        result = _click_button_with_image("test_button", {})
+
+        assert result is False
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
+    def test_returns_false_when_button_not_on_screen(self, mock_get_path):
+        """Test that function returns False when button is not found on screen"""
+        from src.gh_pr_phase_monitor.browser_automation import _click_button_with_image
+
+        # Need to mock pyautogui module
+        with patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui:
+            mock_get_path.return_value = Path("/tmp/test_button.png")
+            mock_pyautogui.locateOnScreen.return_value = None  # Button not found
+
+            result = _click_button_with_image("test_button", {})
+
+            assert result is False
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
+    def test_clicks_button_when_found(self, mock_get_path):
+        """Test that function clicks button when found on screen"""
+        from src.gh_pr_phase_monitor.browser_automation import _click_button_with_image
+
+        # Need to mock pyautogui module
+        with patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui:
+            mock_get_path.return_value = Path("/tmp/test_button.png")
+            mock_location = MagicMock()
+            mock_pyautogui.locateOnScreen.return_value = mock_location
+            mock_pyautogui.center.return_value = (100, 200)
+
+            result = _click_button_with_image("test_button", {})
+
+            assert result is True
+            mock_pyautogui.click.assert_called_once_with((100, 200))
+
+
+class TestGetScreenshotPath:
+    """Tests for _get_screenshot_path helper function"""
+
+    def test_returns_none_when_file_not_exists(self, tmp_path):
+        """Test that function returns None when screenshot file doesn't exist"""
+        from src.gh_pr_phase_monitor.browser_automation import _get_screenshot_path
+
+        config = {"screenshot_dir": str(tmp_path)}
+
+        result = _get_screenshot_path("nonexistent_button", config)
+
+        assert result is None
+
+    def test_finds_png_file(self, tmp_path):
+        """Test that function finds PNG file"""
+        from src.gh_pr_phase_monitor.browser_automation import _get_screenshot_path
+
+        # Create a dummy PNG file
+        screenshot_file = tmp_path / "test_button.png"
+        screenshot_file.touch()
+
+        config = {"screenshot_dir": str(tmp_path)}
+
+        result = _get_screenshot_path("test_button", config)
+
+        assert result == screenshot_file
+
+    def test_uses_default_screenshot_dir(self, tmp_path, monkeypatch):
+        """Test that function uses default screenshots directory"""
+        from src.gh_pr_phase_monitor.browser_automation import _get_screenshot_path
+
+        # Change to temp directory
+        monkeypatch.chdir(tmp_path)
+
+        # Create screenshots directory and file
+        screenshots_dir = tmp_path / "screenshots"
+        screenshots_dir.mkdir()
+        screenshot_file = screenshots_dir / "test_button.png"
+        screenshot_file.touch()
+
+        config = {}  # No screenshot_dir specified, should use default "screenshots"
+
+        result = _get_screenshot_path("test_button", config)
+
+        assert result == screenshot_file

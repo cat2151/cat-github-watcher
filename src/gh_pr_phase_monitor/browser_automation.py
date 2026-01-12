@@ -20,6 +20,7 @@ try:
     PYAUTOGUI_AVAILABLE = True
 except ImportError:
     PYAUTOGUI_AVAILABLE = False
+    pyautogui = None  # Set to None when not available
 
 
 def is_pyautogui_available() -> bool:

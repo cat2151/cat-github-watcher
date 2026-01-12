@@ -359,6 +359,74 @@ def test_display_issues_with_assign_lowest_number():
                 mock_assign.assert_called_once()
 
 
+def test_assign_only_fetches_from_enabled_repos():
+    """
+    Test that assignment only fetches issues from repos where BOTH
+    assign_good_first_old/assign_old AND enable_assign_to_copilot are true.
+    This prevents fetching issues from repos that don't have assignment enabled.
+    """
+    with patch("src.gh_pr_phase_monitor.main.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.main.get_issues_from_repositories") as mock_get_issues:
+            with patch("src.gh_pr_phase_monitor.main.assign_issue_to_copilot") as mock_assign:
+                # Mock response: two repos without PRs but with issues
+                mock_get_repos.return_value = [
+                    {"name": "repo-with-assign", "owner": "testuser", "openIssueCount": 2},
+                    {"name": "repo-without-assign", "owner": "testuser", "openIssueCount": 3},
+                ]
+
+                # Mock issue response
+                mock_get_issues.side_effect = [
+                    # First call: good first issue (should only fetch from repo-with-assign)
+                    [
+                        {
+                            "title": "Good first issue from enabled repo",
+                            "url": "https://github.com/testuser/repo-with-assign/issues/1",
+                            "number": 1,
+                            "updatedAt": "2024-01-01T00:00:00Z",
+                            "author": {"login": "contributor1"},
+                            "repository": {"owner": "testuser", "name": "repo-with-assign"},
+                            "labels": ["good first issue"],
+                        }
+                    ],
+                    # Second call: top 10 issues
+                    [],
+                ]
+
+                mock_assign.return_value = True
+
+                # Create config where only repo-with-assign has both flags enabled
+                config = {
+                    "assign_to_copilot": {},
+                    "rulesets": [
+                        {
+                            "repositories": ["repo-with-assign"],
+                            "enable_assign_to_copilot": True,
+                            "assign_good_first_old": True,
+                        },
+                        {
+                            "repositories": ["repo-without-assign"],
+                            # Only assign_good_first_old is true, but enable_assign_to_copilot is missing/false
+                            "assign_good_first_old": True,
+                        },
+                    ],
+                }
+
+                # Call the function
+                display_issues_from_repos_without_prs(config)
+
+                # Verify that get_issues_from_repositories was called
+                assert mock_get_issues.call_count == 2
+
+                # Verify first call only included repo-with-assign
+                first_call = mock_get_issues.call_args_list[0]
+                repos_arg = first_call[0][0]  # First positional argument
+                assert len(repos_arg) == 1
+                assert repos_arg[0]["name"] == "repo-with-assign"
+
+                # Verify assignment was attempted
+                mock_assign.assert_called_once()
+
+
 if __name__ == "__main__":
     test_display_issues_when_no_repos_with_prs()
     print("✓ Test 1 passed: display_issues_when_no_repos_with_prs")
@@ -380,5 +448,8 @@ if __name__ == "__main__":
 
     test_display_issues_with_assign_lowest_number()
     print("✓ Test 7 passed: display_issues_with_assign_lowest_number")
+
+    test_assign_only_fetches_from_enabled_repos()
+    print("✓ Test 8 passed: test_assign_only_fetches_from_enabled_repos")
 
     print("\n✅ All tests passed!")

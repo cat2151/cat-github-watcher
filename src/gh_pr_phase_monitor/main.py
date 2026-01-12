@@ -386,8 +386,11 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
 
             # Check if any repository has auto-assign enabled
             # We need to check all repos to determine which mode to use
+            # Also filter repos to only those with assignment properly enabled
             any_good_first = False
             any_old = False
+            repos_with_good_first_enabled = []
+            repos_with_old_enabled = []
 
             # Only check for assign flags if config is not None
             if config:
@@ -396,22 +399,28 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                     repo_name = repo.get("name", "")
                     if repo_owner and repo_name:
                         exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
-                        if exec_config.get("assign_good_first_old", False):
-                            any_good_first = True
-                        if exec_config.get("assign_old", False):
-                            any_old = True
+                        # Only consider repos where enable_assign_to_copilot is true
+                        enable_assign = exec_config.get("enable_assign_to_copilot")
+                        if enable_assign is not None and enable_assign:
+                            if exec_config.get("assign_good_first_old", False):
+                                any_good_first = True
+                                repos_with_good_first_enabled.append(repo)
+                            if exec_config.get("assign_old", False):
+                                any_old = True
+                                repos_with_old_enabled.append(repo)
 
             # Always try to check for issues to assign (batteries-included)
             # Individual repositories must explicitly enable via rulesets for actual assignment
             # Priority: good first issue > old issue (both sorted by issue number ascending)
             if any_good_first:
                 # Fetch and auto-assign the oldest "good first issue" (oldest by issue number)
+                # Only from repos with both assign_good_first_old and enable_assign_to_copilot enabled
                 print(f"\n{'=' * 50}")
                 print("Checking for the oldest 'good first issue' to auto-assign to Copilot...")
                 print(f"{'=' * 50}")
 
                 good_first_issues = get_issues_from_repositories(
-                    repos_with_issues, limit=1, labels=["good first issue"], sort_by_number=True
+                    repos_with_good_first_enabled, limit=1, labels=["good first issue"], sort_by_number=True
                 )
 
                 if good_first_issues:
@@ -428,23 +437,20 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                     # Get repository-specific configuration
                     temp_config = _resolve_assign_to_copilot_config(issue, config)
 
-                    # Check if assign_to_copilot is enabled for this repository
-                    if not temp_config.get("assign_to_copilot"):
-                        print("  Skipping: assign_to_copilot is disabled for this repository")
-                    else:
-                        # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, temp_config)
-                        if not success:
-                            print("  Assignment failed - will retry on next iteration")
+                    # Assign the issue to Copilot and check the result
+                    success = assign_issue_to_copilot(issue, temp_config)
+                    if not success:
+                        print("  Assignment failed - will retry on next iteration")
                 else:
                     print("  No 'good first issue' issues found in repositories without open PRs")
             elif any_old:
                 # Fetch and auto-assign the oldest issue (any issue)
+                # Only from repos with both assign_old and enable_assign_to_copilot enabled
                 print(f"\n{'=' * 50}")
                 print("Checking for the oldest issue to auto-assign to Copilot...")
                 print(f"{'=' * 50}")
 
-                oldest_issues = get_issues_from_repositories(repos_with_issues, limit=1, sort_by_number=True)
+                oldest_issues = get_issues_from_repositories(repos_with_old_enabled, limit=1, sort_by_number=True)
 
                 if oldest_issues:
                     issue = oldest_issues[0]
@@ -460,14 +466,10 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                     # Get repository-specific configuration
                     temp_config = _resolve_assign_to_copilot_config(issue, config)
 
-                    # Check if assign_to_copilot is enabled for this repository
-                    if not temp_config.get("assign_to_copilot"):
-                        print("  Skipping: assign_to_copilot is disabled for this repository")
-                    else:
-                        # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, temp_config)
-                        if not success:
-                            print("  Assignment failed - will retry on next iteration")
+                    # Assign the issue to Copilot and check the result
+                    success = assign_issue_to_copilot(issue, temp_config)
+                    if not success:
+                        print("  Assignment failed - will retry on next iteration")
                 else:
                     print("  No issues found in repositories without open PRs")
 

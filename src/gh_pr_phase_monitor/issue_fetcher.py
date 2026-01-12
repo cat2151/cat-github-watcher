@@ -3,10 +3,9 @@ Issue fetching module for GitHub issues
 """
 
 import json
-import webbrowser
 from typing import Any, Dict, List, Optional
 
-from .browser_automation import assign_issue_to_copilot_automated, is_selenium_available
+from .browser_automation import assign_issue_to_copilot_automated, is_playwright_available, is_selenium_available
 from .graphql_client import execute_graphql_query
 
 # GraphQL pagination constants
@@ -149,13 +148,13 @@ def get_issues_from_repositories(
 
 
 def assign_issue_to_copilot(issue: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> bool:
-    """Assign an issue to GitHub Copilot by opening the issue in a browser
+    """Assign an issue to GitHub Copilot using browser automation
 
-    This function supports two modes:
-    1. Manual mode (default): Opens the issue in a browser and prompts user to click buttons
-    2. Automated mode: Uses Selenium to automatically click the buttons
-
-    The mode is determined by the 'automated' setting in config['assign_to_copilot'].
+    This function uses Selenium or Playwright to automatically:
+    1. Open the issue in a browser
+    2. Wait for the configured time (default 10 seconds)
+    3. Click the "Assign to Copilot" button
+    4. Click the "Assign" button
 
     This function no longer posts a comment, as that approach was found to
     increase assignee count without actually assigning Copilot, which polluted
@@ -181,35 +180,15 @@ def assign_issue_to_copilot(issue: Dict[str, Any], config: Optional[Dict[str, An
     owner = repo_info.get("owner", "unknown")
     issue_number = issue.get("number", "unknown")
 
-    # Check if automated mode is enabled
-    if config is not None:
-        assign_config = config.get("assign_to_copilot", {})
-        automated = assign_config.get("automated", False)
+    # Always use automated assignment
+    print(f"  → Attempting automated assignment for issue #{issue_number}: {owner}/{repo_name}")
 
-        if automated:
-            # Try automated assignment
-            print(f"  → Attempting automated assignment for issue #{issue_number}: {owner}/{repo_name}")
-
-            if not is_selenium_available():
-                print("  ⚠ Selenium not available, falling back to manual mode")
-                print("  → To enable automation, install: pip install selenium webdriver-manager")
-            else:
-                # Use automated browser automation
-                return assign_issue_to_copilot_automated(issue_url, config)
-
-    # Manual mode: just open the browser
-    try:
-        # Open the issue in the default browser
-        opened = webbrowser.open(issue_url)
-
-        if opened:
-            print(f"  ✓ Opened issue #{issue_number} in browser: {owner}/{repo_name}")
-            print("    Please manually click the 'Assign to Copilot' button in your browser")
-        else:
-            print(f"  ✗ Failed to open browser for issue #{issue_number}")
-
-        return opened
-
-    except Exception as e:
-        print(f"  ✗ Failed to open browser for issue: {e}")
+    if not is_selenium_available() and not is_playwright_available():
+        print("  ✗ Neither Selenium nor Playwright is available")
+        print("  → To enable automation, install one of:")
+        print("     - Selenium: pip install selenium webdriver-manager")
+        print("     - Playwright: pip install playwright && playwright install")
         return False
+
+    # Use automated browser automation
+    return assign_issue_to_copilot_automated(issue_url, config)

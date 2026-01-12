@@ -19,8 +19,8 @@ DEFAULT_PHASE3_MERGE_CONFIG: Dict[str, Any] = {
 }
 
 # Default configuration for assign_to_copilot feature (batteries included)
+# Automated mode is always enabled by default
 DEFAULT_ASSIGN_TO_COPILOT_CONFIG: Dict[str, Any] = {
-    "automated": False,
     "automation_backend": "playwright",
     "wait_seconds": 10,
     "browser": "chromium",
@@ -230,12 +230,10 @@ def print_config(config: Dict[str, Any]) -> None:
     if assign_to_copilot and isinstance(assign_to_copilot, dict):
         print("\n[Auto-assign to Copilot Settings]")
         print(f"  assign_lowest_number_issue: {assign_to_copilot.get('assign_lowest_number_issue', False)}")
-        print(f"  automated: {assign_to_copilot.get('automated', False)}")
-        if assign_to_copilot.get("automated", False):
-            print(f"  automation_backend: {assign_to_copilot.get('automation_backend', 'playwright')}")
-            print(f"  wait_seconds: {assign_to_copilot.get('wait_seconds', 10)}")
-            print(f"  browser: {assign_to_copilot.get('browser', 'chromium')}")
-            print(f"  headless: {assign_to_copilot.get('headless', False)}")
+        print(f"  automation_backend: {assign_to_copilot.get('automation_backend', 'playwright')}")
+        print(f"  wait_seconds: {assign_to_copilot.get('wait_seconds', 10)}")
+        print(f"  browser: {assign_to_copilot.get('browser', 'chromium')}")
+        print(f"  headless: {assign_to_copilot.get('headless', False)}")
 
     print("\n" + "=" * 50)
 

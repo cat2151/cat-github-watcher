@@ -151,23 +151,23 @@ cat-github-watcher/
    # 両方がtrueの場合、"good first issue"を優先
    # 
    # デフォルト動作（このセクションが定義されていない場合）:
-   # - ブラウザでissueを開いて手動割り当て
+   # - ブラウザ自動操縦で自動的にボタンをクリック
    # - Playwright + Chromiumを使用
-   # - automated = false（手動モード）
    # - wait_seconds = 10
    # - headless = false
+   # 
+   # 必須: SeleniumまたはPlaywrightのインストールが必要
    # 
    # 重要: 安全のため、この機能はデフォルトで無効です
    # リポジトリごとにrulesetsで assign_good_first_old または assign_old を指定して明示的に有効化する必要があります
    [assign_to_copilot]
-   automated = false  # trueにするとブラウザ自動操縦を有効化（要：pip install selenium webdriver-manager または playwright）
    automation_backend = "playwright"  # 自動操縦バックエンド: "selenium" または "playwright"
    wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
    browser = "chromium"  # 使用するブラウザ: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
    headless = false  # ヘッドレスモードで実行（ウィンドウを表示しない）
    ```
 
-4. （オプション）ブラウザ自動操縦を使用する場合は、SeleniumまたはPlaywrightをインストール：
+4. ブラウザ自動操縦のため、SeleniumまたはPlaywrightをインストール：
    
    **Seleniumを使用する場合:**
    ```bash
@@ -221,7 +221,8 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
    - rulesetsで`assign_good_first_old = true`とすると最も古い"good first issue"を自動割り当て（issue番号順）
    - rulesetsで`assign_old = true`とすると最も古いissueを自動割り当て（issue番号順、ラベル不問）
    - 両方がtrueの場合、"good first issue"を優先
-   - デフォルト動作: ブラウザでissueを開いて手動割り当て（`[assign_to_copilot]`セクションは不要）
+   - デフォルト動作: ブラウザ自動操縦で自動的にボタンをクリック（`[assign_to_copilot]`セクションは不要）
+   - 必須: SeleniumまたはPlaywrightのインストールが必要
 6. **繰り返し**: 設定された間隔で監視を継続
 
 ### Dry-runモード

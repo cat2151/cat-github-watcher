@@ -382,65 +382,43 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                 print(f"    - {repo['name']}: {repo['openIssueCount']} open issue(s)")
 
             # Check if auto-assign feature is enabled in config
-            # With batteries-included approach:
-            # - Default configuration is always available (no TOML section needed)
-            # - But per-repository assignment requires explicit ruleset enablement
-            # - We check for "good first issue" or "lowest number" mode here
-            assign_lowest_number = False
-            if config:
-                assign_config = get_assign_to_copilot_config(config)
-                assign_lowest_number = assign_config.get("assign_lowest_number_issue", False)
+            # With the new design:
+            # - Rulesets can specify "assign_good_first_old" to assign one old "good first issue"
+            # - Rulesets can specify "assign_old" to assign one old issue (any issue)
+            # - Both default to false
+            # - When both are true, prioritize "good first issue"
+            
+            # Check if any repository has auto-assign enabled
+            # We need to check all repos to determine which mode to use
+            any_good_first = False
+            any_old = False
+            
+            for repo in repos_with_issues:
+                repo_owner = repo.get("owner", "")
+                repo_name = repo.get("name", "")
+                if repo_owner and repo_name:
+                    exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
+                    if exec_config.get("assign_good_first_old", False):
+                        any_good_first = True
+                    if exec_config.get("assign_old", False):
+                        any_old = True
 
             # Always try to check for issues to assign (batteries-included)
             # Individual repositories must explicitly enable via rulesets for actual assignment
-            # Check which mode to use: lowest number or good first issue
-            if assign_lowest_number:
-                # Fetch and auto-assign the issue with the lowest number
+            # Priority: good first issue > old issue
+            if any_good_first:
+                # Fetch and auto-assign the oldest "good first issue"
                 print(f"\n{'=' * 50}")
-                print("Checking for the issue with the lowest number to auto-assign to Copilot...")
-                print(f"{'=' * 50}")
-
-                lowest_number_issues = get_issues_from_repositories(
-                    repos_with_issues, limit=1, sort_by_number=True
-                )
-
-                if lowest_number_issues:
-                    issue = lowest_number_issues[0]
-                    print("\n  Found issue with lowest number:")
-                    print(f"  #{issue['number']}: {issue['title']}")
-                    print(f"     URL: {issue['url']}")
-                    # Safely join labels, ensuring they are all strings
-                    labels = issue.get('labels', [])
-                    label_str = ', '.join(str(label) for label in labels)
-                    print(f"     Labels: {label_str}")
-                    print("\n  Attempting to assign to Copilot...")
-
-                    # Get repository-specific configuration
-                    temp_config = _resolve_assign_to_copilot_config(issue, config)
-                    
-                    # Check if assign_to_copilot is enabled for this repository
-                    if not temp_config.get("assign_to_copilot"):
-                        print("  Skipping: assign_to_copilot is disabled for this repository")
-                    else:
-                        # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, temp_config)
-                        if not success:
-                            print("  Assignment failed - will retry on next iteration")
-                else:
-                    print("  No issues found in repositories without open PRs")
-            else:
-                # Original behavior: try to fetch and auto-assign "good first issue" issues
-                print(f"\n{'=' * 50}")
-                print("Checking for 'good first issue' issues to auto-assign to Copilot...")
+                print("Checking for the oldest 'good first issue' to auto-assign to Copilot...")
                 print(f"{'=' * 50}")
 
                 good_first_issues = get_issues_from_repositories(
-                    repos_with_issues, limit=1, labels=["good first issue"]
+                    repos_with_issues, limit=1, labels=["good first issue"], sort_by_number=True
                 )
 
                 if good_first_issues:
                     issue = good_first_issues[0]
-                    print("\n  Found top 'good first issue' (sorted by last update, descending):")
+                    print("\n  Found oldest 'good first issue' (sorted by issue number, ascending):")
                     print(f"  #{issue['number']}: {issue['title']}")
                     print(f"     URL: {issue['url']}")
                     # Safely join labels, ensuring they are all strings
@@ -462,6 +440,40 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                             print("  Assignment failed - will retry on next iteration")
                 else:
                     print("  No 'good first issue' issues found in repositories without open PRs")
+            elif any_old:
+                # Fetch and auto-assign the oldest issue (any issue)
+                print(f"\n{'=' * 50}")
+                print("Checking for the oldest issue to auto-assign to Copilot...")
+                print(f"{'=' * 50}")
+
+                oldest_issues = get_issues_from_repositories(
+                    repos_with_issues, limit=1, sort_by_number=True
+                )
+
+                if oldest_issues:
+                    issue = oldest_issues[0]
+                    print("\n  Found oldest issue (sorted by issue number, ascending):")
+                    print(f"  #{issue['number']}: {issue['title']}")
+                    print(f"     URL: {issue['url']}")
+                    # Safely join labels, ensuring they are all strings
+                    labels = issue.get('labels', [])
+                    label_str = ', '.join(str(label) for label in labels)
+                    print(f"     Labels: {label_str}")
+                    print("\n  Attempting to assign to Copilot...")
+
+                    # Get repository-specific configuration
+                    temp_config = _resolve_assign_to_copilot_config(issue, config)
+                    
+                    # Check if assign_to_copilot is enabled for this repository
+                    if not temp_config.get("assign_to_copilot"):
+                        print("  Skipping: assign_to_copilot is disabled for this repository")
+                    else:
+                        # Assign the issue to Copilot and check the result
+                        success = assign_issue_to_copilot(issue, temp_config)
+                        if not success:
+                            print("  Assignment failed - will retry on next iteration")
+                else:
+                    print("  No issues found in repositories without open PRs")
 
             # Get the issue display limit from config (default: 10)
             issue_limit = config.get("issue_display_limit", 10) if config else 10

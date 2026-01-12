@@ -21,7 +21,6 @@ DEFAULT_PHASE3_MERGE_CONFIG: Dict[str, Any] = {
 
 # Default configuration for assign_to_copilot feature (batteries included)
 DEFAULT_ASSIGN_TO_COPILOT_CONFIG: Dict[str, Any] = {
-    "assign_lowest_number_issue": False,
     "automated": False,
     "automation_backend": "playwright",
     "wait_seconds": 10,
@@ -269,6 +268,8 @@ def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, r
         "enable_execution_phase3_send_ntfy": False,
         "enable_execution_phase3_to_merge": False,
         "enable_assign_to_copilot": None,  # None means not set by rulesets, use global
+        "assign_good_first_old": False,  # Assign one old "good first issue"
+        "assign_old": False,  # Assign one old issue (any issue)
     }
 
     # Apply rulesets if they exist
@@ -324,6 +325,16 @@ def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, r
                     ruleset["enable_assign_to_copilot"], "enable_assign_to_copilot"
                 )
 
+            # Apply auto-assign flags
+            if "assign_good_first_old" in ruleset:
+                result["assign_good_first_old"] = _validate_boolean_flag(
+                    ruleset["assign_good_first_old"], "assign_good_first_old"
+                )
+            if "assign_old" in ruleset:
+                result["assign_old"] = _validate_boolean_flag(
+                    ruleset["assign_old"], "assign_old"
+                )
+
     return result
 
 
@@ -341,3 +352,5 @@ def print_repo_execution_config(repo_owner: str, repo_name: str, exec_config: Di
     print(f"      enable_execution_phase3_send_ntfy: {exec_config.get('enable_execution_phase3_send_ntfy', False)}")
     print(f"      enable_execution_phase3_to_merge: {exec_config.get('enable_execution_phase3_to_merge', False)}")
     print(f"      enable_assign_to_copilot: {exec_config.get('enable_assign_to_copilot', False)}")
+    print(f"      assign_good_first_old: {exec_config.get('assign_good_first_old', False)}")
+    print(f"      assign_old: {exec_config.get('assign_old', False)}")

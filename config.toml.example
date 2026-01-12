@@ -85,20 +85,21 @@ verbose = false
 #
 # Per-ruleset phase3_merge and assign_to_copilot on/off configuration:
 #
-# You can enable or disable phase3_merge and assign_to_copilot features per repository
-# by adding simple boolean flags in rulesets. When enabled, the feature uses the global
-# settings defined in [phase3_merge] and [assign_to_copilot] sections.
+# IMPORTANT: For safety, phase3_merge and assign_to_copilot features are DISABLED by default.
+# You must explicitly enable them per repository using rulesets.
+# When enabled via ruleset, the feature uses the global settings defined in 
+# [phase3_merge] and [assign_to_copilot] sections.
 #
 # [[rulesets]]
 # name = "Enable merge for specific repo"
 # repositories = ["test-repo"]
 # enable_execution_phase3_to_merge = true
-# enable_phase3_merge = true  # Use global [phase3_merge] settings for this repo
+# enable_phase3_merge = true  # Explicitly enable - uses global [phase3_merge] settings
 #
 # [[rulesets]]
 # name = "Enable auto-assign for another repo"
 # repositories = ["another-repo"]
-# enable_assign_to_copilot = true  # Use global [assign_to_copilot] settings for this repo
+# enable_assign_to_copilot = true  # Explicitly enable - uses global [assign_to_copilot] settings
 
 
 # ntfy.sh notification settings (optional)
@@ -114,8 +115,9 @@ all_phase3_message = "All PRs are now in phase3 (ready for review)"  # Message w
 # Phase3 merge settings (optional)
 # Automatically merge PRs when they reach phase3 (ready for review)
 # Before merging, a comment defined below will be posted to the PR
+# IMPORTANT: Feature is DISABLED by default for safety.
+# Must be explicitly enabled per repository using enable_phase3_merge in rulesets.
 [phase3_merge]
-enabled = false  # Set to true to enable automatic merging (also requires enable_execution_phase3_to_merge = true)
 comment = "All checks passed. Merging PR."  # Comment to post before merging
 automated = false  # Set to true to use browser automation to click the merge button
 automation_backend = "selenium"  # Backend to use: "selenium" or "playwright" (automated mode only)
@@ -139,8 +141,10 @@ headless = false  # Run browser in headless mode (no visible window, automated m
 # Playwright backend:
 #   Install: pip install playwright && playwright install
 #   Browsers: "chromium", "firefox", or "webkit"
+# 
+# IMPORTANT: Feature is DISABLED by default for safety.
+# Must be explicitly enabled per repository using enable_assign_to_copilot in rulesets.
 [assign_to_copilot]
-enabled = false  # Set to true to enable auto-assignment feature
 assign_lowest_number_issue = false  # Set to true to assign the issue with the lowest number (regardless of "good first issue" label)
 automated = false  # Set to true to enable automated button clicking
 automation_backend = "selenium"  # Backend to use: "selenium" or "playwright"

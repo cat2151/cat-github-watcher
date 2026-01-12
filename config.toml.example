@@ -54,6 +54,12 @@ verbose = false
 # Example configurations:
 #
 # [[rulesets]]
+# name = "Simple: Auto-assign good first issues to Copilot"
+# repositories = ["my-repo"]
+# assign_good_first_old = true  # That's it! No [assign_to_copilot] section needed.
+#                               # Default: Opens issue in browser for manual assignment
+#
+# [[rulesets]]
 # name = "All repositories default - dry-run mode"
 # repositories = ["all"]  # "all" matches all repositories
 # enable_execution_phase1_to_phase2 = false  # Set to true to mark draft PRs as ready
@@ -88,7 +94,8 @@ verbose = false
 # IMPORTANT: For safety, phase3_merge and auto-assign features are DISABLED by default.
 # You must explicitly enable them per repository using rulesets.
 # When enabled via ruleset, the feature uses the global settings defined in 
-# [phase3_merge] and [assign_to_copilot] sections.
+# [phase3_merge] and [assign_to_copilot] sections (see below).
+# If those global sections are not defined, sensible defaults are used automatically.
 #
 # [[rulesets]]
 # name = "Enable merge for specific repo"
@@ -96,10 +103,17 @@ verbose = false
 # enable_execution_phase3_to_merge = true
 #
 # [[rulesets]]
-# name = "Enable auto-assign for another repo"
+# name = "Enable auto-assign for another repo - SIMPLE EXAMPLE"
 # repositories = ["another-repo"]
 # assign_good_first_old = true     # Assign one old "good first issue" (oldest by issue number, default: false)
-# assign_old = false               # Assign one old issue (oldest by issue number, any label, default: false)
+#                                  # This is all you need! The [assign_to_copilot] section below is optional.
+#                                  # Default behavior: Opens issue in browser for manual assignment
+#
+# [[rulesets]]
+# name = "Enable auto-assign with both flags"
+# repositories = ["yet-another-repo"]
+# assign_good_first_old = true     # Assign one old "good first issue" (oldest by issue number)
+# assign_old = false               # Assign one old issue (oldest by issue number, any label)
 #                                  # When both are true, prioritize "good first issue"
 
 
@@ -127,14 +141,22 @@ browser = "chromium"  # Browser to use: Selenium: "edge", "chrome", "firefox" / 
 headless = false  # Run browser in headless mode (no visible window, automated mode only)
 # Note: Feature branch is automatically deleted after successful merge
 
-# Auto-assign issues to Copilot (optional)
-# When enabled via rulesets, the tool will automatically open the issue in your browser.
-# You can then manually click the "Assign to Copilot" button on the GitHub issue page.
+# Auto-assign issues to Copilot (optional - this entire section is optional!)
+# 
+# SIMPLE USAGE: Just set assign_good_first_old = true in a ruleset (see examples above)
+# This section only needs to be defined if you want to customize the default behavior.
 # 
 # Assignment behavior is controlled by ruleset flags:
 # - assign_good_first_old: Assign one old "good first issue" (oldest by issue number, default: false)
 # - assign_old: Assign one old issue (oldest by issue number, any label, default: false)
 # When both are true, prioritize "good first issue"
+# 
+# Default behavior (when this section is not defined):
+# - Opens the issue in your browser for manual assignment
+# - Uses Playwright with Chromium browser
+# - automated = false (manual mode)
+# - wait_seconds = 10
+# - headless = false
 # 
 # Automated mode (requires Selenium or Playwright):
 # If 'automated' is set to true, the tool will use browser automation to

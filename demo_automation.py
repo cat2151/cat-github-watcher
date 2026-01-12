@@ -6,10 +6,7 @@ This script demonstrates the browser automation functionality
 without requiring a full GitHub environment setup.
 """
 
-from src.gh_pr_phase_monitor.browser_automation import (
-    is_selenium_available,
-    is_playwright_available
-)
+from src.gh_pr_phase_monitor.browser_automation import is_playwright_available, is_selenium_available
 
 
 def main():
@@ -21,24 +18,24 @@ def main():
     # Check if Selenium is available
     print("1. Checking automation backends...")
     print()
-    
+
     selenium_status = is_selenium_available()
     playwright_status = is_playwright_available()
-    
+
     if selenium_status:
         print("   ✓ Selenium is installed and available")
     else:
         print("   ✗ Selenium is NOT installed")
         print("   → Install with: pip install selenium webdriver-manager")
-    
+
     print()
-    
+
     if playwright_status:
         print("   ✓ Playwright is installed and available")
     else:
         print("   ✗ Playwright is NOT installed")
         print("   → Install with: pip install playwright && playwright install")
-    
+
     if not selenium_status and not playwright_status:
         print()
         print("   ⚠ No automation backends are available.")

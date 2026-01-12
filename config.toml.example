@@ -99,8 +99,8 @@ verbose = false
 # name = "Enable auto-assign for another repo"
 # repositories = ["another-repo"]
 # enable_assign_to_copilot = true  # Explicitly enable - uses global [assign_to_copilot] settings
-# assign_good_first_old = true     # Assign one old "good first issue" (default: false)
-# assign_old = false               # Assign one old issue (any issue) (default: false)
+# assign_good_first_old = true     # Assign one old "good first issue" (oldest by issue number, default: false)
+# assign_old = false               # Assign one old issue (oldest by issue number, any label, default: false)
 #                                  # When both are true, prioritize "good first issue"
 
 
@@ -133,8 +133,8 @@ headless = false  # Run browser in headless mode (no visible window, automated m
 # You can then manually click the "Assign to Copilot" button on the GitHub issue page.
 # 
 # Assignment behavior is controlled by ruleset flags:
-# - assign_good_first_old: Assign one old "good first issue" (default: false)
-# - assign_old: Assign one old issue (any issue) (default: false)
+# - assign_good_first_old: Assign one old "good first issue" (oldest by issue number, default: false)
+# - assign_old: Assign one old issue (oldest by issue number, any label, default: false)
 # When both are true, prioritize "good first issue"
 # 
 # Automated mode (requires Selenium or Playwright):

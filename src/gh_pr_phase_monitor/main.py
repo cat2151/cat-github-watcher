@@ -379,8 +379,8 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
 
             # Check if auto-assign feature is enabled in config
             # With the new design:
-            # - Rulesets can specify "assign_good_first_old" to assign one old "good first issue"
-            # - Rulesets can specify "assign_old" to assign one old issue (any issue)
+            # - Rulesets can specify "assign_good_first_old" to assign one old "good first issue" (oldest by issue number)
+            # - Rulesets can specify "assign_old" to assign one old issue (oldest by issue number, any issue)
             # - Both default to false
             # - When both are true, prioritize "good first issue"
 
@@ -403,9 +403,9 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
 
             # Always try to check for issues to assign (batteries-included)
             # Individual repositories must explicitly enable via rulesets for actual assignment
-            # Priority: good first issue > old issue
+            # Priority: good first issue > old issue (both sorted by issue number ascending)
             if any_good_first:
-                # Fetch and auto-assign the oldest "good first issue"
+                # Fetch and auto-assign the oldest "good first issue" (oldest by issue number)
                 print(f"\n{'=' * 50}")
                 print("Checking for the oldest 'good first issue' to auto-assign to Copilot...")
                 print(f"{'=' * 50}")

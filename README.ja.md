@@ -109,7 +109,7 @@ cat-github-watcher/
    # 監視間隔が省電力モード（下記のreduced_frequency_interval）に切り替わります
    # 空文字列 "" を設定すると無効化されます
    # サポートされる形式: "30s", "1m", "5m", "30m", "1h", "1d"
-   # デフォルト: "30m" (30分 - 安全性優先)
+   # デフォルト: "30m" (30分 - 安定性優先)
    no_change_timeout = "30m"
    
    # 省電力モード時の監視間隔
@@ -280,7 +280,7 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
    - デフォルト動作: PyAutoGUIで自動的にボタンをクリック（`[assign_to_copilot]`セクションは不要）
    - 必須: PyAutoGUIのインストールとボタンスクリーンショットの準備が必要
 6. **繰り返し**: 設定された間隔で監視を継続
-   - 状態変化がない場合（`no_change_timeout`で設定された時間）、自動的に省電力モード（`reduced_frequency_interval`）に切り替わりAPI使用量を削減
+   - 状態変化がない状態が`no_change_timeout`で設定された時間だけ続いた場合、自動的に省電力モード（`reduced_frequency_interval`）に切り替わりAPI使用量を削減
    - 変化が検知されると通常の監視間隔に戻る
 
 ### Dry-runモード

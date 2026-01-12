@@ -146,7 +146,12 @@ class TestPhase3Notifications:
         }
         config = {
             "ntfy": {"enabled": True, "topic": "test-topic", "message": "PR ready: {url}"},
-            "enable_execution_phase3_send_ntfy": True,
+            "rulesets": [
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_phase3_send_ntfy": True,
+                }
+            ],
         }
 
         with patch("src.gh_pr_phase_monitor.pr_actions.open_browser"), patch(
@@ -215,7 +220,12 @@ class TestPhase3Notifications:
         }
         config = {
             "ntfy": {"enabled": True, "topic": "test-topic", "message": "PR ready: {url}"},
-            "enable_execution_phase3_send_ntfy": True,
+            "rulesets": [
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_phase3_send_ntfy": True,
+                }
+            ],
         }
 
         with patch("src.gh_pr_phase_monitor.pr_actions.open_browser"), patch(
@@ -325,7 +335,14 @@ class TestDryRunMode:
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
         }
-        config = {"enable_execution_phase1_to_phase2": True}
+        config = {
+            "rulesets": [
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_phase1_to_phase2": True,
+                }
+            ]
+        }
 
         with patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready:
             mock_ready.return_value = True
@@ -372,7 +389,14 @@ class TestDryRunMode:
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
         }
-        config = {"enable_execution_phase2_to_phase3": True}
+        config = {
+            "rulesets": [
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_phase2_to_phase3": True,
+                }
+            ]
+        }
 
         with patch("src.gh_pr_phase_monitor.pr_actions.post_phase2_comment") as mock_comment:
             mock_comment.return_value = True
@@ -418,7 +442,12 @@ class TestDryRunMode:
         }
         config = {
             "ntfy": {"enabled": True, "topic": "test-topic"},
-            "enable_execution_phase3_send_ntfy": True,
+            "rulesets": [
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_phase3_send_ntfy": True,
+                }
+            ],
         }
 
         with patch("src.gh_pr_phase_monitor.pr_actions.open_browser"), patch(
@@ -447,7 +476,12 @@ class TestDryRunMode:
         # First process in dry-run mode
         config_dry = {
             "ntfy": {"enabled": True, "topic": "test-topic"},
-            "enable_execution_phase3_send_ntfy": False,
+            "rulesets": [
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_phase3_send_ntfy": False,
+                }
+            ],
         }
 
         with patch("src.gh_pr_phase_monitor.pr_actions.open_browser"), patch(
@@ -460,7 +494,12 @@ class TestDryRunMode:
         # Then process with execution enabled
         config_exec = {
             "ntfy": {"enabled": True, "topic": "test-topic"},
-            "enable_execution_phase3_send_ntfy": True,
+            "rulesets": [
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_phase3_send_ntfy": True,
+                }
+            ],
         }
 
         with patch("src.gh_pr_phase_monitor.pr_actions.open_browser"), patch(

@@ -158,7 +158,8 @@ def wait_with_countdown(
                 pass
 
     # Final update - show countdown complete (0 remaining)
-    print(f"\rWaiting 0秒     ", flush=True)
+    final_str = format_elapsed_time(0)
+    print(f"\rWaiting {final_str}     ", flush=True)
     print()  # New line after countdown completes
 
     return current_config, current_interval_seconds, current_interval_str, current_mtime

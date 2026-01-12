@@ -1,4 +1,4 @@
-Last updated: 2026-01-12
+Last updated: 2026-01-13
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -101,7 +101,9 @@ GitHub Copilotが自動実装を行うPRのフェーズを監視し、適切な�
 - **モバイル通知**: ntfy.shを利用してphase3（レビュー待ち）を検知したらモバイル端末に通知（要：設定ファイルで有効化）
   - 個別のPRがphase3になったときに通知
   - すべてのPRがphase3になったときにも通知（メッセージはtomlで設定可能）
-- **issue一覧表示**: 全PRが「LLM working」の場合、オープンPRのないリポジトリのissue上位10件を表示
+- **issue一覧表示**: 全PRが「LLM working」の場合、オープンPRのないリポジトリのissue上位N件を表示（デフォルト: 10件、`issue_display_limit`で変更可能）
+- **省電力モード**: 状態変化がない場合、API使用量を削減するため監視間隔を自動的に延長（`no_change_timeout`と`reduced_frequency_interval`で設定可能）
+- **Verboseモード**: 起動時と実行中に詳細な設定情報を表示し、設定ミスの検出を支援（`verbose`で有効化）
 
 ## アーキテクチャ
 
@@ -161,6 +163,32 @@ cat-github-watcher/
    # チェック間隔（"30s", "1m", "5m", "1h", "1d"など）
    interval = "1m"
    
+   # PRのないリポジトリから表示するissue数の上限
+   # デフォルトは10ですが、任意の正の数（例: 5, 15, 20）に変更可能
+   issue_display_limit = 10
+   
+   # 状態変更なしのタイムアウト時間
+   # 全PRの状態（各PRのフェーズ）がこの時間変化しない場合、
+   # 監視間隔が省電力モード（下記のreduced_frequency_interval）に切り替わります
+   # 空文字列 "" を設定すると無効化されます
+   # サポートされる形式: "30s", "1m", "5m", "30m", "1h", "1d"
+   # デフォルト: "30m" (30分 - 安定性優先)
+   no_change_timeout = "30m"
+   
+   # 省電力モード時の監視間隔
+   # no_change_timeout期間で状態変化が検知されない場合、
+   # 監視間隔がこの間隔に切り替わりAPI使用量を削減します
+   # 変化が検知されると、通常の監視間隔に戻ります
+   # サポートされる形式: "30s", "1m", "5m", "30m", "1h", "1d"
+   # デフォルト: "1h" (1時間)
+   reduced_frequency_interval = "1h"
+   
+   # Verboseモード - 詳細な設定情報を表示
+   # 有効にすると、起動時に全設定を表示し、実行中にリポジトリ毎の設定も表示します
+   # 設定ミスの検出に役立ちます
+   # デフォルト: false
+   verbose = false
+   
    # 実行制御フラグ - [[rulesets]]セクション内でのみ指定可能
    # グローバルフラグはサポートされなくなりました
    # 全リポジトリに設定を適用するには 'repositories = ["all"]' を使用してください
@@ -173,6 +201,12 @@ cat-github-watcher/
    # enable_execution_phase2_to_phase3 = false  # trueにするとphase2コメント投稿
    # enable_execution_phase3_send_ntfy = false  # trueにするとntfy通知送信
    # enable_execution_phase3_to_merge = false   # trueにするとphase3 PRをマージ
+   
+   # [[rulesets]]
+   # name = "シンプル: good first issueをCopilotに自動割り当て"
+   # repositories = ["my-repo"]
+   # assign_good_first_old = true  # これだけでOK！ [assign_to_copilot]セクションは不要です
+   #                               # デフォルト動作: ブラウザでissueを開いて手動割り当て
    
    # ntfy.sh通知設定（オプション）
    # 通知にはPRを開くためのクリック可能なアクションボタンが含まれます
@@ -187,8 +221,9 @@ cat-github-watcher/
    # PRがphase3（レビュー待ち）に達したら自動的にマージします
    # マージ前に、以下で定義したコメントがPRに投稿されます
    # マージ成功後、自動的にfeature branchが削除されます
+   # 重要: 安全のため、この機能はデフォルトで無効です
+   # リポジトリごとにrulesetsで enable_execution_phase3_to_merge = true を指定して明示的に有効化する必要があります
    [phase3_merge]
-   enabled = false  # trueにすると自動マージを有効化（rulesetsでenable_execution_phase3_to_merge = trueも必要）
    comment = "All checks passed. Merging PR."  # マージ前に投稿するコメント
    automated = false  # trueにするとブラウザ自動操縦でマージボタンをクリック
    automation_backend = "selenium"  # 自動操縦バックエンド: "selenium" または "playwright"
@@ -196,29 +231,83 @@ cat-github-watcher/
    browser = "edge"  # 使用するブラウザ: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
    headless = false  # ヘッドレスモードで実行（ウィンドウを表示しない）
    
-   # "good first issue"のissueをCopilotに自動割り当て（オプション）
-   # 有効にすると、issueをブラウザで開き、"Assign to Copilot"ボタンを押すよう促します
-   # automated = true にすると、ブラウザ自動操縦でボタンを自動的にクリックします（Selenium必要）
+   # issueをCopilotに自動割り当て（完全にオプション！このセクション全体がオプションです）
+   # 
+   # シンプルな使い方: rulesetsで assign_good_first_old = true とするだけ（上記の例を参照）
+   # このセクションは、デフォルト動作をカスタマイズしたい場合のみ定義してください。
+   # 
+   # 割り当て動作はrulesetのフラグで制御します:
+   # - assign_good_first_old: 最も古い"good first issue"を割り当て（issue番号順、デフォルト: false）
+   # - assign_old: 最も古いissueを割り当て（issue番号順、ラベル不問、デフォルト: false）
+   # 両方がtrueの場合、"good first issue"を優先
+   # 
+   # デフォルト動作（このセクションが定義されていない場合）:
+   # - ブラウザ自動操縦で自動的にボタンをクリック
+   # - Playwright + Chromiumを使用
+   # - wait_seconds = 10
+   # - headless = false
+   # 
+   # 必須: SeleniumまたはPlaywrightのインストールが必要
+   # 
+   # 重要: 安全のため、この機能はデフォルトで無効です
+   # リポジトリごとにrulesetsで assign_good_first_old または assign_old を指定して明示的に有効化する必要があります
    [assign_to_copilot]
-   enabled = false  # trueにすると自動割り当て機能を有効化
-   automated = false  # trueにするとブラウザ自動操縦を有効化（要：pip install selenium webdriver-manager）
+   automation_backend = "playwright"  # 自動操縦バックエンド: "selenium" または "playwright"
    wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
-   browser = "edge"  # 使用するブラウザ（"edge", "chrome", "firefox"）
+   browser = "chromium"  # 使用するブラウザ: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
+   headless = false  # ヘッドレスモードで実行（ウィンドウを表示しない）
    ```
 
-4. （オプション）ブラウザ自動操縦を使用する場合は、Seleniumをインストール：
+4. **ボタンスクリーンショットの準備（自動化を使用する場合のみ）**:
+   
+   自動化機能（`automated = true` または `assign_to_copilot` / `phase3_merge` の有効化）を使用する場合、
+   PyAutoGUIがクリックするボタンのスクリーンショットが必要です。
+   
+   **必要なスクリーンショット:**
+   
+   issueの自動割り当て用（`assign_to_copilot` 機能）:
+   - `assign_to_copilot.png` - "Assign to Copilot" ボタンのスクリーンショット
+   - `assign.png` - "Assign" ボタンのスクリーンショット
+   
+   PRの自動マージ用（`phase3_merge` 機能で `automated = true` の場合）:
+   - `merge_pull_request.png` - "Merge pull request" ボタンのスクリーンショット
+   - `confirm_merge.png` - "Confirm merge" ボタンのスクリーンショット
+   - `delete_branch.png` - "Delete branch" ボタンのスクリーンショット（オプション）
+   
+   **スクリーンショットの撮り方:**
+   
+   a. GitHubのissueまたはPRをブラウザで開く
+   b. 自動化したいボタンを見つける
+   c. **ボタンだけ**のスクリーンショットを撮る（画面全体ではなく）
+   d. PNG形式で `screenshots` ディレクトリに保存する
+   e. 上記の正確なファイル名を使用する
+   
+   **ヒント:**
+   - スクリーンショットはボタンのみを含め、小さな余白を含める
+   - OSのスクリーンショットツールを使用する（Windows: Snipping Tool、Mac: Cmd+Shift+4）
+   - ボタンがはっきり見え、隠れていないことを確認
+   - ボタンの見た目が変わる場合（テーマ変更など）、スクリーンショットを更新する必要があります
+   - 画像認識の信頼度を調整する場合は `confidence` 設定を使用（DPI scalingやテーマによる）
+   
+   **重要な要件:**
+   - デフォルトブラウザで**GitHubに既にログイン済み**である必要があります
+   - 自動化は既存のブラウザセッションを使用します（新しい認証は行いません）
+   - ボタンクリック時に正しいGitHubウィンドウ/タブがフォーカスされ、画面に表示されていることを確認してください
+   - 複数のGitHubページが開いている場合、最初に見つかったボタンがクリックされます
+   
+   **スクリーンショットディレクトリの作成:**
+   ```bash
+   mkdir screenshots
+   ```
+
+5. PyAutoGUIをインストール（自動化を使用する場合のみ）：
+   
    ```bash
    pip install -r requirements-automation.txt
    ```
    または
    ```bash
-   pip install selenium webdriver-manager
-   ```
-   
-   さらに、使用するブラウザのドライバーが必要です：
-   - **Edge**: Windows 10/11に標準搭載（追加インストール不要）
-   - **Chrome**: ChromeDriverが自動的にダウンロードされます
-   - **Firefox**: GeckoDriverが自動的にダウンロードされます
+   pip install pyautogui pillow
    ```
 
 ### 実行
@@ -241,11 +330,21 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
 2. **PR検知**: オープンPRを持つリポジトリを自動検出
 3. **フェーズ判定**: 各PRのフェーズを判定（phase1/2/3、LLM working）
 4. **アクション実行**:
-   - **phase1**: デフォルトはDry-run（`enable_execution_phase1_to_phase2 = true`でDraft PRをReady状態に変更）
-   - **phase2**: デフォルトはDry-run（`enable_execution_phase2_to_phase3 = true`でCopilotに変更適用を依頼するコメントを投稿）
-   - **phase3**: ブラウザでPRページを開く（`enable_execution_phase3_send_ntfy = true`でntfy.sh通知も送信、`enable_execution_phase3_to_merge = true`でPRを自動マージ）
+   - **phase1**: デフォルトはDry-run（rulesetsで`enable_execution_phase1_to_phase2 = true`とするとDraft PRをReady状態に変更）
+   - **phase2**: デフォルトはDry-run（rulesetsで`enable_execution_phase2_to_phase3 = true`とするとCopilotに変更適用を依頼するコメントを投稿）
+   - **phase3**: ブラウザでPRページを開く
+     - rulesetsで`enable_execution_phase3_send_ntfy = true`とするとntfy.sh通知も送信
+     - rulesetsで`enable_execution_phase3_to_merge = true`とするとPRを自動マージ（グローバル`[phase3_merge]`設定を使用）
    - **LLM working**: 待機（全PRがこの状態の場合、オープンPRのないリポジトリのissueを表示）
-5. **繰り返し**: 設定された間隔で監視を継続
+5. **Issue自動割り当て**: 全PRが「LLM working」かつオープンPRのないリポジトリがある場合：
+   - rulesetsで`assign_good_first_old = true`とすると最も古い"good first issue"を自動割り当て（issue番号順）
+   - rulesetsで`assign_old = true`とすると最も古いissueを自動割り当て（issue番号順、ラベル不問）
+   - 両方がtrueの場合、"good first issue"を優先
+   - デフォルト動作: PyAutoGUIで自動的にボタンをクリック（`[assign_to_copilot]`セクションは不要）
+   - 必須: PyAutoGUIのインストールとボタンスクリーンショットの準備が必要
+6. **繰り返し**: 設定された間隔で監視を継続
+   - 状態変化がない状態が`no_change_timeout`で設定された時間だけ続いた場合、自動的に省電力モード（`reduced_frequency_interval`）に切り替わりAPI使用量を削減
+   - 変化が検知されると通常の監視間隔に戻る
 
 ### Dry-runモード
 
@@ -256,12 +355,16 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
 - **Phase3（ntfy通知）**: `[DRY-RUN] Would send ntfy notification` と表示されるが、実際には何もしない
 - **Phase3（マージ）**: `[DRY-RUN] Would merge PR` と表示されるが、実際には何もしない
 
-実際のアクションを有効にするには、`config.toml`で以下のフラグを`true`に設定します：
+実際のアクションを有効にするには、`config.toml`の`[[rulesets]]`セクションで以下のフラグを`true`に設定します：
 ```toml
+[[rulesets]]
+name = "特定のリポジトリで自動化を有効化"
+repositories = ["test-repo"]  # または ["all"] で全リポジトリ
 enable_execution_phase1_to_phase2 = true  # Draft PRをReady化
 enable_execution_phase2_to_phase3 = true  # Phase2コメント投稿
 enable_execution_phase3_send_ntfy = true  # ntfy通知送信
 enable_execution_phase3_to_merge = true   # Phase3 PRをマージ
+assign_good_first_old = true              # good first issueを自動割り当て
 ```
 
 ### 停止
@@ -311,7 +414,6 @@ MIT License - 詳細はLICENSEファイルを参照してください
 📄 cat-github-watcher.py
 📄 config.toml.example
 📄 demo_automation.py
-📄 demo_comparison.py
 📁 docs/
   📖 IMPLEMENTATION_SUMMARY.ja.md
   📖 IMPLEMENTATION_SUMMARY.md
@@ -325,6 +427,9 @@ MIT License - 詳細はLICENSEファイルを参照してください
 📄 pytest.ini
 📄 requirements-automation.txt
 📄 ruff.toml
+📁 screenshots/
+  📄 assign.png
+  📄 assign_to_copilot.png
 📁 src/
   📄 __init__.py
   📁 gh_pr_phase_monitor/
@@ -345,6 +450,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
     📄 pr_fetcher.py
     📄 repository_fetcher.py
 📁 tests/
+  📄 test_batteries_included_defaults.py
   📄 test_browser_automation.py
   📄 test_config_rulesets.py
   📄 test_config_rulesets_features.py
@@ -398,4 +504,4 @@ docs/browser-automation-approaches.md
 
 
 ---
-Generated at: 2026-01-12 07:01:30 JST
+Generated at: 2026-01-13 07:01:28 JST

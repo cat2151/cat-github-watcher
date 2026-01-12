@@ -348,16 +348,16 @@ def _resolve_assign_to_copilot_config(issue: Dict[str, Any], config: Dict[str, A
         # Check if assign_to_copilot is enabled for this repo
         enable_assign_flag = exec_config.get("enable_assign_to_copilot")
         if enable_assign_flag is None:
-            # Not set by rulesets, use global config for backward compatibility
-            return config
+            # Not set by rulesets, default to disabled for safety
+            return {"assign_to_copilot": {}}
         elif enable_assign_flag:
             # Enabled for this repo, use global assign_to_copilot settings
             return {"assign_to_copilot": config.get("assign_to_copilot", {})}
         else:
             # Disabled for this repo
-            return {"assign_to_copilot": {"enabled": False}}
+            return {"assign_to_copilot": {}}
     else:
-        return config
+        return {"assign_to_copilot": {}}
 
 
 def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = None):
@@ -380,12 +380,14 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
 
             # Check if auto-assign feature is enabled in config
             # We need to check per repository since it can be configured per ruleset
-            # For the global check, we use the global config settings
+            # Feature must be explicitly enabled via rulesets for safety
             assign_enabled = False
             assign_lowest_number = False
             if config:
                 assign_config = config.get("assign_to_copilot", {})
-                assign_enabled = assign_config.get("enabled", False)
+                # Feature is only available if config section exists
+                # Individual repositories must explicitly enable via rulesets
+                assign_enabled = bool(assign_config)
                 assign_lowest_number = assign_config.get("assign_lowest_number_issue", False)
 
             # Only try to auto-assign if the feature is enabled
@@ -415,10 +417,14 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         # Get repository-specific configuration
                         temp_config = _resolve_assign_to_copilot_config(issue, config)
                         
-                        # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, temp_config)
-                        if not success:
-                            print("  Assignment failed - will retry on next iteration")
+                        # Check if assign_to_copilot is enabled for this repository
+                        if not temp_config.get("assign_to_copilot"):
+                            print("  Skipping: assign_to_copilot is disabled for this repository")
+                        else:
+                            # Assign the issue to Copilot and check the result
+                            success = assign_issue_to_copilot(issue, temp_config)
+                            if not success:
+                                print("  Assignment failed - will retry on next iteration")
                     else:
                         print("  No issues found in repositories without open PRs")
                 else:
@@ -445,16 +451,21 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         # Get repository-specific configuration
                         temp_config = _resolve_assign_to_copilot_config(issue, config)
                         
-                        # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, temp_config)
-                        if not success:
-                            print("  Assignment failed - will retry on next iteration")
+                        # Check if assign_to_copilot is enabled for this repository
+                        if not temp_config.get("assign_to_copilot"):
+                            print("  Skipping: assign_to_copilot is disabled for this repository")
+                        else:
+                            # Assign the issue to Copilot and check the result
+                            success = assign_issue_to_copilot(issue, temp_config)
+                            if not success:
+                                print("  Assignment failed - will retry on next iteration")
                     else:
                         print("  No 'good first issue' issues found in repositories without open PRs")
             else:
                 print(f"\n{'=' * 50}")
-                print("Auto-assign to Copilot feature is disabled")
-                print("To enable, set 'assign_to_copilot.enabled = true' in config.toml")
+                print("Auto-assign to Copilot feature is not configured")
+                print("To enable, add [assign_to_copilot] section in config.toml")
+                print("and configure per-repository using enable_assign_to_copilot in rulesets")
                 print(f"{'=' * 50}")
 
             # Get the issue display limit from config (default: 10)

@@ -121,7 +121,6 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
             "enable_execution_phase2_to_phase3": False,
             "enable_execution_phase3_send_ntfy": False,
             "enable_execution_phase3_to_merge": False,
-            "enable_assign_to_copilot": None,
         }
 
     # Mark PR as ready for review when in phase 1

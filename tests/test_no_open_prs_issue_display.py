@@ -70,7 +70,6 @@ def test_display_issues_when_no_repos_with_prs():
                     "rulesets": [
                         {
                             "repositories": ["test-repo"],
-                            "enable_assign_to_copilot": True,  # Enable for this repo
                             "assign_good_first_old": True,  # Enable good first issue assignment
                         }
                     ],
@@ -323,13 +322,12 @@ def test_display_issues_with_assign_lowest_number():
 
                 mock_assign.return_value = True
 
-                # Create config with assign_to_copilot enabled via rulesets and assign_old enabled
+                # Create config with assign_old enabled in rulesets
                 config = {
                     "assign_to_copilot": {},
                     "rulesets": [
                         {
                             "repositories": ["test-repo"],
-                            "enable_assign_to_copilot": True,  # Enable for this repo
                             "assign_old": True,  # Enable old issue assignment
                         }
                     ],
@@ -361,8 +359,8 @@ def test_display_issues_with_assign_lowest_number():
 
 def test_assign_only_fetches_from_enabled_repos():
     """
-    Test that assignment only fetches issues from repos where BOTH
-    assign_good_first_old/assign_old AND enable_assign_to_copilot are true.
+    Test that assignment only fetches issues from repos where
+    assign_good_first_old or assign_old is enabled.
     This prevents fetching issues from repos that don't have assignment enabled.
     """
     with patch("src.gh_pr_phase_monitor.main.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
@@ -394,19 +392,17 @@ def test_assign_only_fetches_from_enabled_repos():
 
                 mock_assign.return_value = True
 
-                # Create config where only repo-with-assign has both flags enabled
+                # Create config where only repo-with-assign has the assignment flag enabled
                 config = {
                     "assign_to_copilot": {},
                     "rulesets": [
                         {
                             "repositories": ["repo-with-assign"],
-                            "enable_assign_to_copilot": True,
                             "assign_good_first_old": True,
                         },
                         {
                             "repositories": ["repo-without-assign"],
-                            # Only assign_good_first_old is true, but enable_assign_to_copilot is missing/false
-                            "assign_good_first_old": True,
+                            # No assignment flags enabled
                         },
                     ],
                 }

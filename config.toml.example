@@ -83,9 +83,9 @@ verbose = false
 # enable_execution_phase1_to_phase2 = true
 # enable_execution_phase3_to_merge = true
 #
-# Per-ruleset phase3_merge and assign_to_copilot on/off configuration:
+# Per-ruleset phase3_merge and assign_to_copilot configuration:
 #
-# IMPORTANT: For safety, phase3_merge and assign_to_copilot features are DISABLED by default.
+# IMPORTANT: For safety, phase3_merge and auto-assign features are DISABLED by default.
 # You must explicitly enable them per repository using rulesets.
 # When enabled via ruleset, the feature uses the global settings defined in 
 # [phase3_merge] and [assign_to_copilot] sections.
@@ -98,7 +98,6 @@ verbose = false
 # [[rulesets]]
 # name = "Enable auto-assign for another repo"
 # repositories = ["another-repo"]
-# enable_assign_to_copilot = true  # Explicitly enable - uses global [assign_to_copilot] settings
 # assign_good_first_old = true     # Assign one old "good first issue" (oldest by issue number, default: false)
 # assign_old = false               # Assign one old issue (oldest by issue number, any label, default: false)
 #                                  # When both are true, prioritize "good first issue"
@@ -150,7 +149,7 @@ headless = false  # Run browser in headless mode (no visible window, automated m
 #   Browsers: "chromium", "firefox", or "webkit"
 # 
 # IMPORTANT: Feature is DISABLED by default for safety.
-# Must be explicitly enabled per repository using enable_assign_to_copilot in rulesets.
+# Must be explicitly enabled per repository using assign_good_first_old or assign_old in rulesets.
 [assign_to_copilot]
 automated = false  # Set to true to enable automated button clicking
 automation_backend = "playwright"  # Backend to use: "selenium" or "playwright"

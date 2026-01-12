@@ -331,7 +331,7 @@ def _resolve_assign_to_copilot_config(issue: Dict[str, Any], config: Dict[str, A
         config: Global configuration dictionary (can be None)
 
     Returns:
-        Configuration dictionary with assign_to_copilot settings if enabled for this repo
+        Configuration dictionary with assign_to_copilot settings
     """
     # Handle None config
     if config is None:
@@ -344,16 +344,12 @@ def _resolve_assign_to_copilot_config(issue: Dict[str, Any], config: Dict[str, A
 
     if repo_owner and repo_name:
         exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
-        # Check if assign_to_copilot is enabled for this repo
-        enable_assign_flag = exec_config.get("enable_assign_to_copilot")
-        if enable_assign_flag is None:
-            # Not set by rulesets, default to disabled for safety
-            return {"assign_to_copilot": {}}
-        elif enable_assign_flag:
-            # Enabled for this repo, use global assign_to_copilot settings with defaults
+        # Check if any assignment flag is enabled for this repo
+        if exec_config.get("assign_good_first_old", False) or exec_config.get("assign_old", False):
+            # Assignment enabled for this repo, use global assign_to_copilot settings with defaults
             return {"assign_to_copilot": get_assign_to_copilot_config(config)}
         else:
-            # Disabled for this repo
+            # No assignment flags enabled
             return {"assign_to_copilot": {}}
     else:
         return {"assign_to_copilot": {}}
@@ -399,22 +395,20 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                     repo_name = repo.get("name", "")
                     if repo_owner and repo_name:
                         exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
-                        # Only consider repos where enable_assign_to_copilot is true
-                        enable_assign = exec_config.get("enable_assign_to_copilot")
-                        if enable_assign is not None and enable_assign:
-                            if exec_config.get("assign_good_first_old", False):
-                                any_good_first = True
-                                repos_with_good_first_enabled.append(repo)
-                            if exec_config.get("assign_old", False):
-                                any_old = True
-                                repos_with_old_enabled.append(repo)
+                        # Check if any assignment flag is enabled
+                        if exec_config.get("assign_good_first_old", False):
+                            any_good_first = True
+                            repos_with_good_first_enabled.append(repo)
+                        if exec_config.get("assign_old", False):
+                            any_old = True
+                            repos_with_old_enabled.append(repo)
 
             # Always try to check for issues to assign (batteries-included)
             # Individual repositories must explicitly enable via rulesets for actual assignment
             # Priority: good first issue > old issue (both sorted by issue number ascending)
             if any_good_first:
                 # Fetch and auto-assign the oldest "good first issue" (oldest by issue number)
-                # Only from repos with both assign_good_first_old and enable_assign_to_copilot enabled
+                # Only from repos with assign_good_first_old enabled
                 print(f"\n{'=' * 50}")
                 print("Checking for the oldest 'good first issue' to auto-assign to Copilot...")
                 print(f"{'=' * 50}")
@@ -445,7 +439,7 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                     print("  No 'good first issue' issues found in repositories without open PRs")
             elif any_old:
                 # Fetch and auto-assign the oldest issue (any issue)
-                # Only from repos with both assign_old and enable_assign_to_copilot enabled
+                # Only from repos with assign_old enabled
                 print(f"\n{'=' * 50}")
                 print("Checking for the oldest issue to auto-assign to Copilot...")
                 print(f"{'=' * 50}")

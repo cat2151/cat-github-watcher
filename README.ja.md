@@ -110,6 +110,8 @@ cat-github-watcher/
    # enable_execution_phase2_to_phase3 = false  # trueにするとphase2コメント投稿
    # enable_execution_phase3_send_ntfy = false  # trueにするとntfy通知送信
    # enable_execution_phase3_to_merge = false   # trueにするとphase3 PRをマージ
+   # enable_phase3_merge = false                # trueにすると自動マージ機能を有効化（グローバル[phase3_merge]設定を使用）
+   # enable_assign_to_copilot = false           # trueにすると自動割り当て機能を有効化（グローバル[assign_to_copilot]設定を使用）
    
    # ntfy.sh通知設定（オプション）
    # 通知にはPRを開くためのクリック可能なアクションボタンが含まれます
@@ -124,8 +126,9 @@ cat-github-watcher/
    # PRがphase3（レビュー待ち）に達したら自動的にマージします
    # マージ前に、以下で定義したコメントがPRに投稿されます
    # マージ成功後、自動的にfeature branchが削除されます
+   # 重要: 安全のため、この機能はデフォルトで無効です
+   # リポジトリごとにrulesetsで enable_phase3_merge = true を指定して明示的に有効化する必要があります
    [phase3_merge]
-   enabled = false  # trueにすると自動マージを有効化（rulesetsでenable_execution_phase3_to_merge = trueも必要）
    comment = "All checks passed. Merging PR."  # マージ前に投稿するコメント
    automated = false  # trueにするとブラウザ自動操縦でマージボタンをクリック
    automation_backend = "selenium"  # 自動操縦バックエンド: "selenium" または "playwright"
@@ -135,15 +138,21 @@ cat-github-watcher/
    
    # "good first issue"のissueをCopilotに自動割り当て（オプション）
    # 有効にすると、issueをブラウザで開き、"Assign to Copilot"ボタンを押すよう促します
-   # automated = true にすると、ブラウザ自動操縦でボタンを自動的にクリックします（Selenium必要）
+   # automated = true にすると、ブラウザ自動操縦でボタンを自動的にクリックします
+   # 重要: 安全のため、この機能はデフォルトで無効です
+   # リポジトリごとにrulesetsで enable_assign_to_copilot = true を指定して明示的に有効化する必要があります
    [assign_to_copilot]
-   enabled = false  # trueにすると自動割り当て機能を有効化
-   automated = false  # trueにするとブラウザ自動操縦を有効化（要：pip install selenium webdriver-manager）
+   assign_lowest_number_issue = false  # trueにすると番号が最も小さいissueを割り当て（"good first issue"ラベル不問）
+   automated = false  # trueにするとブラウザ自動操縦を有効化（要：pip install selenium webdriver-manager または playwright）
+   automation_backend = "selenium"  # 自動操縦バックエンド: "selenium" または "playwright"
    wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
-   browser = "edge"  # 使用するブラウザ（"edge", "chrome", "firefox"）
+   browser = "edge"  # 使用するブラウザ: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
+   headless = false  # ヘッドレスモードで実行（ウィンドウを表示しない）
    ```
 
-4. （オプション）ブラウザ自動操縦を使用する場合は、Seleniumをインストール：
+4. （オプション）ブラウザ自動操縦を使用する場合は、SeleniumまたはPlaywrightをインストール：
+   
+   **Seleniumを使用する場合:**
    ```bash
    pip install -r requirements-automation.txt
    ```
@@ -152,11 +161,18 @@ cat-github-watcher/
    pip install selenium webdriver-manager
    ```
    
-   さらに、使用するブラウザのドライバーが必要です：
+   使用するブラウザのドライバー：
    - **Edge**: Windows 10/11に標準搭載（追加インストール不要）
    - **Chrome**: ChromeDriverが自動的にダウンロードされます
    - **Firefox**: GeckoDriverが自動的にダウンロードされます
+   
+   **Playwrightを使用する場合:**
+   ```bash
+   pip install playwright
+   playwright install
    ```
+   
+   Playwrightは chromium、firefox、webkit ブラウザをサポートします。
 
 ### 実行
 
@@ -178,11 +194,17 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
 2. **PR検知**: オープンPRを持つリポジトリを自動検出
 3. **フェーズ判定**: 各PRのフェーズを判定（phase1/2/3、LLM working）
 4. **アクション実行**:
-   - **phase1**: デフォルトはDry-run（`enable_execution_phase1_to_phase2 = true`でDraft PRをReady状態に変更）
-   - **phase2**: デフォルトはDry-run（`enable_execution_phase2_to_phase3 = true`でCopilotに変更適用を依頼するコメントを投稿）
-   - **phase3**: ブラウザでPRページを開く（`enable_execution_phase3_send_ntfy = true`でntfy.sh通知も送信、`enable_execution_phase3_to_merge = true`でPRを自動マージ）
+   - **phase1**: デフォルトはDry-run（rulesetsで`enable_execution_phase1_to_phase2 = true`とするとDraft PRをReady状態に変更）
+   - **phase2**: デフォルトはDry-run（rulesetsで`enable_execution_phase2_to_phase3 = true`とするとCopilotに変更適用を依頼するコメントを投稿）
+   - **phase3**: ブラウザでPRページを開く
+     - rulesetsで`enable_execution_phase3_send_ntfy = true`とするとntfy.sh通知も送信
+     - rulesetsで`enable_execution_phase3_to_merge = true`かつ`enable_phase3_merge = true`とするとPRを自動マージ（グローバル`[phase3_merge]`設定を使用）
    - **LLM working**: 待機（全PRがこの状態の場合、オープンPRのないリポジトリのissueを表示）
-5. **繰り返し**: 設定された間隔で監視を継続
+5. **Issue自動割り当て**: 全PRが「LLM working」かつオープンPRのないリポジトリがある場合：
+   - rulesetsで`enable_assign_to_copilot = true`とすると自動割り当て機能が有効化（グローバル`[assign_to_copilot]`設定を使用）
+   - デフォルトでは"good first issue"ラベルのissueを割り当て
+   - `assign_lowest_number_issue = true`とすると番号が最も小さいissueを割り当て（ラベル不問）
+6. **繰り返し**: 設定された間隔で監視を継続
 
 ### Dry-runモード
 
@@ -193,12 +215,17 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
 - **Phase3（ntfy通知）**: `[DRY-RUN] Would send ntfy notification` と表示されるが、実際には何もしない
 - **Phase3（マージ）**: `[DRY-RUN] Would merge PR` と表示されるが、実際には何もしない
 
-実際のアクションを有効にするには、`config.toml`で以下のフラグを`true`に設定します：
+実際のアクションを有効にするには、`config.toml`の`[[rulesets]]`セクションで以下のフラグを`true`に設定します：
 ```toml
+[[rulesets]]
+name = "特定のリポジトリで自動化を有効化"
+repositories = ["test-repo"]  # または ["all"] で全リポジトリ
 enable_execution_phase1_to_phase2 = true  # Draft PRをReady化
 enable_execution_phase2_to_phase3 = true  # Phase2コメント投稿
 enable_execution_phase3_send_ntfy = true  # ntfy通知送信
-enable_execution_phase3_to_merge = true   # Phase3 PRをマージ
+enable_execution_phase3_to_merge = true   # Phase3 PRをマージ（enable_phase3_mergeも必要）
+enable_phase3_merge = true                # 自動マージ機能を有効化（グローバル[phase3_merge]設定を使用）
+enable_assign_to_copilot = true           # 自動割り当て機能を有効化（グローバル[assign_to_copilot]設定を使用）
 ```
 
 ### 停止

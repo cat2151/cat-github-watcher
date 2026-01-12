@@ -94,10 +94,8 @@ def test_print_config_with_phase3_merge():
             "enabled": True,
             "comment": "Merging PR",
             "automated": True,
-            "automation_backend": "selenium",
             "wait_seconds": 10,
-            "browser": "edge",
-            "headless": False,
+            "screenshot_dir": "screenshots",
         },
     }
 
@@ -109,7 +107,6 @@ def test_print_config_with_phase3_merge():
     assert "[Phase3 Merge Settings]" in output
     assert "comment: Merging PR" in output
     assert "automated: True" in output
-    assert "automation_backend: selenium" in output
 
 
 def test_print_config_with_assign_to_copilot():
@@ -120,11 +117,8 @@ def test_print_config_with_assign_to_copilot():
         "enable_execution_phase1_to_phase2": False,
         "assign_to_copilot": {
             "enabled": True,
-            "automated": True,
-            "automation_backend": "playwright",
             "wait_seconds": 15,
-            "browser": "chromium",
-            "headless": True,
+            "screenshot_dir": "screenshots",
         },
     }
 
@@ -134,8 +128,7 @@ def test_print_config_with_assign_to_copilot():
     output = f.getvalue()
 
     assert "[Auto-assign to Copilot Settings]" in output
-    assert "automated: True" in output
-    assert "automation_backend: playwright" in output
+    assert "wait_seconds: 15" in output
 
 
 def test_print_repo_execution_config():

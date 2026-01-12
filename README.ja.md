@@ -110,7 +110,12 @@ cat-github-watcher/
    # enable_execution_phase2_to_phase3 = false  # trueにするとphase2コメント投稿
    # enable_execution_phase3_send_ntfy = false  # trueにするとntfy通知送信
    # enable_execution_phase3_to_merge = false   # trueにするとphase3 PRをマージ
-   # enable_assign_to_copilot = false           # trueにすると自動割り当て機能を有効化（グローバル[assign_to_copilot]設定を使用）
+   
+   # [[rulesets]]
+   # name = "シンプル: good first issueをCopilotに自動割り当て"
+   # repositories = ["my-repo"]
+   # assign_good_first_old = true  # これだけでOK！ [assign_to_copilot]セクションは不要です
+   #                               # デフォルト動作: ブラウザでissueを開いて手動割り当て
    
    # ntfy.sh通知設定（オプション）
    # 通知にはPRを開くためのクリック可能なアクションボタンが含まれます
@@ -135,21 +140,34 @@ cat-github-watcher/
    browser = "edge"  # 使用するブラウザ: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
    headless = false  # ヘッドレスモードで実行（ウィンドウを表示しない）
    
-   # "good first issue"のissueをCopilotに自動割り当て（オプション）
-   # 有効にすると、issueをブラウザで開き、"Assign to Copilot"ボタンを押すよう促します
-   # automated = true にすると、ブラウザ自動操縦でボタンを自動的にクリックします
+   # issueをCopilotに自動割り当て（完全にオプション！このセクション全体がオプションです）
+   # 
+   # シンプルな使い方: rulesetsで assign_good_first_old = true とするだけ（上記の例を参照）
+   # このセクションは、デフォルト動作をカスタマイズしたい場合のみ定義してください。
+   # 
+   # 割り当て動作はrulesetのフラグで制御します:
+   # - assign_good_first_old: 最も古い"good first issue"を割り当て（issue番号順、デフォルト: false）
+   # - assign_old: 最も古いissueを割り当て（issue番号順、ラベル不問、デフォルト: false）
+   # 両方がtrueの場合、"good first issue"を優先
+   # 
+   # デフォルト動作（このセクションが定義されていない場合）:
+   # - ブラウザ自動操縦で自動的にボタンをクリック
+   # - Playwright + Chromiumを使用
+   # - wait_seconds = 10
+   # - headless = false
+   # 
+   # 必須: SeleniumまたはPlaywrightのインストールが必要
+   # 
    # 重要: 安全のため、この機能はデフォルトで無効です
-   # リポジトリごとにrulesetsで enable_assign_to_copilot = true を指定して明示的に有効化する必要があります
+   # リポジトリごとにrulesetsで assign_good_first_old または assign_old を指定して明示的に有効化する必要があります
    [assign_to_copilot]
-   assign_lowest_number_issue = false  # trueにすると番号が最も小さいissueを割り当て（"good first issue"ラベル不問）
-   automated = false  # trueにするとブラウザ自動操縦を有効化（要：pip install selenium webdriver-manager または playwright）
-   automation_backend = "selenium"  # 自動操縦バックエンド: "selenium" または "playwright"
+   automation_backend = "playwright"  # 自動操縦バックエンド: "selenium" または "playwright"
    wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
-   browser = "edge"  # 使用するブラウザ: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
+   browser = "chromium"  # 使用するブラウザ: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
    headless = false  # ヘッドレスモードで実行（ウィンドウを表示しない）
    ```
 
-4. （オプション）ブラウザ自動操縦を使用する場合は、SeleniumまたはPlaywrightをインストール：
+4. ブラウザ自動操縦のため、SeleniumまたはPlaywrightをインストール：
    
    **Seleniumを使用する場合:**
    ```bash
@@ -200,9 +218,11 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
      - rulesetsで`enable_execution_phase3_to_merge = true`とするとPRを自動マージ（グローバル`[phase3_merge]`設定を使用）
    - **LLM working**: 待機（全PRがこの状態の場合、オープンPRのないリポジトリのissueを表示）
 5. **Issue自動割り当て**: 全PRが「LLM working」かつオープンPRのないリポジトリがある場合：
-   - rulesetsで`enable_assign_to_copilot = true`とすると自動割り当て機能が有効化（グローバル`[assign_to_copilot]`設定を使用）
-   - デフォルトでは"good first issue"ラベルのissueを割り当て
-   - `assign_lowest_number_issue = true`とすると番号が最も小さいissueを割り当て（ラベル不問）
+   - rulesetsで`assign_good_first_old = true`とすると最も古い"good first issue"を自動割り当て（issue番号順）
+   - rulesetsで`assign_old = true`とすると最も古いissueを自動割り当て（issue番号順、ラベル不問）
+   - 両方がtrueの場合、"good first issue"を優先
+   - デフォルト動作: ブラウザ自動操縦で自動的にボタンをクリック（`[assign_to_copilot]`セクションは不要）
+   - 必須: SeleniumまたはPlaywrightのインストールが必要
 6. **繰り返し**: 設定された間隔で監視を継続
 
 ### Dry-runモード
@@ -223,7 +243,7 @@ enable_execution_phase1_to_phase2 = true  # Draft PRをReady化
 enable_execution_phase2_to_phase3 = true  # Phase2コメント投稿
 enable_execution_phase3_send_ntfy = true  # ntfy通知送信
 enable_execution_phase3_to_merge = true   # Phase3 PRをマージ
-enable_assign_to_copilot = true           # 自動割り当て機能を有効化（グローバル[assign_to_copilot]設定を使用）
+assign_good_first_old = true              # good first issueを自動割り当て
 ```
 
 ### 停止

@@ -8,10 +8,11 @@ to help determine which is more suitable for the automated issue assignment feat
 
 import sys
 import time
+
 from src.gh_pr_phase_monitor.browser_automation import (
-    is_selenium_available,
+    assign_issue_to_copilot_automated,
     is_playwright_available,
-    assign_issue_to_copilot_automated
+    is_selenium_available,
 )
 
 
@@ -34,24 +35,24 @@ def print_section(title):
 def check_availability():
     """Check which automation backends are available"""
     print_header("Checking Automation Backend Availability")
-    
+
     selenium_available = is_selenium_available()
     playwright_available = is_playwright_available()
-    
+
     print(f"Selenium:   {'✓ Available' if selenium_available else '✗ Not installed'}")
     print(f"Playwright: {'✓ Available' if playwright_available else '✗ Not installed'}")
-    
+
     return selenium_available, playwright_available
 
 
 def compare_features():
     """Display feature comparison table"""
     print_header("Feature Comparison: Selenium vs Playwright")
-    
+
     print("┌" + "─" * 68 + "┐")
     print("│ Feature                    │ Selenium      │ Playwright        │")
     print("├" + "─" * 68 + "┤")
-    
+
     features = [
         ("Maturity", "High (2004)", "Medium (2020)"),
         ("Browser Support", "Chrome/Edge/FF", "Chromium/FF/WebKit"),
@@ -64,17 +65,17 @@ def compare_features():
         ("Documentation", "Extensive", "Good"),
         ("Windows Support", "Excellent", "Excellent"),
     ]
-    
+
     for feature, selenium, playwright in features:
         print(f"│ {feature:<26} │ {selenium:<13} │ {playwright:<17} │")
-    
+
     print("└" + "─" * 68 + "┘")
 
 
 def print_comparison_summary():
     """Print summary of which backend might be more suitable"""
     print_header("Summary & Recommendations")
-    
+
     print("Choose Selenium if:")
     print("  ✓ You need maximum stability and community support")
     print("  ✓ You prefer using real browser installations")
@@ -97,22 +98,22 @@ def print_comparison_summary():
 def run_performance_test(test_url):
     """Run a simple performance comparison (if URL provided)"""
     print_header("Performance Test")
-    
+
     selenium_available = is_selenium_available()
     playwright_available = is_playwright_available()
-    
+
     if not selenium_available and not playwright_available:
         print("⚠ No automation backends available for testing.")
         return
-    
+
     if not test_url:
         print("ℹ No test URL provided. Skipping performance test.")
         print("  To run performance test, provide a GitHub issue URL:")
         print("  python demo_comparison.py https://github.com/owner/repo/issues/123")
         return
-    
+
     results = {}
-    
+
     # Test Selenium
     if selenium_available:
         print_section("Testing Selenium")
@@ -124,19 +125,19 @@ def run_performance_test(test_url):
                 "wait_seconds": 5
             }
         }
-        
+
         start_time = time.time()
         success = assign_issue_to_copilot_automated(test_url, config)
         elapsed = time.time() - start_time
-        
+
         results["selenium"] = {
             "success": success,
             "time": elapsed
         }
-        
+
         print(f"Result: {'✓ Success' if success else '✗ Failed'}")
         print(f"Time: {elapsed:.2f} seconds")
-    
+
     # Test Playwright
     if playwright_available:
         print_section("Testing Playwright")
@@ -148,30 +149,30 @@ def run_performance_test(test_url):
                 "wait_seconds": 5
             }
         }
-        
+
         start_time = time.time()
         success = assign_issue_to_copilot_automated(test_url, config)
         elapsed = time.time() - start_time
-        
+
         results["playwright"] = {
             "success": success,
             "time": elapsed
         }
-        
+
         print(f"Result: {'✓ Success' if success else '✗ Failed'}")
         print(f"Time: {elapsed:.2f} seconds")
-    
+
     # Print comparison
     if len(results) > 1:
         print_section("Performance Comparison")
         selenium_time = results.get("selenium", {}).get("time", 0)
         playwright_time = results.get("playwright", {}).get("time", 0)
-        
+
         if selenium_time > 0 and playwright_time > 0:
             diff = abs(selenium_time - playwright_time)
             faster = "Playwright" if playwright_time < selenium_time else "Selenium"
             percent = (diff / max(selenium_time, playwright_time)) * 100
-            
+
             print(f"Selenium:   {selenium_time:.2f}s")
             print(f"Playwright: {playwright_time:.2f}s")
             print(f"→ {faster} was {diff:.2f}s ({percent:.1f}%) faster")
@@ -180,10 +181,10 @@ def run_performance_test(test_url):
 def main():
     """Main comparison demo"""
     print_header("Selenium vs Playwright Comparison Demo")
-    
+
     # Check availability
     selenium_available, playwright_available = check_availability()
-    
+
     if not selenium_available and not playwright_available:
         print()
         print("⚠ Neither Selenium nor Playwright is installed.")
@@ -193,19 +194,19 @@ def main():
         print("  Playwright: pip install playwright && playwright install")
         print()
         return 1
-    
+
     # Show feature comparison
     compare_features()
-    
+
     # Run performance test if URL provided
     test_url = sys.argv[1] if len(sys.argv) > 1 else None
     run_performance_test(test_url)
-    
+
     # Print summary
     print_comparison_summary()
-    
+
     print_header("Comparison Complete")
-    
+
     return 0
 
 

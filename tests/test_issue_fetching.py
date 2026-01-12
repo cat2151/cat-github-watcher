@@ -435,51 +435,6 @@ class TestGetIssuesFromRepositories:
 class TestAssignIssueToCopilot:
     """Tests for assign_issue_to_copilot function"""
 
-    @patch("webbrowser.open")
-    def test_successful_assignment(self, mock_browser_open):
-        """Test successful issue browser opening"""
-        mock_browser_open.return_value = True
-        issue = {
-            "repository": {"name": "test-repo", "owner": "test-owner"},
-            "number": 123,
-            "url": "https://github.com/test-owner/test-repo/issues/123",
-        }
-
-        result = assign_issue_to_copilot(issue)
-
-        assert result is True
-        mock_browser_open.assert_called_once_with("https://github.com/test-owner/test-repo/issues/123")
-
-    @patch("webbrowser.open")
-    def test_failed_assignment(self, mock_browser_open):
-        """Test failed assignment (browser open exception)"""
-        issue = {
-            "repository": {"name": "test-repo", "owner": "test-owner"},
-            "number": 123,
-            "url": "https://github.com/test-owner/test-repo/issues/123",
-        }
-
-        mock_browser_open.side_effect = Exception("Browser error")
-
-        result = assign_issue_to_copilot(issue)
-
-        assert result is False
-
-    @patch("webbrowser.open")
-    def test_browser_open_returns_false(self, mock_browser_open):
-        """Test when webbrowser.open returns False"""
-        mock_browser_open.return_value = False
-        issue = {
-            "repository": {"name": "test-repo", "owner": "test-owner"},
-            "number": 123,
-            "url": "https://github.com/test-owner/test-repo/issues/123",
-        }
-
-        result = assign_issue_to_copilot(issue)
-
-        assert result is False
-        mock_browser_open.assert_called_once_with("https://github.com/test-owner/test-repo/issues/123")
-
     def test_missing_url_field(self):
         """Test validation of missing URL field"""
         # Missing 'url' field
@@ -490,10 +445,14 @@ class TestAssignIssueToCopilot:
         assert assign_issue_to_copilot(issue) is False
 
     @patch("src.gh_pr_phase_monitor.issue_fetcher.assign_issue_to_copilot_automated")
+    @patch("src.gh_pr_phase_monitor.issue_fetcher.is_playwright_available")
     @patch("src.gh_pr_phase_monitor.issue_fetcher.is_selenium_available")
-    def test_automated_mode_when_selenium_available(self, mock_selenium_available, mock_automated_func):
-        """Test automated mode when Selenium is available and config.automated=true"""
+    def test_automated_mode_when_selenium_available(
+        self, mock_selenium_available, mock_playwright_available, mock_automated_func
+    ):
+        """Test automated mode when Selenium is available"""
         mock_selenium_available.return_value = True
+        mock_playwright_available.return_value = False
         mock_automated_func.return_value = True
 
         issue = {
@@ -501,44 +460,43 @@ class TestAssignIssueToCopilot:
             "number": 123,
             "url": "https://github.com/test-owner/test-repo/issues/123",
         }
-        config = {"assign_to_copilot": {"automated": True, "wait_seconds": 5, "browser": "edge"}}
+        config = {"assign_to_copilot": {"wait_seconds": 5, "browser": "edge"}}
 
         result = assign_issue_to_copilot(issue, config)
 
         assert result is True
-        mock_selenium_available.assert_called_once()
         mock_automated_func.assert_called_once_with("https://github.com/test-owner/test-repo/issues/123", config)
 
-    @patch("webbrowser.open")
+    @patch("src.gh_pr_phase_monitor.issue_fetcher.is_playwright_available")
     @patch("src.gh_pr_phase_monitor.issue_fetcher.is_selenium_available")
-    def test_fallback_to_manual_when_selenium_unavailable(self, mock_selenium_available, mock_browser_open):
-        """Test fallback to manual mode when Selenium is unavailable despite config.automated=true"""
+    def test_fails_when_neither_selenium_nor_playwright_available(
+        self, mock_selenium_available, mock_playwright_available
+    ):
+        """Test failure when neither Selenium nor Playwright is available"""
         mock_selenium_available.return_value = False
-        mock_browser_open.return_value = True
+        mock_playwright_available.return_value = False
 
         issue = {
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "number": 123,
             "url": "https://github.com/test-owner/test-repo/issues/123",
         }
-        config = {
-            "assign_to_copilot": {
-                "automated": True,
-                "wait_seconds": 5,
-            }
-        }
+        config = {"assign_to_copilot": {"wait_seconds": 5}}
 
         result = assign_issue_to_copilot(issue, config)
 
-        assert result is True
-        mock_selenium_available.assert_called_once()
-        # Should fall back to manual mode (webbrowser.open)
-        mock_browser_open.assert_called_once_with("https://github.com/test-owner/test-repo/issues/123")
+        assert result is False
 
-    @patch("webbrowser.open")
-    def test_behavior_when_config_is_none(self, mock_browser_open):
-        """Test behavior when config parameter is None (uses manual mode)"""
-        mock_browser_open.return_value = True
+    @patch("src.gh_pr_phase_monitor.issue_fetcher.assign_issue_to_copilot_automated")
+    @patch("src.gh_pr_phase_monitor.issue_fetcher.is_playwright_available")
+    @patch("src.gh_pr_phase_monitor.issue_fetcher.is_selenium_available")
+    def test_uses_playwright_when_available(
+        self, mock_selenium_available, mock_playwright_available, mock_automated_func
+    ):
+        """Test uses Playwright when available"""
+        mock_selenium_available.return_value = False
+        mock_playwright_available.return_value = True
+        mock_automated_func.return_value = True
 
         issue = {
             "repository": {"name": "test-repo", "owner": "test-owner"},
@@ -549,25 +507,25 @@ class TestAssignIssueToCopilot:
         result = assign_issue_to_copilot(issue, None)
 
         assert result is True
-        mock_browser_open.assert_called_once_with("https://github.com/test-owner/test-repo/issues/123")
+        mock_automated_func.assert_called_once_with("https://github.com/test-owner/test-repo/issues/123", None)
 
-    @patch("webbrowser.open")
-    def test_manual_mode_when_automated_is_false(self, mock_browser_open):
-        """Test manual mode when config.automated=false"""
-        mock_browser_open.return_value = True
+    @patch("src.gh_pr_phase_monitor.issue_fetcher.assign_issue_to_copilot_automated")
+    @patch("src.gh_pr_phase_monitor.issue_fetcher.is_playwright_available")
+    @patch("src.gh_pr_phase_monitor.issue_fetcher.is_selenium_available")
+    def test_works_with_config(self, mock_selenium_available, mock_playwright_available, mock_automated_func):
+        """Test automation works with config"""
+        mock_selenium_available.return_value = True
+        mock_playwright_available.return_value = True
+        mock_automated_func.return_value = True
 
         issue = {
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "number": 123,
             "url": "https://github.com/test-owner/test-repo/issues/123",
         }
-        config = {
-            "assign_to_copilot": {
-                "automated": False,
-            }
-        }
+        config = {"assign_to_copilot": {}}
 
         result = assign_issue_to_copilot(issue, config)
 
         assert result is True
-        mock_browser_open.assert_called_once_with("https://github.com/test-owner/test-repo/issues/123")
+        mock_automated_func.assert_called_once()

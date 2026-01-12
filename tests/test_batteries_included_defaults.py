@@ -86,7 +86,6 @@ class TestAssignToCopilotDefaults:
         result = get_assign_to_copilot_config(config)
 
         assert result == DEFAULT_ASSIGN_TO_COPILOT_CONFIG
-        assert result["automated"] is False
         assert result["automation_backend"] == "playwright"
         assert result["wait_seconds"] == 10
         assert result["browser"] == "chromium"
@@ -96,14 +95,12 @@ class TestAssignToCopilotDefaults:
         """When config has partial assign_to_copilot section, merge with defaults"""
         config = {
             "assign_to_copilot": {
-                "automated": True,
                 "browser": "firefox",
             }
         }
         result = get_assign_to_copilot_config(config)
 
         # User values should override defaults
-        assert result["automated"] is True
         assert result["browser"] == "firefox"
 
         # Missing values should use defaults
@@ -115,7 +112,6 @@ class TestAssignToCopilotDefaults:
         """When config has full assign_to_copilot section, use all user values"""
         config = {
             "assign_to_copilot": {
-                "automated": True,
                 "automation_backend": "selenium",
                 "wait_seconds": 15,
                 "browser": "edge",
@@ -125,7 +121,6 @@ class TestAssignToCopilotDefaults:
         result = get_assign_to_copilot_config(config)
 
         # All values should be from user config
-        assert result["automated"] is True
         assert result["automation_backend"] == "selenium"
         assert result["wait_seconds"] == 15
         assert result["browser"] == "edge"
@@ -149,8 +144,7 @@ class TestDefaultConstantsAreSensible:
         assert DEFAULT_PHASE3_MERGE_CONFIG["comment"] != ""
 
     def test_assign_to_copilot_defaults_are_safe(self):
-        """assign_to_copilot defaults should be safe (not automated)"""
-        assert DEFAULT_ASSIGN_TO_COPILOT_CONFIG["automated"] is False
+        """assign_to_copilot defaults should be safe (reasonable wait time)"""
         assert DEFAULT_ASSIGN_TO_COPILOT_CONFIG["wait_seconds"] >= 10
 
     def test_both_defaults_use_playwright(self):

@@ -38,7 +38,9 @@ GitHub Copilotが自動実装を行うPRのフェーズを監視し、適切な�
 - **モバイル通知**: ntfy.shを利用してphase3（レビュー待ち）を検知したらモバイル端末に通知（要：設定ファイルで有効化）
   - 個別のPRがphase3になったときに通知
   - すべてのPRがphase3になったときにも通知（メッセージはtomlで設定可能）
-- **issue一覧表示**: 全PRが「LLM working」の場合、オープンPRのないリポジトリのissue上位10件を表示
+- **issue一覧表示**: 全PRが「LLM working」の場合、オープンPRのないリポジトリのissue上位N件を表示（デフォルト: 10件、`issue_display_limit`で変更可能）
+- **省電力モード**: 状態変化がない場合、API使用量を削減するため監視間隔を自動的に延長（`no_change_timeout`と`reduced_frequency_interval`で設定可能）
+- **Verboseモード**: 起動時と実行中に詳細な設定情報を表示し、設定ミスの検出を支援（`verbose`で有効化）
 
 ## アーキテクチャ
 
@@ -278,6 +280,8 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
    - デフォルト動作: PyAutoGUIで自動的にボタンをクリック（`[assign_to_copilot]`セクションは不要）
    - 必須: PyAutoGUIのインストールとボタンスクリーンショットの準備が必要
 6. **繰り返し**: 設定された間隔で監視を継続
+   - 状態変化がない場合（`no_change_timeout`で設定された時間）、自動的に省電力モード（`reduced_frequency_interval`）に切り替わりAPI使用量を削減
+   - 変化が検知されると通常の監視間隔に戻る
 
 ### Dry-runモード
 

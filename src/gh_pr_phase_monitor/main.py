@@ -11,7 +11,14 @@ from typing import Any, Dict, List, Optional, Tuple
 import tomli
 
 from .colors import colorize_phase
-from .config import get_config_mtime, load_config, parse_interval, print_config, resolve_execution_config_for_repo, get_assign_to_copilot_config
+from .config import (
+    get_assign_to_copilot_config,
+    get_config_mtime,
+    load_config,
+    parse_interval,
+    print_config,
+    resolve_execution_config_for_repo,
+)
 from .github_client import (
     assign_issue_to_copilot,
     get_issues_from_repositories,
@@ -19,7 +26,7 @@ from .github_client import (
     get_repositories_with_no_prs_and_open_issues,
     get_repositories_with_open_prs,
 )
-from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
+from .phase_detector import PHASE_LLM_WORKING, determine_phase
 from .pr_actions import process_pr
 
 # Track PR states and detection times
@@ -38,10 +45,10 @@ _reduced_frequency_mode: bool = False
 
 def format_elapsed_time(seconds: float) -> str:
     """Format elapsed time in Japanese style
-    
+
     Args:
         seconds: Elapsed time in seconds
-        
+
     Returns:
         Formatted string like "3分20秒"
     """
@@ -55,25 +62,22 @@ def format_elapsed_time(seconds: float) -> str:
 
 
 def wait_with_countdown(
-    interval_seconds: int,
-    interval_str: str,
-    config_path: str = "",
-    last_config_mtime: float = 0.0
+    interval_seconds: int, interval_str: str, config_path: str = "", last_config_mtime: float = 0.0
 ) -> Tuple[Dict[str, Any], int, str, float]:
     """Wait for the specified interval with a live countdown display and hot reload support
-    
+
     This function checks the config file's modification timestamp every second during the wait.
     If the config file has been modified, it reloads the configuration and updates the interval.
-    
+
     Note: The filesystem check every second is intentional per the issue requirements for
     hot reload functionality during the wait state.
-    
+
     Args:
         interval_seconds: Number of seconds to wait
         interval_str: Human-readable interval string (e.g., "1m", "30s")
         config_path: Path to the configuration file (empty string disables hot reload)
         last_config_mtime: Last known modification time of the config file
-    
+
     Returns:
         Tuple of (config, interval_seconds, interval_str, new_config_mtime)
     """
@@ -167,28 +171,26 @@ def wait_with_countdown(
 
 def cleanup_old_pr_states(current_prs_with_phases: List[Tuple[str, str]]) -> None:
     """Clean up PR state tracking for PRs that no longer exist or changed phase
-    
+
     Args:
         current_prs_with_phases: List of tuples (pr_url, phase) for current PRs
     """
     current_keys = set(current_prs_with_phases)
     # Filter the existing state dict in place to keep only current keys
-    filtered_states = {
-        key: value
-        for key, value in _pr_state_times.items()
-        if key in current_keys
-    }
+    filtered_states = {key: value for key, value in _pr_state_times.items() if key in current_keys}
     _pr_state_times.clear()
     _pr_state_times.update(filtered_states)
 
 
-def display_status_summary(all_prs: List[Dict[str, Any]], pr_phases: List[str], repos_with_prs: List[Dict[str, Any]]) -> None:
+def display_status_summary(
+    all_prs: List[Dict[str, Any]], pr_phases: List[str], repos_with_prs: List[Dict[str, Any]]
+) -> None:
     """Display a concise summary of current PR status
-    
+
     This summary helps users understand the overall status at a glance,
     especially useful on terminals with limited display lines.
     Uses the same format as process_pr() for consistency.
-    
+
     Args:
         all_prs: List of all PRs
         pr_phases: List of phase strings corresponding to all_prs
@@ -238,22 +240,20 @@ def display_status_summary(all_prs: List[Dict[str, Any]], pr_phases: List[str], 
 
 
 def check_no_state_change_timeout(
-    all_prs: List[Dict[str, Any]],
-    pr_phases: List[str],
-    config: Optional[Dict[str, Any]] = None
+    all_prs: List[Dict[str, Any]], pr_phases: List[str], config: Optional[Dict[str, Any]] = None
 ) -> bool:
     """Check if the overall PR state has not changed for too long and switch to reduced frequency mode
-    
+
     This tracks when ANY change happens in the PR state (phase changes, PRs added/removed).
     Timer starts when the state first becomes stable and resets on any state change.
     When timeout is reached, monitoring switches to reduced frequency mode (using the configured reduced_frequency_interval).
     When changes are detected, monitoring returns to normal frequency mode.
-    
+
     Args:
         all_prs: List of all PRs
         pr_phases: List of phase strings corresponding to all_prs
         config: Configuration dictionary (optional)
-        
+
     Returns:
         True if monitoring should switch to reduced frequency mode, False otherwise
     """
@@ -261,7 +261,7 @@ def check_no_state_change_timeout(
 
     # Get timeout setting from config with default of "30m"
     timeout_str = (config or {}).get("no_change_timeout", "30m")
-    
+
     # Get reduced frequency interval setting from config with default of "1h"
     reduced_interval_str = (config or {}).get("reduced_frequency_interval", "1h")
 
@@ -286,10 +286,7 @@ def check_no_state_change_timeout(
     # Validate that all_prs and pr_phases have the same length
     if all_prs and pr_phases and len(all_prs) == len(pr_phases):
         # Create frozenset of (url, phase) tuples to represent current state
-        current_state = frozenset(
-            (pr.get("url", ""), phase)
-            for pr, phase in zip(all_prs, pr_phases)
-        )
+        current_state = frozenset((pr.get("url", ""), phase) for pr, phase in zip(all_prs, pr_phases))
     else:
         # Invalid or empty state
         current_state = frozenset()
@@ -322,45 +319,40 @@ def check_no_state_change_timeout(
             print("変化があったら元の監視間隔に戻ります。")
             print(f"{'=' * 50}")
             _reduced_frequency_mode = True
-    
+
     return _reduced_frequency_mode
 
 
 def _resolve_assign_to_copilot_config(issue: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
     """Resolve assign_to_copilot configuration for a specific issue's repository
-    
+
     Args:
         issue: Issue dictionary with repository information
         config: Global configuration dictionary (can be None)
-        
+
     Returns:
-        Configuration dictionary with assign_to_copilot settings if enabled for this repo
+        Configuration dictionary with assign_to_copilot settings
     """
     # Handle None config
     if config is None:
         return {"assign_to_copilot": {}}
-    
+
     # Get repository-specific configuration
     repo_info = issue.get("repository", {})
     repo_owner = repo_info.get("owner", "")
     repo_name = repo_info.get("name", "")
-    
+
     if repo_owner and repo_name:
         exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
-        # Check if assign_to_copilot is enabled for this repo
-        enable_assign_flag = exec_config.get("enable_assign_to_copilot")
-        if enable_assign_flag is None:
-            # Not set by rulesets, default to disabled for safety
-            return {"assign_to_copilot": {}}
-        elif enable_assign_flag:
-            # Enabled for this repo, use global assign_to_copilot settings with defaults
+        # Check if any assignment flag is enabled for this repo
+        if exec_config.get("assign_good_first_old", False) or exec_config.get("assign_old", False):
+            # Assignment enabled for this repo, use global assign_to_copilot settings with defaults
             return {"assign_to_copilot": get_assign_to_copilot_config(config)}
         else:
-            # Disabled for this repo
+            # No assignment flags enabled
             return {"assign_to_copilot": {}}
     else:
         return {"assign_to_copilot": {}}
-
 
 
 def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = None):
@@ -382,86 +374,98 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                 print(f"    - {repo['name']}: {repo['openIssueCount']} open issue(s)")
 
             # Check if auto-assign feature is enabled in config
-            # With batteries-included approach:
-            # - Default configuration is always available (no TOML section needed)
-            # - But per-repository assignment requires explicit ruleset enablement
-            # - We check for "good first issue" or "lowest number" mode here
-            assign_lowest_number = False
+            # With the new design:
+            # - Rulesets can specify "assign_good_first_old" to assign one old "good first issue" (oldest by issue number)
+            # - Rulesets can specify "assign_old" to assign one old issue (oldest by issue number, any issue)
+            # - Both default to false
+            # - When both are true, prioritize "good first issue"
+
+            # Check if any repository has auto-assign enabled
+            # We need to check all repos to determine which mode to use
+            # Also filter repos to only those with assignment properly enabled
+            any_good_first = False
+            any_old = False
+            repos_with_good_first_enabled = []
+            repos_with_old_enabled = []
+
+            # Only check for assign flags if config is not None
             if config:
-                assign_config = get_assign_to_copilot_config(config)
-                assign_lowest_number = assign_config.get("assign_lowest_number_issue", False)
+                for repo in repos_with_issues:
+                    repo_owner = repo.get("owner", "")
+                    repo_name = repo.get("name", "")
+                    if repo_owner and repo_name:
+                        exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
+                        # Check if any assignment flag is enabled
+                        if exec_config.get("assign_good_first_old", False):
+                            any_good_first = True
+                            repos_with_good_first_enabled.append(repo)
+                        if exec_config.get("assign_old", False):
+                            any_old = True
+                            repos_with_old_enabled.append(repo)
 
             # Always try to check for issues to assign (batteries-included)
             # Individual repositories must explicitly enable via rulesets for actual assignment
-            # Check which mode to use: lowest number or good first issue
-            if assign_lowest_number:
-                # Fetch and auto-assign the issue with the lowest number
+            # Priority: good first issue > old issue (both sorted by issue number ascending)
+            if any_good_first:
+                # Fetch and auto-assign the oldest "good first issue" (oldest by issue number)
+                # Only from repos with assign_good_first_old enabled
                 print(f"\n{'=' * 50}")
-                print("Checking for the issue with the lowest number to auto-assign to Copilot...")
-                print(f"{'=' * 50}")
-
-                lowest_number_issues = get_issues_from_repositories(
-                    repos_with_issues, limit=1, sort_by_number=True
-                )
-
-                if lowest_number_issues:
-                    issue = lowest_number_issues[0]
-                    print("\n  Found issue with lowest number:")
-                    print(f"  #{issue['number']}: {issue['title']}")
-                    print(f"     URL: {issue['url']}")
-                    # Safely join labels, ensuring they are all strings
-                    labels = issue.get('labels', [])
-                    label_str = ', '.join(str(label) for label in labels)
-                    print(f"     Labels: {label_str}")
-                    print("\n  Attempting to assign to Copilot...")
-
-                    # Get repository-specific configuration
-                    temp_config = _resolve_assign_to_copilot_config(issue, config)
-                    
-                    # Check if assign_to_copilot is enabled for this repository
-                    if not temp_config.get("assign_to_copilot"):
-                        print("  Skipping: assign_to_copilot is disabled for this repository")
-                    else:
-                        # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, temp_config)
-                        if not success:
-                            print("  Assignment failed - will retry on next iteration")
-                else:
-                    print("  No issues found in repositories without open PRs")
-            else:
-                # Original behavior: try to fetch and auto-assign "good first issue" issues
-                print(f"\n{'=' * 50}")
-                print("Checking for 'good first issue' issues to auto-assign to Copilot...")
+                print("Checking for the oldest 'good first issue' to auto-assign to Copilot...")
                 print(f"{'=' * 50}")
 
                 good_first_issues = get_issues_from_repositories(
-                    repos_with_issues, limit=1, labels=["good first issue"]
+                    repos_with_good_first_enabled, limit=1, labels=["good first issue"], sort_by_number=True
                 )
 
                 if good_first_issues:
                     issue = good_first_issues[0]
-                    print("\n  Found top 'good first issue' (sorted by last update, descending):")
+                    print("\n  Found oldest 'good first issue' (sorted by issue number, ascending):")
                     print(f"  #{issue['number']}: {issue['title']}")
                     print(f"     URL: {issue['url']}")
                     # Safely join labels, ensuring they are all strings
-                    labels = issue.get('labels', [])
-                    label_str = ', '.join(str(label) for label in labels)
+                    labels = issue.get("labels", [])
+                    label_str = ", ".join(str(label) for label in labels)
                     print(f"     Labels: {label_str}")
                     print("\n  Attempting to assign to Copilot...")
 
                     # Get repository-specific configuration
                     temp_config = _resolve_assign_to_copilot_config(issue, config)
-                    
-                    # Check if assign_to_copilot is enabled for this repository
-                    if not temp_config.get("assign_to_copilot"):
-                        print("  Skipping: assign_to_copilot is disabled for this repository")
-                    else:
-                        # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, temp_config)
-                        if not success:
-                            print("  Assignment failed - will retry on next iteration")
+
+                    # Assign the issue to Copilot and check the result
+                    success = assign_issue_to_copilot(issue, temp_config)
+                    if not success:
+                        print("  Assignment failed - will retry on next iteration")
                 else:
                     print("  No 'good first issue' issues found in repositories without open PRs")
+            elif any_old:
+                # Fetch and auto-assign the oldest issue (any issue)
+                # Only from repos with assign_old enabled
+                print(f"\n{'=' * 50}")
+                print("Checking for the oldest issue to auto-assign to Copilot...")
+                print(f"{'=' * 50}")
+
+                oldest_issues = get_issues_from_repositories(repos_with_old_enabled, limit=1, sort_by_number=True)
+
+                if oldest_issues:
+                    issue = oldest_issues[0]
+                    print("\n  Found oldest issue (sorted by issue number, ascending):")
+                    print(f"  #{issue['number']}: {issue['title']}")
+                    print(f"     URL: {issue['url']}")
+                    # Safely join labels, ensuring they are all strings
+                    labels = issue.get("labels", [])
+                    label_str = ", ".join(str(label) for label in labels)
+                    print(f"     Labels: {label_str}")
+                    print("\n  Attempting to assign to Copilot...")
+
+                    # Get repository-specific configuration
+                    temp_config = _resolve_assign_to_copilot_config(issue, config)
+
+                    # Assign the issue to Copilot and check the result
+                    success = assign_issue_to_copilot(issue, temp_config)
+                    if not success:
+                        print("  Assignment failed - will retry on next iteration")
+                else:
+                    print("  No issues found in repositories without open PRs")
 
             # Get the issue display limit from config (default: 10)
             issue_limit = config.get("issue_display_limit", 10) if config else 10
@@ -615,7 +619,7 @@ def main():
 
         # Check if PR state has not changed for too long and switch to reduced frequency mode
         use_reduced_frequency = check_no_state_change_timeout(all_prs, pr_phases, config)
-        
+
         # Determine which interval to use
         if use_reduced_frequency:
             # Use reduced frequency interval (default: 1h)

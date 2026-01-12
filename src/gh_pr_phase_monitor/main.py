@@ -348,8 +348,8 @@ def _resolve_assign_to_copilot_config(issue: Dict[str, Any], config: Dict[str, A
         # Check if assign_to_copilot is enabled for this repo
         enable_assign_flag = exec_config.get("enable_assign_to_copilot")
         if enable_assign_flag is None:
-            # Not set by rulesets, default to enabled (use global settings)
-            return config
+            # Not set by rulesets, default to disabled for safety
+            return {"assign_to_copilot": {}}
         elif enable_assign_flag:
             # Enabled for this repo, use global assign_to_copilot settings
             return {"assign_to_copilot": config.get("assign_to_copilot", {})}
@@ -357,7 +357,7 @@ def _resolve_assign_to_copilot_config(issue: Dict[str, Any], config: Dict[str, A
             # Disabled for this repo
             return {"assign_to_copilot": {}}
     else:
-        return config
+        return {"assign_to_copilot": {}}
 
 
 def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = None):
@@ -380,14 +380,13 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
 
             # Check if auto-assign feature is enabled in config
             # We need to check per repository since it can be configured per ruleset
-            # Check if assign_to_copilot section exists (for backward compatibility)
-            # or if any ruleset enables it
+            # Feature must be explicitly enabled via rulesets for safety
             assign_enabled = False
             assign_lowest_number = False
             if config:
                 assign_config = config.get("assign_to_copilot", {})
-                # If assign_to_copilot section exists, feature is available
-                # (can be enabled/disabled per repository via rulesets)
+                # Feature is only available if config section exists
+                # Individual repositories must explicitly enable via rulesets
                 assign_enabled = bool(assign_config)
                 assign_lowest_number = assign_config.get("assign_lowest_number_issue", False)
 

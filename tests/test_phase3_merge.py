@@ -69,6 +69,7 @@ class TestPhase3Merge:
                 {
                     "repositories": ["test-repo"],
                     "enable_execution_phase3_to_merge": True,
+                    "enable_phase3_merge": True,  # Explicitly enable
                 }
             ],
         }
@@ -105,6 +106,7 @@ class TestPhase3Merge:
                 {
                     "repositories": ["test-repo"],
                     "enable_execution_phase3_to_merge": True,
+                    "enable_phase3_merge": True,  # Explicitly enable
                 }
             ],
         }
@@ -142,6 +144,7 @@ class TestPhase3Merge:
                 {
                     "repositories": ["test-repo"],
                     "enable_execution_phase3_to_merge": True,
+                    "enable_phase3_merge": True,  # Explicitly enable
                 }
             ],
         }
@@ -182,6 +185,7 @@ class TestPhase3Merge:
                     "repositories": ["test-repo"],
                     "enable_execution_phase1_to_phase2": True,
                     "enable_execution_phase3_to_merge": True,
+                    "enable_phase3_merge": True,  # Explicitly enable
                 }
             ],
         }
@@ -222,6 +226,7 @@ class TestPhase3Merge:
                     "repositories": ["test-repo"],
                     "enable_execution_phase2_to_phase3": True,
                     "enable_execution_phase3_to_merge": True,
+                    "enable_phase3_merge": True,  # Explicitly enable
                 }
             ],
         }
@@ -290,6 +295,7 @@ class TestPhase3Merge:
                 {
                     "repositories": ["test-repo"],
                     "enable_execution_phase3_to_merge": True,
+                    "enable_phase3_merge": True,  # Explicitly enable
                 }
             ],
         }
@@ -327,6 +333,7 @@ class TestPhase3Merge:
                 {
                     "repositories": ["test-repo"],
                     "enable_execution_phase3_to_merge": True,
+                    "enable_phase3_merge": True,  # Explicitly enable
                 }
             ],
         }
@@ -364,6 +371,7 @@ class TestPhase3Merge:
                 {
                     "repositories": ["test-repo"],
                     "enable_execution_phase3_to_merge": True,
+                    "enable_phase3_merge": True,  # Explicitly enable
                 }
             ],
         }
@@ -401,6 +409,7 @@ class TestPhase3Merge:
                 {
                     "repositories": ["test-repo"],
                     "enable_execution_phase3_to_merge": True,
+                    "enable_phase3_merge": True,  # Explicitly enable
                 }
             ],
         }

@@ -25,7 +25,7 @@ class TestAssignIssueToCopilotAutomated:
 
     def setup_method(self):
         """Reset cooldown state before each test"""
-        import src.gh_pr_phase_monitor.browser_automation as ba
+        from src.gh_pr_phase_monitor import browser_automation as ba
 
         ba._last_browser_open_time = None
 
@@ -142,7 +142,7 @@ class TestMergePrAutomated:
 
     def setup_method(self):
         """Reset cooldown state before each test"""
-        import src.gh_pr_phase_monitor.browser_automation as ba
+        from src.gh_pr_phase_monitor import browser_automation as ba
 
         ba._last_browser_open_time = None
 
@@ -299,7 +299,7 @@ class TestBrowserCooldown:
 
     def setup_method(self):
         """Reset cooldown state before each test"""
-        import src.gh_pr_phase_monitor.browser_automation as ba
+        from src.gh_pr_phase_monitor import browser_automation as ba
 
         ba._last_browser_open_time = None
 

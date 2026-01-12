@@ -57,7 +57,7 @@ def _get_screenshot_path(button_name: str, config: Dict[str, Any]) -> Optional[P
 
     Args:
         button_name: Name of the button (e.g., "assign_to_copilot", "assign", "merge_pull_request")
-        config: Configuration dict with screenshot_dir setting
+        config: Configuration dict (assign_to_copilot or phase3_merge section) with screenshot_dir setting
 
     Returns:
         Path to the screenshot image, or None if not found
@@ -94,7 +94,7 @@ def _click_button_with_image(button_name: str, config: Dict[str, Any], confidenc
     if screenshot_path is None:
         print(f"  ✗ Screenshot not found for button '{button_name}'")
         print(f"     Please save a screenshot as '{button_name}.png' in the screenshots directory")
-        print(f"     See README.ja.md for instructions")
+        print("     See README.ja.md for instructions")
         return False
 
     try:
@@ -149,7 +149,7 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     # Validate and get wait_seconds
     wait_seconds = _validate_wait_seconds(assign_config)
 
-    print(f"  → [PyAutoGUI] Opening issue in browser...")
+    print("  → [PyAutoGUI] Opening issue in browser...")
     webbrowser.open(issue_url)
 
     # Wait for the configured time
@@ -217,7 +217,7 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
     # Validate and get wait_seconds
     wait_seconds = _validate_wait_seconds(merge_config)
 
-    print(f"  → [PyAutoGUI] Opening PR in browser...")
+    print("  → [PyAutoGUI] Opening PR in browser...")
     webbrowser.open(pr_url)
 
     # Wait for the configured time

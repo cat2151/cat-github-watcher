@@ -167,6 +167,37 @@ class TestAssignIssueToCopilotAutomated:
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
+    def test_issue_url_can_be_retried_after_24_hours(self, mock_time, mock_sleep, mock_click, mock_webbrowser):
+        """Test that issue URL can be retried after 24 hours"""
+        mock_click.return_value = False  # Simulate button not found
+        mock_webbrowser.open.return_value = True
+
+        config = {"assign_to_copilot": {"wait_seconds": 1}}
+        issue_url = "https://github.com/test/repo/issues/123"
+
+        # First attempt at time 0
+        mock_time.return_value = 0.0
+        result1 = assign_issue_to_copilot_automated(issue_url, config)
+        assert result1 is False
+        assert mock_webbrowser.open.call_count == 1
+
+        # Second attempt after 12 hours - should skip (not enough time)
+        mock_time.return_value = 12 * 3600  # 12 hours
+        result2 = assign_issue_to_copilot_automated(issue_url, config)
+        assert result2 is False
+        assert mock_webbrowser.open.call_count == 1  # Still 1 (not opened again)
+
+        # Third attempt after 25 hours - should retry (more than 24 hours)
+        mock_time.return_value = 25 * 3600  # 25 hours
+        result3 = assign_issue_to_copilot_automated(issue_url, config)
+        assert result3 is False
+        assert mock_webbrowser.open.call_count == 2  # Now 2 (opened again)
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
     def test_different_issue_urls_are_tracked_separately(self, mock_time, mock_sleep, mock_click, mock_webbrowser):
         """Test that different issue URLs can each be attempted once"""
         mock_click.return_value = True  # Simulate success

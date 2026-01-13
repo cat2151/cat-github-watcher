@@ -11,7 +11,7 @@ See README.ja.md for instructions on how to capture button screenshots.
 import time
 import webbrowser
 from pathlib import Path
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, Optional
 
 from .config import DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE, is_process_running
 
@@ -32,9 +32,13 @@ _last_browser_open_time: Optional[float] = None
 # Minimum time (in seconds) to wait between opening browser pages
 BROWSER_OPEN_COOLDOWN_SECONDS = 60
 
-# Track which issue URLs have had assignment attempted: set of issue URLs
+# Track which issue URLs have had assignment attempted with timestamp: dict of URL -> timestamp
 # This prevents repeatedly trying to assign the same issue when automation fails
-_issue_assign_attempted: Set[str] = set()
+# URLs expire after 24 hours, allowing retries for temporary failures
+_issue_assign_attempted: Dict[str, float] = {}
+
+# Time (in seconds) before an issue URL can be retried (24 hours)
+ISSUE_ASSIGN_RETRY_AFTER_SECONDS = 24 * 60 * 60
 
 
 def is_pyautogui_available() -> bool:
@@ -264,8 +268,11 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     operation will be retried in the next monitoring iteration.
 
     Note: Once an assignment attempt has been made for a specific issue URL (whether
-    successful or not), subsequent attempts for the same URL will be skipped to prevent
-    repeatedly opening the same page when automation fails.
+    successful or not), subsequent attempts for the same URL will be skipped for 24 hours
+    to prevent repeatedly opening the same page when automation fails. After 24 hours,
+    the issue URL can be retried automatically, allowing recovery from temporary failures
+    (e.g., missing screenshots, UI changes). This prevents opening duplicate browser tabs
+    while still allowing eventual retries.
 
     Required screenshots (must be provided by user):
     - assign_to_copilot.png: Screenshot of "Assign to Copilot" button
@@ -287,10 +294,18 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
         print("  ✗ PyAutoGUI is not installed. Install with: pip install pyautogui pillow")
         return False
 
-    # Check if assignment has already been attempted for this issue
+    # Check if assignment has already been attempted for this issue recently
     if issue_url in _issue_assign_attempted:
-        print("  ℹ Assignment already attempted for this issue, skipping")
-        return False
+        last_attempt_time = _issue_assign_attempted[issue_url]
+        elapsed = time.time() - last_attempt_time
+        if elapsed < ISSUE_ASSIGN_RETRY_AFTER_SECONDS:
+            remaining_hours = (ISSUE_ASSIGN_RETRY_AFTER_SECONDS - elapsed) / 3600
+            print("  ℹ Assignment already attempted for this issue recently")
+            print(f"     Will retry after {remaining_hours:.1f} hours (to prevent duplicate tabs)")
+            return False
+        else:
+            # Enough time has passed, allow retry
+            print(f"  ℹ Retrying assignment (last attempt was {elapsed / 3600:.1f} hours ago)")
 
     # Check if enough time has passed since the last browser open
     if not _can_open_browser():
@@ -329,11 +344,12 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     # Record the browser open time to enforce cooldown
     _record_browser_open()
 
-    # Mark this issue as having an assignment attempt
+    # Mark this issue as having an assignment attempt with current timestamp
     # This is done immediately after browser opens to prevent repeated browser opens
     # even if the automation fails later (e.g., button not found). The goal is to
     # prevent opening 30+ tabs of the same URL, not to retry until successful.
-    _issue_assign_attempted.add(issue_url)
+    # The timestamp allows retries after 24 hours for temporary failures.
+    _issue_assign_attempted[issue_url] = time.time()
 
     # Wait for the configured time
     print(f"  → Waiting {wait_seconds} seconds for page to load...")

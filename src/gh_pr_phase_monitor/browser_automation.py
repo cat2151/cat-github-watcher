@@ -11,7 +11,7 @@ See README.ja.md for instructions on how to capture button screenshots.
 import time
 import webbrowser
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set
 
 from .config import DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE, is_process_running
 
@@ -31,6 +31,10 @@ _last_browser_open_time: Optional[float] = None
 
 # Minimum time (in seconds) to wait between opening browser pages
 BROWSER_OPEN_COOLDOWN_SECONDS = 60
+
+# Track which issue URLs have had assignment attempted: set of issue URLs
+# This prevents repeatedly trying to assign the same issue when automation fails
+_issue_assign_attempted: Set[str] = set()
 
 
 def is_pyautogui_available() -> bool:
@@ -259,6 +263,10 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     was opened. If the cooldown has not elapsed, the function returns False and the
     operation will be retried in the next monitoring iteration.
 
+    Note: Once an assignment attempt has been made for a specific issue URL (whether
+    successful or not), subsequent attempts for the same URL will be skipped to prevent
+    repeatedly opening the same page when automation fails.
+
     Required screenshots (must be provided by user):
     - assign_to_copilot.png: Screenshot of "Assign to Copilot" button
     - assign.png: Screenshot of "Assign" button
@@ -275,6 +283,11 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     Returns:
         True if automation was successful, False otherwise
     """
+    # Check if assignment has already been attempted for this issue
+    if issue_url in _issue_assign_attempted:
+        print("  ℹ Assignment already attempted for this issue, skipping")
+        return False
+
     if not PYAUTOGUI_AVAILABLE:
         print("  ✗ PyAutoGUI is not installed. Install with: pip install pyautogui pillow")
         return False
@@ -315,6 +328,10 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
 
     # Record the browser open time to enforce cooldown
     _record_browser_open()
+
+    # Mark this issue as having an assignment attempt
+    # (do this after successful browser open to prevent repeated attempts if automation fails)
+    _issue_assign_attempted.add(issue_url)
 
     # Wait for the configured time
     print(f"  → Waiting {wait_seconds} seconds for page to load...")

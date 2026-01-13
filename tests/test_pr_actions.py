@@ -79,9 +79,10 @@ class TestProcessPR:
         }
 
         with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser:
-            process_pr(pr, {})
-            # Browser should be called for phase3
-            mock_browser.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1")
+            config = {}
+            process_pr(pr, config)
+            # Browser should be called for phase3 with URL and config
+            mock_browser.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1", config)
 
     def test_browser_not_opened_for_llm_working(self):
         """Browser should not open for 'LLM working' phase"""

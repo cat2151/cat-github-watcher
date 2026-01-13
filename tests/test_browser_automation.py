@@ -51,8 +51,11 @@ class TestAssignIssueToCopilotAutomated:
         # Should succeed
         assert result is True
 
-        # Verify browser was opened
-        mock_webbrowser.open.assert_called_once_with("https://github.com/test/repo/issues/1")
+        # Verify browser was opened with autoraise parameter
+        mock_webbrowser.open.assert_called_once()
+        call_args = mock_webbrowser.open.call_args
+        assert call_args[0][0] == "https://github.com/test/repo/issues/1"
+        assert "autoraise" in call_args[1]  # autoraise parameter should be present
 
         # Verify two button clicks were attempted
         assert mock_click.call_count == 2

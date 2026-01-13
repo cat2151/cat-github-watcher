@@ -361,40 +361,41 @@ def test_config_validation_at_load_time():
     """
     Test that invalid max_llm_working_parallel values are validated when config is loaded
     """
-    import tempfile
     import os
-    from src.gh_pr_phase_monitor.config import load_config, DEFAULT_MAX_LLM_WORKING_PARALLEL
+    import tempfile
+
+    from src.gh_pr_phase_monitor.config import DEFAULT_MAX_LLM_WORKING_PARALLEL, load_config
 
     # Test invalid string value
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
         f.write('max_llm_working_parallel = "invalid"\n')
         f.flush()
         config = load_config(f.name)
-        assert config['max_llm_working_parallel'] == DEFAULT_MAX_LLM_WORKING_PARALLEL
+        assert config["max_llm_working_parallel"] == DEFAULT_MAX_LLM_WORKING_PARALLEL
         os.unlink(f.name)
 
     # Test zero value
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
-        f.write('max_llm_working_parallel = 0\n')
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write("max_llm_working_parallel = 0\n")
         f.flush()
         config = load_config(f.name)
-        assert config['max_llm_working_parallel'] == DEFAULT_MAX_LLM_WORKING_PARALLEL
+        assert config["max_llm_working_parallel"] == DEFAULT_MAX_LLM_WORKING_PARALLEL
         os.unlink(f.name)
 
     # Test negative value
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
-        f.write('max_llm_working_parallel = -1\n')
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write("max_llm_working_parallel = -1\n")
         f.flush()
         config = load_config(f.name)
-        assert config['max_llm_working_parallel'] == DEFAULT_MAX_LLM_WORKING_PARALLEL
+        assert config["max_llm_working_parallel"] == DEFAULT_MAX_LLM_WORKING_PARALLEL
         os.unlink(f.name)
 
     # Test valid value is preserved
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
-        f.write('max_llm_working_parallel = 5\n')
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write("max_llm_working_parallel = 5\n")
         f.flush()
         config = load_config(f.name)
-        assert config['max_llm_working_parallel'] == 5
+        assert config["max_llm_working_parallel"] == 5
         os.unlink(f.name)
 
 

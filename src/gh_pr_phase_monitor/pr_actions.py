@@ -5,12 +5,13 @@ PR actions such as marking ready and opening browser
 import subprocess
 import webbrowser
 from pathlib import Path
-from typing import Any, Dict, Set, Tuple
+from typing import Any, Dict, Optional, Set, Tuple
 
 from .browser_automation import (
     _can_open_browser,
     _get_remaining_cooldown,
     _record_browser_open,
+    _should_autoraise_window,
     merge_pr_automated,
 )
 from .colors import colorize_phase
@@ -81,7 +82,7 @@ def merge_pr(pr_url: str, repo_dir: Path = None) -> bool:
         return False
 
 
-def open_browser(url: str) -> bool:
+def open_browser(url: str, config: Optional[Dict[str, Any]] = None) -> bool:
     """Open URL in browser
 
     Note: To prevent issues with opening multiple pages simultaneously, this function
@@ -91,6 +92,7 @@ def open_browser(url: str) -> bool:
 
     Args:
         url: URL to open in browser
+        config: Optional configuration dict (used for check_process_before_autoraise setting)
 
     Returns:
         True if browser was opened, False if cooldown prevented opening
@@ -103,7 +105,10 @@ def open_browser(url: str) -> bool:
         print("       Will retry in the next monitoring iteration.")
         return False
 
-    webbrowser.open(url)
+    # Determine if window should be raised to foreground
+    autoraise = _should_autoraise_window(config)
+
+    webbrowser.open(url, autoraise=autoraise)
     _record_browser_open()
     return True
 
@@ -181,7 +186,7 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         browser_key = (url, phase)
         if browser_key not in _browser_opened:
             print("    Opening browser...")
-            if open_browser(url):
+            if open_browser(url, config):
                 _browser_opened.add(browser_key)
             # If cooldown prevented opening, will retry in next iteration
         else:

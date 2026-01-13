@@ -4,6 +4,7 @@ Configuration loading and parsing utilities
 
 import os
 import re
+import subprocess
 from typing import Any, Dict
 
 import tomli
@@ -30,6 +31,10 @@ DEFAULT_ASSIGN_TO_COPILOT_CONFIG: Dict[str, Any] = {
 # Default maximum number of parallel PRs in "LLM working" state
 # When this limit is reached, auto-assignment of new issues is paused to avoid rate limits
 DEFAULT_MAX_LLM_WORKING_PARALLEL = 3
+
+# Default value for check_process_before_autoraise
+# When true, check if cat-window-watcher process is running and don't raise browser window if it is
+DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE = True
 
 
 def parse_interval(interval_str: str) -> int:
@@ -73,6 +78,58 @@ def parse_interval(interval_str: str) -> int:
         return value * 3600
     else:  # unit == "d"
         return value * 86400
+
+
+def is_process_running(process_name: str) -> bool:
+    """Check if a process with the given name is currently running
+
+    Args:
+        process_name: Name of the process to check (e.g., "cat-window-watcher")
+
+    Returns:
+        True if the process is running, False otherwise
+    """
+    try:
+        # Use pgrep for more reliable process detection
+        # -f flag searches the full command line
+        # This is more reliable than parsing ps output
+        result = subprocess.run(
+            ["pgrep", "-f", process_name],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+
+        # pgrep returns 0 if at least one process matches, 1 if no processes match
+        # It prints the PIDs of matching processes to stdout
+        if result.returncode == 0 and result.stdout.strip():
+            return True
+        return False
+    except FileNotFoundError:
+        # pgrep command not available, fallback to ps aux approach
+        try:
+            result = subprocess.run(
+                ["ps", "aux"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+
+            if result.returncode == 0:
+                # Check if process name appears in the output
+                # This is a simpler fallback when pgrep is not available
+                return process_name in result.stdout
+            return False
+        except (subprocess.SubprocessError, FileNotFoundError):
+            # If both commands fail, assume process is not running
+            return False
+    except subprocess.SubprocessError:
+        # If pgrep fails for any other reason, assume process is not running
+        return False
 
 
 def _validate_boolean_flag(value: Any, flag_name: str) -> bool:
@@ -162,7 +219,7 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
     """
     with open(config_path, "rb") as f:
         config = tomli.load(f)
-    
+
     # Validate max_llm_working_parallel setting
     if "max_llm_working_parallel" in config:
         value = config["max_llm_working_parallel"]
@@ -173,7 +230,7 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
                 f"Using default value: {DEFAULT_MAX_LLM_WORKING_PARALLEL}"
             )
             config["max_llm_working_parallel"] = DEFAULT_MAX_LLM_WORKING_PARALLEL
-    
+
     return config
 
 
@@ -195,6 +252,9 @@ def print_config(config: Dict[str, Any]) -> None:
     print(f"  reduced_frequency_interval: {config.get('reduced_frequency_interval', '1h')}")
     print(f"  max_llm_working_parallel: {config.get('max_llm_working_parallel', DEFAULT_MAX_LLM_WORKING_PARALLEL)}")
     print(f"  verbose: {config.get('verbose', False)}")
+    print(
+        f"  check_process_before_autoraise: {config.get('check_process_before_autoraise', DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE)}"
+    )
 
     # Print rulesets
     rulesets = config.get("rulesets", [])

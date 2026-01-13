@@ -36,6 +36,14 @@ reduced_frequency_interval = "1h"
 # Default: 3
 max_llm_working_parallel = 3
 
+# Check for cat-window-watcher process before raising browser window
+# When enabled (true), checks if cat-window-watcher process is running.
+# If it is running, browser windows will NOT be raised to foreground to avoid
+# interfering with window management automation.
+# This prevents auto-assign from failing when cat-window-watcher is active.
+# Default: true
+check_process_before_autoraise = true
+
 # Verbose mode - Print detailed configuration information
 # When enabled, prints all settings at startup and per-repository settings during execution
 # This helps detect configuration mistakes

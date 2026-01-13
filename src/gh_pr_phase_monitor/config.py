@@ -4,6 +4,7 @@ Configuration loading and parsing utilities
 
 import os
 import re
+import subprocess
 from typing import Any, Dict
 
 import tomli
@@ -30,6 +31,10 @@ DEFAULT_ASSIGN_TO_COPILOT_CONFIG: Dict[str, Any] = {
 # Default maximum number of parallel PRs in "LLM working" state
 # When this limit is reached, auto-assignment of new issues is paused to avoid rate limits
 DEFAULT_MAX_LLM_WORKING_PARALLEL = 3
+
+# Default value for check_process_before_autoraise
+# When true, check if cat-window-watcher process is running and don't raise browser window if it is
+DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE = True
 
 
 def parse_interval(interval_str: str) -> int:
@@ -73,6 +78,37 @@ def parse_interval(interval_str: str) -> int:
         return value * 3600
     else:  # unit == "d"
         return value * 86400
+
+
+def is_process_running(process_name: str) -> bool:
+    """Check if a process with the given name is currently running
+
+    Args:
+        process_name: Name of the process to check (e.g., "cat-window-watcher")
+
+    Returns:
+        True if the process is running, False otherwise
+    """
+    try:
+        # Use ps aux to list all processes and grep for the process name
+        result = subprocess.run(
+            ["ps", "aux"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+
+        # Check if process name is in the output
+        # Note: This will also match this script if it contains the process name in arguments
+        # We filter out grep itself and the current python process by checking the full command
+        if result.returncode == 0:
+            return process_name in result.stdout
+        return False
+    except (subprocess.SubprocessError, FileNotFoundError):
+        # If ps command is not available or fails, assume process is not running
+        return False
 
 
 def _validate_boolean_flag(value: Any, flag_name: str) -> bool:
@@ -162,7 +198,7 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
     """
     with open(config_path, "rb") as f:
         config = tomli.load(f)
-    
+
     # Validate max_llm_working_parallel setting
     if "max_llm_working_parallel" in config:
         value = config["max_llm_working_parallel"]
@@ -173,7 +209,7 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
                 f"Using default value: {DEFAULT_MAX_LLM_WORKING_PARALLEL}"
             )
             config["max_llm_working_parallel"] = DEFAULT_MAX_LLM_WORKING_PARALLEL
-    
+
     return config
 
 
@@ -195,6 +231,9 @@ def print_config(config: Dict[str, Any]) -> None:
     print(f"  reduced_frequency_interval: {config.get('reduced_frequency_interval', '1h')}")
     print(f"  max_llm_working_parallel: {config.get('max_llm_working_parallel', DEFAULT_MAX_LLM_WORKING_PARALLEL)}")
     print(f"  verbose: {config.get('verbose', False)}")
+    print(
+        f"  check_process_before_autoraise: {config.get('check_process_before_autoraise', DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE)}"
+    )
 
     # Print rulesets
     rulesets = config.get("rulesets", [])

@@ -13,6 +13,8 @@ import webbrowser
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .config import DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE, is_process_running
+
 # PyAutoGUI imports are optional - will be imported only if automation is enabled
 try:
     import pyautogui
@@ -71,6 +73,33 @@ def _get_remaining_cooldown() -> float:
     elapsed = time.time() - _last_browser_open_time
     remaining = BROWSER_OPEN_COOLDOWN_SECONDS - elapsed
     return max(0.0, remaining)
+
+
+def _should_autoraise_window(config: Optional[Dict[str, Any]] = None) -> bool:
+    """Determine if browser window should be raised to foreground
+
+    Args:
+        config: Configuration dictionary
+
+    Returns:
+        True if window should be raised, False otherwise
+    """
+    if config is None:
+        config = {}
+
+    # Get the check_process_before_autoraise setting (default: True)
+    check_process = config.get("check_process_before_autoraise", DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE)
+
+    # If the setting is disabled, always autoraise
+    if not check_process:
+        return True
+
+    # If enabled, check if cat-window-watcher is running
+    if is_process_running("cat-window-watcher"):
+        print("  ℹ cat-window-watcher is running, browser window will not be raised to foreground")
+        return False
+
+    return True
 
 
 def _validate_wait_seconds(config: Dict[str, Any]) -> int:
@@ -271,8 +300,11 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     print("  → [PyAutoGUI] Opening issue in browser...")
     print("  ℹ Ensure you are already logged into GitHub in your default browser")
 
+    # Determine if window should be raised to foreground
+    autoraise = _should_autoraise_window(config)
+
     try:
-        opened = webbrowser.open(issue_url)
+        opened = webbrowser.open(issue_url, autoraise=autoraise)
         if not opened:
             print(f"  ✗ Browser did not open for issue URL '{issue_url}'")
             print("     Please check your default browser settings")
@@ -376,8 +408,11 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
     print("  → [PyAutoGUI] Opening PR in browser...")
     print("  ℹ Ensure you are already logged into GitHub in your default browser")
 
+    # Determine if window should be raised to foreground
+    autoraise = _should_autoraise_window(config)
+
     try:
-        opened = webbrowser.open(pr_url)
+        opened = webbrowser.open(pr_url, autoraise=autoraise)
         if not opened:
             print(f"  ✗ Browser did not open for PR URL '{pr_url}'")
             print("     Please check your default browser settings")

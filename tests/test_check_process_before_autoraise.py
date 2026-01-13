@@ -7,8 +7,6 @@ when cat-window-watcher process is running or not.
 import subprocess
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.gh_pr_phase_monitor.config import (
     DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE,
     is_process_running,

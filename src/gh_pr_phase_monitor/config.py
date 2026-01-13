@@ -155,13 +155,26 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
         config_path: Path to the TOML configuration file
 
     Returns:
-        Dictionary containing configuration data
+        Dictionary containing configuration data with validated settings
 
     Raises:
         FileNotFoundError: If the configuration file is not found
     """
     with open(config_path, "rb") as f:
-        return tomli.load(f)
+        config = tomli.load(f)
+    
+    # Validate max_llm_working_parallel setting
+    if "max_llm_working_parallel" in config:
+        value = config["max_llm_working_parallel"]
+        if not isinstance(value, int) or value < 1:
+            print(
+                f"Warning: max_llm_working_parallel must be a positive integer, "
+                f"got {type(value).__name__}: {value!r}. "
+                f"Using default value: {DEFAULT_MAX_LLM_WORKING_PARALLEL}"
+            )
+            config["max_llm_working_parallel"] = DEFAULT_MAX_LLM_WORKING_PARALLEL
+    
+    return config
 
 
 def print_config(config: Dict[str, Any]) -> None:

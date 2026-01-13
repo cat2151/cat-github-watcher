@@ -411,12 +411,6 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
             if config:
                 max_llm_working = config.get("max_llm_working_parallel", DEFAULT_MAX_LLM_WORKING_PARALLEL)
 
-            # Validate that max_llm_working is a positive integer
-            if not isinstance(max_llm_working, int) or max_llm_working < 1:
-                print(f"  Warning: Invalid max_llm_working_parallel setting: {max_llm_working}")
-                print(f"  Using default value: {DEFAULT_MAX_LLM_WORKING_PARALLEL}")
-                max_llm_working = DEFAULT_MAX_LLM_WORKING_PARALLEL
-
             # Check if we should pause auto-assignment
             should_pause_assignment = llm_working_count >= max_llm_working
 
@@ -610,15 +604,19 @@ def main():
                         process_pr(pr, config, phase)
 
                     # Count how many PRs are in "LLM working" phase
+                    # This count is used for rate limit protection - when too many PRs are being
+                    # worked on simultaneously, we pause auto-assignment to prevent API rate limits
                     llm_working_count = sum(1 for phase in pr_phases if phase == PHASE_LLM_WORKING)
 
-                    # Check if all PRs are in "LLM working" phase
+                    # Look for new issues to assign only when all PRs are in "LLM working" phase
+                    # This means all existing work is in progress (not waiting for review or action)
+                    # The llm_working_count throttles assignment when parallel work is too high
                     if pr_phases and all(phase == PHASE_LLM_WORKING for phase in pr_phases):
                         print(f"\n{'=' * 50}")
                         print("All PRs are in 'LLM working' phase")
                         print(f"{'=' * 50}")
-                        # Display issues when all PRs are in "LLM working" phase
-                        # Pass the count of LLM working PRs
+                        # Display issues and potentially auto-assign new work
+                        # Throttling is applied inside the function based on llm_working_count
                         display_issues_from_repos_without_prs(config, llm_working_count=llm_working_count)
 
             # Reset consecutive-failure counter on a successful iteration

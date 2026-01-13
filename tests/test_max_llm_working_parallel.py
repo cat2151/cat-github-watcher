@@ -357,6 +357,47 @@ def test_zero_llm_working_count():
                 mock_assign.assert_called_once()
 
 
+def test_config_validation_at_load_time():
+    """
+    Test that invalid max_llm_working_parallel values are validated when config is loaded
+    """
+    import tempfile
+    import os
+    from src.gh_pr_phase_monitor.config import load_config, DEFAULT_MAX_LLM_WORKING_PARALLEL
+
+    # Test invalid string value
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
+        f.write('max_llm_working_parallel = "invalid"\n')
+        f.flush()
+        config = load_config(f.name)
+        assert config['max_llm_working_parallel'] == DEFAULT_MAX_LLM_WORKING_PARALLEL
+        os.unlink(f.name)
+
+    # Test zero value
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
+        f.write('max_llm_working_parallel = 0\n')
+        f.flush()
+        config = load_config(f.name)
+        assert config['max_llm_working_parallel'] == DEFAULT_MAX_LLM_WORKING_PARALLEL
+        os.unlink(f.name)
+
+    # Test negative value
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
+        f.write('max_llm_working_parallel = -1\n')
+        f.flush()
+        config = load_config(f.name)
+        assert config['max_llm_working_parallel'] == DEFAULT_MAX_LLM_WORKING_PARALLEL
+        os.unlink(f.name)
+
+    # Test valid value is preserved
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
+        f.write('max_llm_working_parallel = 5\n')
+        f.flush()
+        config = load_config(f.name)
+        assert config['max_llm_working_parallel'] == 5
+        os.unlink(f.name)
+
+
 if __name__ == "__main__":
     test_assignment_paused_when_limit_reached()
     print("✓ Test 1 passed: assignment_paused_when_limit_reached")
@@ -375,5 +416,8 @@ if __name__ == "__main__":
 
     test_zero_llm_working_count()
     print("✓ Test 6 passed: zero_llm_working_count")
+
+    test_config_validation_at_load_time()
+    print("✓ Test 7 passed: config_validation_at_load_time")
 
     print("\n✅ All tests passed!")

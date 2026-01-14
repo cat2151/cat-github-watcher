@@ -1,4 +1,4 @@
-Last updated: 2026-01-14
+Last updated: 2026-01-15
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -68,6 +68,7 @@ Last updated: 2026-01-14
 <p align="left">
   <a href="README.ja.md"><img src="https://img.shields.io/badge/🇯🇵-Japanese-red.svg" alt="Japanese"></a>
   <a href="README.md"><img src="https://img.shields.io/badge/🇺🇸-English-blue.svg" alt="English"></a>
+  <a href="https://deepwiki.com/cat2151/cat-github-watcher"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 ※このドキュメントは大部分がAI生成です。issueをagentに投げて生成させました。
@@ -226,10 +227,8 @@ cat-github-watcher/
    [phase3_merge]
    comment = "All checks passed. Merging PR."  # マージ前に投稿するコメント
    automated = false  # trueにするとブラウザ自動操縦でマージボタンをクリック
-   automation_backend = "selenium"  # 自動操縦バックエンド: "selenium" または "playwright"
    wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
-   browser = "edge"  # 使用するブラウザ: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
-   headless = false  # ヘッドレスモードで実行（ウィンドウを表示しない）
+   debug_dir = "debug_screenshots"  # 画像認識失敗時のデバッグ情報保存先（デフォルト: "debug_screenshots"）
    
    # issueをCopilotに自動割り当て（完全にオプション！このセクション全体がオプションです）
    # 
@@ -243,19 +242,16 @@ cat-github-watcher/
    # 
    # デフォルト動作（このセクションが定義されていない場合）:
    # - ブラウザ自動操縦で自動的にボタンをクリック
-   # - Playwright + Chromiumを使用
+   # - PyAutoGUIを使用
    # - wait_seconds = 10
-   # - headless = false
    # 
-   # 必須: SeleniumまたはPlaywrightのインストールが必要
+   # 必須: PyAutoGUIのインストールが必要（pip install pyautogui pillow）
    # 
    # 重要: 安全のため、この機能はデフォルトで無効です
    # リポジトリごとにrulesetsで assign_good_first_old または assign_old を指定して明示的に有効化する必要があります
    [assign_to_copilot]
-   automation_backend = "playwright"  # 自動操縦バックエンド: "selenium" または "playwright"
    wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
-   browser = "chromium"  # 使用するブラウザ: Selenium: "edge", "chrome", "firefox" / Playwright: "chromium", "firefox", "webkit"
-   headless = false  # ヘッドレスモードで実行（ウィンドウを表示しない）
+   debug_dir = "debug_screenshots"  # 画像認識失敗時のデバッグ情報保存先（デフォルト: "debug_screenshots"）
    ```
 
 4. **ボタンスクリーンショットの準備（自動化を使用する場合のみ）**:
@@ -288,6 +284,15 @@ cat-github-watcher/
    - ボタンがはっきり見え、隠れていないことを確認
    - ボタンの見た目が変わる場合（テーマ変更など）、スクリーンショットを更新する必要があります
    - 画像認識の信頼度を調整する場合は `confidence` 設定を使用（DPI scalingやテーマによる）
+   
+   **デバッグ情報の自動保存:**
+   - 画像認識が失敗した場合、自動的にデバッグ情報が保存されます
+   - 保存先：`debug_screenshots/` ディレクトリ（デフォルト）
+   - 保存内容：
+     - スクリーンショット（失敗時の画面全体）: `{button_name}_fail_{timestamp}.png`
+     - 失敗情報JSON: `{button_name}_fail_{timestamp}.json`
+       - ボタン名、タイムスタンプ、信頼度閾値、スクリーンショットパス、テンプレート画像パス
+   - デバッグディレクトリは設定で変更可能：`debug_dir` オプション（`assign_to_copilot` または `phase3_merge` セクション内）
    
    **重要な要件:**
    - デフォルトブラウザで**GitHubに既にログイン済み**である必要があります
@@ -506,4 +511,4 @@ docs/browser-automation-approaches.md
 
 
 ---
-Generated at: 2026-01-14 07:01:38 JST
+Generated at: 2026-01-15 07:01:31 JST

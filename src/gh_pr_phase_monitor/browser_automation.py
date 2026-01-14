@@ -237,12 +237,16 @@ def _save_debug_info(button_name: str, confidence: float, config: Dict[str, Any]
     json_filename = f"{button_name}_fail_{timestamp}.json"
     json_path = debug_dir / json_filename
 
+    # Get template screenshot path and handle None case
+    template_path = _get_screenshot_path(button_name, config)
+    template_screenshot = str(template_path) if template_path else None
+
     failure_info = {
         "button_name": button_name,
         "timestamp": now.isoformat(),  # Use the same datetime object for consistency
         "confidence": confidence,
         "screenshot_path": str(screenshot_path),
-        "template_screenshot": str(_get_screenshot_path(button_name, config)),
+        "template_screenshot": template_screenshot,
     }
 
     try:

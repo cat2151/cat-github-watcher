@@ -1,5 +1,6 @@
 """Tests for browser automation module"""
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -428,8 +429,6 @@ class TestSaveDebugInfo:
             assert len(json_files) == 1
 
             # Verify JSON content
-            import json
-
             with open(json_files[0], "r") as f:
                 debug_info = json.load(f)
 

@@ -537,8 +537,7 @@ class TestSaveDebugInfo:
             # Should return False
             assert result is False
 
-            # Verify debug info was saved (exception during save should be silently ignored)
-            # Since we're raising exception in locateOnScreen, debug info should still be saved
+            # Verify that debug info is saved when exception occurs in locateOnScreen
             json_files = list(tmp_path.glob("test_button_fail_*.json"))
             assert len(json_files) == 1
 

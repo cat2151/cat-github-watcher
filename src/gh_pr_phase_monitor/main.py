@@ -214,8 +214,6 @@ def display_status_summary(
     for pr, phase in zip(all_prs, pr_phases):
         repo_info = pr.get("repository", {})
         repo_name = repo_info.get("name", "Unknown")
-        # repo_owner is extracted but not used currently - kept for potential future use
-        _ = repo_info.get("owner", "Unknown")
         title = pr.get("title", "Unknown")
         url = pr.get("url", "")
 

@@ -12,7 +12,11 @@ from .config import (
     get_assign_to_copilot_config,
     resolve_execution_config_for_repo,
 )
-from .github_client import assign_issue_to_copilot, get_issues_from_repositories
+from .github_client import (
+    assign_issue_to_copilot,
+    get_issues_from_repositories,
+    get_repositories_with_no_prs_and_open_issues,
+)
 from .state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from .time_utils import format_elapsed_time
 
@@ -47,7 +51,6 @@ def display_status_summary(
     for pr, phase in zip(all_prs, pr_phases):
         repo_info = pr.get("repository", {})
         repo_name = repo_info.get("name", "Unknown")
-        repo_owner = repo_info.get("owner", "Unknown")
         title = pr.get("title", "Unknown")
         url = pr.get("url", "")
 
@@ -113,8 +116,6 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
         config: Configuration dictionary (optional)
         llm_working_count: Number of PRs currently in "LLM working" state (default: 0)
     """
-    from .github_client import get_repositories_with_no_prs_and_open_issues
-
     print("Checking for repositories with no open PRs but with open issues...")
 
     try:

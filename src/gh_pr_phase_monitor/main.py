@@ -6,7 +6,6 @@ import signal
 import sys
 import time
 import traceback
-from typing import Any, Dict
 
 from .config import (
     get_config_mtime,

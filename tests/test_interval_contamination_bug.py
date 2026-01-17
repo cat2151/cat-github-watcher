@@ -79,13 +79,3 @@ class TestIntervalContaminationBug:
             output = " ".join(calls)
             assert "変化を検知" in output
             assert "通常の監視間隔に戻ります" in output
-
-        # The bug would be: after this point, if we were in main loop,
-        # the interval_seconds and interval_str variables would still
-        # contain the reduced frequency values (1h) instead of normal (1m)
-        # because they were overwritten by wait_with_countdown return values
-        # in the previous iteration.
-        #
-        # This test verifies the function behavior is correct.
-        # The fix needs to be in main() to preserve the original
-        # normal interval values separately from the current interval values.

@@ -531,8 +531,8 @@ def main():
         print()
 
     # Get interval setting (default to 1 minute if not specified)
-    # Keep the normal interval separate from the current interval to avoid
-    # contamination when switching between normal and reduced frequency modes
+    # Keep the normal interval separate from the current interval to prevent the normal
+    # interval from being overwritten by reduced frequency interval values during mode switches
     normal_interval_str = config.get("interval", "1m")
     try:
         normal_interval_seconds = parse_interval(normal_interval_str)
@@ -686,8 +686,9 @@ def main():
         config_reloaded = new_config_mtime != config_mtime
         if config_reloaded and new_config:
             config = new_config
-            # Update normal interval only on hot reload (config change)
-            # This preserves the normal interval when switching between modes
+            # Update normal interval only on hot reload (config change).
+            # This prevents the normal interval from being contaminated by reduced frequency
+            # interval values that may be returned from wait_with_countdown().
             normal_interval_seconds = new_interval_seconds
             normal_interval_str = new_interval_str
         # Always update mtime

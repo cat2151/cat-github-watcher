@@ -52,12 +52,12 @@ pip install pygetwindow
 1. **部分一致**: ウィンドウタイトルの部分一致で検索します（例: "GitHub" は "GitHub - Issues" や "github.com - Google Chrome" にマッチ）
 2. **大文字小文字を区別しない**: "GitHub" と "github" は同じように扱われます
 3. **最小化されたウィンドウの復元**: ウィンドウが最小化されている場合、自動的に復元してからアクティブ化します
-4. **エラーハンドリング**: ウィンドウが見つからない場合やpygetwindowが利用できない場合でも、処理は継続されます（ただしボタンクリックは失敗する可能性があります）
+4. **Fail-fast原則**: `window_title`が設定されているにもかかわらずpygetwindowが利用できない場合、アプリケーションはエラーメッセージを表示して終了します（サイレント失敗を防ぎ、設定ミスを早期に検出）
 
 ## 注意事項
 
-- `window_title` が設定されていない場合、ウィンドウの活性化はスキップされます
-- pygetwindowが利用できない環境では、ウィンドウの活性化は行われません
+- `window_title` が設定されていない場合、ウィンドウの活性化はスキップされます（下位互換性）
+- **重要**: `window_title`を設定した場合、pygetwindowライブラリは必須です。ライブラリがインストールされていない場合、アプリケーションはエラーで終了します
 - ウィンドウが見つからない場合、警告が表示されますが処理は継続されます
 
 ## テスト
@@ -83,11 +83,25 @@ pytest tests/test_browser_automation.py::TestMergeWithWindowActivation -v
 
 ### pygetwindowが利用できない
 
-「PyGetWindow is not available」と表示される場合：
+`window_title`を設定しているにもかかわらず、以下のエラーが表示される場合：
+
+```
+ERROR: PyGetWindow library is not available
+```
+
+**解決方法**：
+
+```bash
+pip install -r requirements-automation.txt
+```
+
+または
 
 ```bash
 pip install pygetwindow
 ```
+
+**注意**: このエラーはfail-fast原則に基づいて設計されています。`window_title`を設定した場合、pygetwindowは必須です。ライブラリがない状態で実行を継続すると、ボタンクリックが失敗し、サイレント失敗につながるためです。
 
 ### Linux環境での注意
 

@@ -703,12 +703,16 @@ class TestActivateWindowByTitle:
     """Tests for _activate_window_by_title function"""
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", False)
-    def test_returns_false_when_pygetwindow_unavailable(self):
-        """Test that function returns False when PyGetWindow is not available"""
+    def test_exits_when_pygetwindow_unavailable_and_window_title_configured(self):
+        """Test that function exits with error when PyGetWindow is not available but window_title is configured"""
+        import pytest
+
         from src.gh_pr_phase_monitor.browser_automation import _activate_window_by_title
 
-        result = _activate_window_by_title("Test Window", {})
-        assert result is False
+        with pytest.raises(SystemExit) as exc_info:
+            _activate_window_by_title("Test Window", {})
+
+        assert exc_info.value.code == 1
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.gw")

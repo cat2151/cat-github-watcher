@@ -130,14 +130,29 @@ def _activate_window_by_title(window_title: Optional[str], config: Dict[str, Any
 
     Returns:
         True if window was found and activated, False otherwise
-    """
-    if not PYGETWINDOW_AVAILABLE or gw is None:
-        print("  ⚠ PyGetWindow is not available, skipping window activation")
-        return False
 
+    Raises:
+        SystemExit: If pygetwindow is not available when window_title is configured (fail-fast)
+    """
     if not window_title:
         print("  ⚠ No window_title configured, skipping window activation")
         return False
+
+    if not PYGETWINDOW_AVAILABLE or gw is None:
+        error_msg = (
+            "\n" + "=" * 80 + "\n"
+            "ERROR: PyGetWindow library is not available\n" + "=" * 80 + "\n"
+            "\nWindow activation is configured (window_title is set) but the required\n"
+            "pygetwindow library is not installed.\n"
+            "\nPlease install the required dependencies:\n"
+            "  pip install -r requirements-automation.txt\n"
+            "\nOr install pygetwindow directly:\n"
+            "  pip install pygetwindow\n"
+            "\nAlternatively, remove the 'window_title' setting from your config.toml\n"
+            "if you don't need window activation.\n" + "=" * 80
+        )
+        print(error_msg)
+        raise SystemExit(1)
 
     try:
         print(f"  → Looking for window with title containing: '{window_title}'")

@@ -126,7 +126,7 @@ def _activate_window_by_title(window_title: Optional[str], config: Dict[str, Any
 
     Args:
         window_title: The title (or partial title) of the window to activate
-        config: Configuration dict
+        config: Configuration dict (currently unused, reserved for future options)
 
     Returns:
         True if window was found and activated, False otherwise
@@ -490,7 +490,7 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     # Activate window if window_title is configured (1 second before clicking buttons)
     window_title = assign_config.get("window_title")
     if window_title:
-        print("  → Activating window before clicking buttons (1 second delay)...")
+        print("  → Waiting 1 second before activating window...")
         time.sleep(1)  # Wait 1 second before activating window
         _activate_window_by_title(window_title, assign_config)
 
@@ -605,7 +605,7 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
     # Activate window if window_title is configured (1 second before clicking buttons)
     window_title = merge_config.get("window_title")
     if window_title:
-        print("  → Activating window before clicking buttons (1 second delay)...")
+        print("  → Waiting 1 second before activating window...")
         time.sleep(1)  # Wait 1 second before activating window
         _activate_window_by_title(window_title, merge_config)
 

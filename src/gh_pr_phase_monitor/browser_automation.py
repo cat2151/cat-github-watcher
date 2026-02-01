@@ -26,6 +26,15 @@ except ImportError:
     PYAUTOGUI_AVAILABLE = False
     pyautogui = None  # Set to None when not available
 
+# PyGetWindow imports are optional - will be imported only if automation is enabled
+try:
+    import pygetwindow as gw
+
+    PYGETWINDOW_AVAILABLE = True
+except ImportError:
+    PYGETWINDOW_AVAILABLE = False
+    gw = None  # Set to None when not available
+
 # Global state to track the last time a browser was opened
 # This prevents opening multiple pages simultaneously which can cause issues
 # with automated merge and assign operations
@@ -110,6 +119,70 @@ def _should_autoraise_window(config: Optional[Dict[str, Any]] = None) -> bool:
         return False
 
     return True
+
+
+def _activate_window_by_title(window_title: Optional[str], config: Dict[str, Any]) -> bool:
+    """Activate a window by its title to bring it to the foreground
+
+    Args:
+        window_title: The title (or partial title) of the window to activate
+        config: Configuration dict (currently unused, reserved for future options)
+
+    Returns:
+        True if window was found and activated, False otherwise
+
+    Raises:
+        SystemExit: If pygetwindow is not available when window_title is configured (fail-fast)
+    """
+    if not window_title:
+        print("  ⚠ No window_title configured, skipping window activation")
+        return False
+
+    if not PYGETWINDOW_AVAILABLE or gw is None:
+        error_msg = (
+            "\n" + "=" * 80 + "\n"
+            "ERROR: PyGetWindow library is not available\n" + "=" * 80 + "\n"
+            "\nWindow activation is configured (window_title is set) but the required\n"
+            "pygetwindow library is not installed.\n"
+            "\nPlease install the required dependencies:\n"
+            "  pip install -r requirements-automation.txt\n"
+            "\nOr install pygetwindow directly:\n"
+            "  pip install pygetwindow\n"
+            "\nAlternatively, remove the 'window_title' setting from your config.toml\n"
+            "if you don't need window activation.\n" + "=" * 80
+        )
+        print(error_msg)
+        raise SystemExit(1)
+
+    try:
+        print(f"  → Looking for window with title containing: '{window_title}'")
+
+        # Get all windows
+        all_windows = gw.getAllWindows()
+
+        # Find windows matching the title (case-insensitive partial match)
+        matching_windows = [w for w in all_windows if window_title.lower() in w.title.lower()]
+
+        if not matching_windows:
+            print(f"  ⚠ No window found with title containing: '{window_title}'")
+            print(f"     Available windows: {[w.title for w in all_windows[:10]]}")
+            return False
+
+        # Activate the first matching window
+        target_window = matching_windows[0]
+        print(f"  → Activating window: '{target_window.title}'")
+
+        # Try to activate/restore the window
+        if target_window.isMinimized:
+            target_window.restore()
+
+        target_window.activate()
+        print("  ✓ Window activated successfully")
+        return True
+
+    except Exception as e:
+        print(f"  ⚠ Failed to activate window: {e}")
+        return False
 
 
 def _validate_wait_seconds(config: Dict[str, Any]) -> int:
@@ -429,6 +502,13 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     print(f"  → Waiting {wait_seconds} seconds for page to load...")
     time.sleep(wait_seconds)
 
+    # Activate window if window_title is configured (1 second before clicking buttons)
+    window_title = assign_config.get("window_title")
+    if window_title:
+        print("  → Waiting 1 second before activating window...")
+        time.sleep(1)  # Wait 1 second before activating window
+        _activate_window_by_title(window_title, assign_config)
+
     # Click "Assign to Copilot" button
     print("  → Looking for 'Assign to Copilot' button...")
     if not _click_button_with_image("assign_to_copilot", assign_config):
@@ -536,6 +616,13 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
     # Wait for the configured time
     print(f"  → Waiting {wait_seconds} seconds for page to load...")
     time.sleep(wait_seconds)
+
+    # Activate window if window_title is configured (1 second before clicking buttons)
+    window_title = merge_config.get("window_title")
+    if window_title:
+        print("  → Waiting 1 second before activating window...")
+        time.sleep(1)  # Wait 1 second before activating window
+        _activate_window_by_title(window_title, merge_config)
 
     # Click "Merge pull request" button
     print("  → Looking for 'Merge pull request' button...")

@@ -4,3 +4,4 @@
 # PyAutoGUI for image-based button clicking
 pyautogui>=0.9.54
 pillow>=10.0.0  # Required for screenshot comparison
+pygetwindow>=0.0.9  # Required for window activation

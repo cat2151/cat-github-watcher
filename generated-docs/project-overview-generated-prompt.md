@@ -1,4 +1,4 @@
-Last updated: 2026-01-18
+Last updated: 2026-02-02
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -429,6 +429,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📖 VERIFICATION_GUIDE.md
   📖 browser-automation-approaches.en.md
   📖 browser-automation-approaches.md
+  📖 window-activation-feature.md
 📁 generated-docs/
 📄 pytest.ini
 📄 requirements-automation.txt
@@ -509,6 +510,7 @@ docs/VERIFICATION_GUIDE.en.md
 docs/VERIFICATION_GUIDE.md
 docs/browser-automation-approaches.en.md
 docs/browser-automation-approaches.md
+docs/window-activation-feature.md
 
 上記の情報を基に、プロンプトで指定された形式でプロジェクト概要を生成してください。
 特に以下の点を重視してください：
@@ -520,4 +522,4 @@ docs/browser-automation-approaches.md
 
 
 ---
-Generated at: 2026-01-18 07:01:15 JST
+Generated at: 2026-02-02 07:01:45 JST

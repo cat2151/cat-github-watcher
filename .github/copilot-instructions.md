@@ -19,7 +19,7 @@ src/gh_pr_phase_monitor/
 ├── pr_actions.py     # PR処理、マージ、ready化アクション
 ├── github_client.py  # 各fetcherモジュールの再エクスポート
 ├── graphql_client.py # `gh api graphql` によるGraphQL実行
-├── browser_automation.py # Selenium/Playwright自動化（オプション）
+├── browser_automation.py # PyAutoGUI + OCR自動化（オプション）
 └── notifier.py       # ntfy.shモバイル通知
 ```
 
@@ -103,8 +103,20 @@ ruff format .
 | 種別 | 依存 |
 |------|------|
 | **必須** | GitHub CLI（`gh auth login`で認証） |
-| **オプション** | Selenium + webdriver-manager または Playwright（ブラウザ自動化用） |
+| **オプション** | PyAutoGUI + pytesseract（ブラウザ自動化用） |
 | **設定ファイル** | `config.toml`（ntfy.sh、rulesets、phase3_merge、assign_to_copilot）|
+
+## ブラウザ自動化の制約
+
+### Playwright/Seleniumは使用不可
+- **理由**: GitHubの認証認可を通過できない
+- **詳細**: 
+  - curlやブラウザ自動化ツール単体では、認証済みセッションでGitHubのボタンにアクセスできない
+  - リモートデバッグ接続（`--remote-debugging-port=9222`）を使用すれば既存セッションに接続可能だが、環境依存が大きく実用的でない
+- **対応策**: 
+  - PyAutoGUIによる画像認識（confidence=0.8）
+  - OCRフォールバック（pytesseract）でテキストベース検出
+  - これらはOS画面を直接操作するため、既存の認証済みブラウザセッションを利用可能
 
 ## README.mdは自動生成される
 - README.mdはPRに含めないこと（自動生成されるので）

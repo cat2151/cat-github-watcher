@@ -1,4 +1,4 @@
-Last updated: 2026-01-18
+Last updated: 2026-02-02
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -219,6 +219,7 @@ Last updated: 2026-01-18
 - docs/VERIFICATION_GUIDE.md
 - docs/browser-automation-approaches.en.md
 - docs/browser-automation-approaches.md
+- docs/window-activation-feature.md
 - generated-docs/project-overview-generated-prompt.md
 - pytest.ini
 - requirements-automation.txt
@@ -389,50 +390,40 @@ env: で値を渡し、process.env で参照するのが正しい
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-daa04b9 Merge pull request #151 from cat2151/copilot/refactor-source-code-structure
-461b597 refactor: Address code review feedback
-648adaf docs: Update STRUCTURE.md to reflect new modular architecture
-3b1b749 test: Fix patch paths for display module functions
-34cb2d6 test: Update test imports to use new module structure
-506d125 refactor: Extract functions from main.py into specialized modules
-1ba0020 Initial plan
-21beeb0 Merge pull request #149 from cat2151/copilot/fix-phase3-merge-configuration
-255cf5a Fix AttributeError when validating phase3_merge configuration
-2a012dc Initial plan
+74b5fc0 Merge pull request #153 from cat2151/copilot/fix-auto-assign-issue
+e55257a Implement fail-fast for missing pygetwindow library
+63f59ac Address code review feedback: improve docstring and fix misleading print messages
+852173f Add documentation for window activation feature
+2c095ef Implement window activation feature for PyAutoGUI automation
+649abae Initial plan
 
 ### 変更されたファイル:
-MERGE_CONFIGURATION_EXAMPLES.md
-PHASE3_MERGE_IMPLEMENTATION.md
-README.ja.md
 README.md
 STRUCTURE.md
 config.toml.example
+docs/window-activation-feature.md
 generated-docs/development-status-generated-prompt.md
 generated-docs/development-status.md
 generated-docs/project-overview-generated-prompt.md
 generated-docs/project-overview.md
-screenshots/assign_to_copilot.png
+requirements-automation.txt
 src/gh_pr_phase_monitor/__init__.py
-src/gh_pr_phase_monitor/config.py
+src/gh_pr_phase_monitor/browser_automation.py
 src/gh_pr_phase_monitor/display.py
 src/gh_pr_phase_monitor/main.py
 src/gh_pr_phase_monitor/monitor.py
-src/gh_pr_phase_monitor/pr_actions.py
 src/gh_pr_phase_monitor/state_tracker.py
 src/gh_pr_phase_monitor/time_utils.py
 src/gh_pr_phase_monitor/wait_handler.py
-tests/test_batteries_included_defaults.py
+tests/test_browser_automation.py
 tests/test_elapsed_time_display.py
 tests/test_interval_contamination_bug.py
 tests/test_max_llm_working_parallel.py
 tests/test_no_change_timeout.py
 tests/test_no_open_prs_issue_display.py
-tests/test_post_phase3_comment.py
-tests/test_pr_actions_rulesets_features.py
 tests/test_repos_with_prs_structure.py
 tests/test_status_summary.py
-tests/test_validate_phase3_merge_config.py
 
 
 ---
-Generated at: 2026-01-18 07:01:16 JST
+Generated at: 2026-02-02 07:01:46 JST

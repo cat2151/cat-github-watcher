@@ -180,16 +180,21 @@ cat-github-watcher/
    # 
    # デフォルト動作（このセクションが定義されていない場合）:
    # - ブラウザ自動操縦で自動的にボタンをクリック
-   # - PyAutoGUIを使用
+   # - PyAutoGUIを使用した画像認識
+   # - 画像認識が失敗した場合、OCRフォールバック（オプション）
    # - wait_seconds = 10
    # 
    # 必須: PyAutoGUIのインストールが必要（pip install pyautogui pillow）
+   # オプション: OCRフォールバックにはpytesseractのインストールが必要
    # 
    # 重要: 安全のため、この機能はデフォルトで無効です
    # リポジトリごとにrulesetsで assign_good_first_old または assign_old を指定して明示的に有効化する必要があります
    [assign_to_copilot]
    wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
    debug_dir = "debug_screenshots"  # 画像認識失敗時のデバッグ情報保存先（デフォルト: "debug_screenshots"）
+   confidence = 0.8  # 画像マッチングの信頼度 0.0-1.0（デフォルト: 0.8）
+   enable_ocr_detection = true  # OCRフォールバックを有効化（デフォルト: true）
+   # enable_html_detection = false  # HTML検出フォールバック（実験的、デフォルト: false）
    ```
 
 4. **ボタンスクリーンショットの準備（自動化を使用する場合のみ）**:
@@ -228,9 +233,19 @@ cat-github-watcher/
    - 保存先：`debug_screenshots/` ディレクトリ（デフォルト）
    - 保存内容：
      - スクリーンショット（失敗時の画面全体）: `{button_name}_fail_{timestamp}.png`
+     - 候補領域のスクリーンショット（見つかった場合）: `{button_name}_candidate_{timestamp}_{number}.png`
      - 失敗情報JSON: `{button_name}_fail_{timestamp}.json`
        - ボタン名、タイムスタンプ、信頼度閾値、スクリーンショットパス、テンプレート画像パス
+       - 候補領域の情報（座標、サイズ、信頼度）
+   - デバッグ時は低い信頼度（0.7, 0.6, 0.5）で最大3つの候補領域を検出
    - デバッグディレクトリは設定で変更可能：`debug_dir` オプション（`assign_to_copilot` または `phase3_merge` セクション内）
+   
+   **フォールバック方式（画像認識が失敗した場合）:**
+   - **OCR検出（デフォルト有効）**: pytesseractを使用してボタンのテキストを検出
+     - 「Assign to Copilot」などのテキストを画面上から直接検出
+     - サブピクセルレンダリングの違いに対して頑健
+     - 必須: tesseract-ocrのインストール（システムレベル）
+     - 無効化: `enable_ocr_detection = false`
    
    **重要な要件:**
    - デフォルトブラウザで**GitHubに既にログイン済み**である必要があります
@@ -245,13 +260,20 @@ cat-github-watcher/
 
 5. PyAutoGUIをインストール（自動化を使用する場合のみ）：
    
+   基本的な画像認識のみ:
+   ```bash
+   pip install pyautogui pillow pygetwindow
+   ```
+   
+   OCRフォールバックも含む（推奨）:
    ```bash
    pip install -r requirements-automation.txt
    ```
-   または
-   ```bash
-   pip install pyautogui pillow
-   ```
+   
+   OCRを使用する場合は、システムにtesseract-ocrをインストール:
+   - **Windows**: `choco install tesseract`
+   - **macOS**: `brew install tesseract`
+   - **Linux**: `apt-get install tesseract-ocr`
 
 ### 実行
 

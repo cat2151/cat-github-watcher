@@ -5,3 +5,13 @@
 pyautogui>=0.9.54
 pillow>=10.0.0  # Required for screenshot comparison
 pygetwindow>=0.0.9  # Required for window activation
+
+# Optional: OCR-based button detection (fallback when image recognition fails)
+# Requires tesseract-ocr to be installed on the system
+# Windows: choco install tesseract
+# macOS: brew install tesseract
+# Linux: apt-get install tesseract-ocr
+pytesseract>=0.3.10
+
+# Optional: Playwright for HTML-based button detection (experimental)
+# playwright>=1.40.0

@@ -71,6 +71,8 @@ _issue_assign_attempted: Dict[str, float] = {}
 ISSUE_ASSIGN_RETRY_AFTER_SECONDS = 24 * 60 * 60
 
 # Debug candidate detection settings
+# These thresholds are only used when image recognition fails with the original confidence threshold
+# The search stops after finding DEBUG_MAX_CANDIDATES candidates
 DEBUG_CANDIDATE_CONFIDENCE_THRESHOLDS = [0.7, 0.6, 0.5]  # Try these confidence levels for debug candidates
 DEBUG_MAX_CANDIDATES = 3  # Maximum number of candidate regions to save for debugging
 
@@ -347,8 +349,9 @@ def _save_debug_info(button_name: str, confidence: float, config: Dict[str, Any]
         try:
             # Try multiple confidence levels to find potential matches
             for test_confidence in DEBUG_CANDIDATE_CONFIDENCE_THRESHOLDS:
+                # Only try confidence levels lower than the original threshold
                 if test_confidence >= confidence:
-                    continue  # Skip if not lower than original threshold
+                    continue
 
                 print(f"  → Searching for candidates with confidence {test_confidence}...")
                 all_locations = list(pyautogui.locateAllOnScreen(str(template_path), confidence=test_confidence))
@@ -515,7 +518,7 @@ def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:
         print("  ℹ PyAutoGUI is required for OCR-based button detection")
         return False
 
-    # Check if OCR detection is enabled in config (default: True as a fallback)
+    # OCR detection is enabled by default (True) to serve as a fallback when image recognition fails
     if not config.get("enable_ocr_detection", True):
         print("  ℹ OCR-based detection is disabled")
         return False
@@ -597,8 +600,8 @@ def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:
 
         # Use the first found region (or could use heuristics to pick the best one)
         region = found_regions[0]
-        center_x = (region["left"] + region["right"]) // 2
-        center_y = (region["top"] + region["bottom"]) // 2
+        center_x = int((region["left"] + region["right"]) / 2)
+        center_y = int((region["top"] + region["bottom"]) / 2)
 
         print(f"  → Found '{target_text}' at position ({center_x}, {center_y})")
 

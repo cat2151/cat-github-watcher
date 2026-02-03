@@ -13,5 +13,7 @@ pygetwindow>=0.0.9  # Required for window activation
 # Linux: apt-get install tesseract-ocr
 pytesseract>=0.3.10
 
-# Optional: Playwright for HTML-based button detection (experimental)
-# playwright>=1.40.0
+# Note: Playwright/Selenium HTML-based detection is NOT feasible for this use case
+# Reason: Cannot authenticate with GitHub through browser automation due to security restrictions
+# The approach of connecting to an already-authenticated browser session via remote debugging
+# is too complex and environment-dependent for reliable use

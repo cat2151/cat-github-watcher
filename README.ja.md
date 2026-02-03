@@ -241,13 +241,11 @@ cat-github-watcher/
    - デバッグディレクトリは設定で変更可能：`debug_dir` オプション（`assign_to_copilot` または `phase3_merge` セクション内）
    
    **フォールバック方式（画像認識が失敗した場合）:**
-   1. **OCR検出（デフォルト有効）**: pytesseractを使用してボタンのテキストを検出
-      - 「Assign to Copilot」などのテキストを画面上から直接検出
-      - サブピクセルレンダリングの違いに対して頑健
-      - 必須: tesseract-ocrのインストール（システムレベル）
-      - 無効化: `enable_ocr_detection = false`
-   
-   **注意**: HTML検出機能（Playwright使用）は実装されていますが、現在のフォールバックチェーンには統合されていません。将来的な拡張として予約されています。
+   - **OCR検出（デフォルト有効）**: pytesseractを使用してボタンのテキストを検出
+     - 「Assign to Copilot」などのテキストを画面上から直接検出
+     - サブピクセルレンダリングの違いに対して頑健
+     - 必須: tesseract-ocrのインストール（システムレベル）
+     - 無効化: `enable_ocr_detection = false`
    
    **重要な要件:**
    - デフォルトブラウザで**GitHubに既にログイン済み**である必要があります

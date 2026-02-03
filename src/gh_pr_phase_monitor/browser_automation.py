@@ -35,15 +35,6 @@ except ImportError:
     PYGETWINDOW_AVAILABLE = False
     gw = None  # Set to None when not available
 
-# Playwright imports are optional - for HTML-based button detection fallback
-try:
-    from playwright.sync_api import sync_playwright
-
-    PLAYWRIGHT_AVAILABLE = True
-except ImportError:
-    PLAYWRIGHT_AVAILABLE = False
-    sync_playwright = None  # Set to None when not available
-
 # pytesseract imports are optional - for OCR-based button detection fallback
 try:
     import pytesseract
@@ -411,95 +402,6 @@ def _save_debug_info(button_name: str, confidence: float, config: Dict[str, Any]
             print(f"  ℹ Found {len(candidates)} potential candidate(s) - check debug directory for details")
     except Exception as e:
         print(f"  ⚠ Could not save debug info JSON: {e}")
-
-
-def _click_button_with_html(button_name: str, url: str, config: Dict[str, Any]) -> bool:
-    """Find and click a button using HTML element detection with Playwright
-
-    WARNING: This function is currently NOT integrated into the button detection fallback chain.
-    It exists as experimental code for future enhancement but is not called by any production code path.
-    The `enable_html_detection` config flag is reserved for future use and has no effect currently.
-
-    This is a potential fallback method when image recognition fails. It uses Playwright
-    to connect to the browser, parse the HTML, and find the button by text content.
-
-    Technical requirements for future integration:
-    - Browser must be started with remote debugging enabled (--remote-debugging-port=9222)
-    - Complex setup that varies by user environment
-
-    Args:
-        button_name: Name of the button (e.g., "assign_to_copilot", "assign")
-        url: The URL of the page where the button should be found (currently unused)
-        config: Configuration dict with automation settings
-
-    Returns:
-        True if button was found and clicked, False otherwise
-    """
-    if not PLAYWRIGHT_AVAILABLE or sync_playwright is None:
-        print("  ℹ Playwright is not available for HTML-based button detection")
-        return False
-
-    # Check if HTML detection is enabled in config (default: False)
-    if not config.get("enable_html_detection", False):
-        print("  ℹ HTML-based detection is disabled (set enable_html_detection=true to enable)")
-        return False
-
-    # Map button names to the text we're looking for
-    button_text_map = {
-        "assign_to_copilot": "Assign to Copilot",
-        "assign": "Assign",
-        "merge_pull_request": "Merge pull request",
-        "confirm_merge": "Confirm merge",
-        "delete_branch": "Delete branch",
-    }
-
-    target_text = button_text_map.get(button_name)
-    if not target_text:
-        print(f"  ⚠ Unknown button name '{button_name}' for HTML detection")
-        return False
-
-    try:
-        print(f"  → Attempting HTML-based detection for '{target_text}' button...")
-        print("  ℹ Note: This requires browser to be started with remote debugging")
-
-        with sync_playwright() as p:
-            # Connect to existing browser with remote debugging
-            # User must start browser with: --remote-debugging-port=9222
-            browser = p.chromium.connect_over_cdp("http://localhost:9222")
-
-            # Get the first page (assuming it's the one we opened)
-            contexts = browser.contexts
-            if not contexts:
-                print("  ✗ No browser contexts found")
-                return False
-
-            pages = contexts[0].pages
-            if not pages:
-                print("  ✗ No browser pages found")
-                return False
-
-            page = pages[-1]  # Get the most recently opened page
-
-            # Wait for the page to load
-            page.wait_for_load_state("networkidle", timeout=10000)
-
-            # Try to find the button by text
-            button = page.get_by_role("button", name=target_text)
-
-            if button.count() == 0:
-                print(f"  ✗ Button with text '{target_text}' not found in HTML")
-                return False
-
-            # Click the button
-            button.first.click()
-            print(f"  ✓ Clicked '{target_text}' button using HTML detection")
-
-            browser.close()
-            return True
-
-    except Exception as e:
-        print(f"  ⚠ HTML-based detection failed: {e}")
-        return False
 
 
 def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:

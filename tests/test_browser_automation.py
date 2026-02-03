@@ -1061,8 +1061,6 @@ class TestEnhancedDebugInfo:
             assert len(json_files) == 1
 
             # Check that JSON contains candidate information
-            import json
-
             with open(json_files[0], encoding="utf-8") as f:
                 debug_data = json.load(f)
 

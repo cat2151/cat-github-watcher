@@ -246,9 +246,8 @@ cat-github-watcher/
       - サブピクセルレンダリングの違いに対して頑健
       - 必須: tesseract-ocrのインストール（システムレベル）
       - 無効化: `enable_ocr_detection = false`
-   2. **HTML検出（実験的）**: Playwrightを使用してHTML要素を検出
-      - リモートデバッグモードでブラウザを起動する必要あり
-      - デフォルトで無効: `enable_html_detection = true` で有効化
+   
+   **注意**: HTML検出機能（Playwright使用）は実装されていますが、現在のフォールバックチェーンには統合されていません。将来的な拡張として予約されています。
    
    **重要な要件:**
    - デフォルトブラウザで**GitHubに既にログイン済み**である必要があります

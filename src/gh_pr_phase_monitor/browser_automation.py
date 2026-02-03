@@ -416,15 +416,20 @@ def _save_debug_info(button_name: str, confidence: float, config: Dict[str, Any]
 def _click_button_with_html(button_name: str, url: str, config: Dict[str, Any]) -> bool:
     """Find and click a button using HTML element detection with Playwright
 
-    This is a fallback method when image recognition fails. It uses Playwright
+    WARNING: This function is currently NOT integrated into the button detection fallback chain.
+    It exists as experimental code for future enhancement but is not called by any production code path.
+    The `enable_html_detection` config flag is reserved for future use and has no effect currently.
+
+    This is a potential fallback method when image recognition fails. It uses Playwright
     to connect to the browser, parse the HTML, and find the button by text content.
 
-    Note: This requires the browser to be started with remote debugging enabled.
-    This is currently experimental and disabled by default.
+    Technical requirements for future integration:
+    - Browser must be started with remote debugging enabled (--remote-debugging-port=9222)
+    - Complex setup that varies by user environment
 
     Args:
         button_name: Name of the button (e.g., "assign_to_copilot", "assign")
-        url: The URL of the page where the button should be found
+        url: The URL of the page where the button should be found (currently unused)
         config: Configuration dict with automation settings
 
     Returns:

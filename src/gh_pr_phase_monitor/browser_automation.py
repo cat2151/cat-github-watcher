@@ -47,13 +47,12 @@ except ImportError:
 # pytesseract imports are optional - for OCR-based button detection fallback
 try:
     import pytesseract
-    from PIL import Image
 
     PYTESSERACT_AVAILABLE = True
 except ImportError:
     PYTESSERACT_AVAILABLE = False
     pytesseract = None
-    Image = None  # Will be imported from Pillow which is already a dependency
+    # Note: PIL.Image is imported locally in _click_button_with_ocr when needed
 
 # Global state to track the last time a browser was opened
 # This prevents opening multiple pages simultaneously which can cause issues
@@ -70,6 +69,13 @@ _issue_assign_attempted: Dict[str, float] = {}
 
 # Time (in seconds) before an issue URL can be retried (24 hours)
 ISSUE_ASSIGN_RETRY_AFTER_SECONDS = 24 * 60 * 60
+
+# Debug candidate detection settings
+DEBUG_CANDIDATE_CONFIDENCE_THRESHOLDS = [0.7, 0.6, 0.5]  # Try these confidence levels for debug candidates
+DEBUG_MAX_CANDIDATES = 3  # Maximum number of candidate regions to save for debugging
+
+# OCR detection settings
+OCR_BUTTON_PADDING = 20  # Pixels to add around detected text to account for button borders
 
 
 def is_pyautogui_available() -> bool:
@@ -340,7 +346,7 @@ def _save_debug_info(button_name: str, confidence: float, config: Dict[str, Any]
     if template_path:
         try:
             # Try multiple confidence levels to find potential matches
-            for test_confidence in [0.7, 0.6, 0.5]:
+            for test_confidence in DEBUG_CANDIDATE_CONFIDENCE_THRESHOLDS:
                 if test_confidence >= confidence:
                     continue  # Skip if not lower than original threshold
 
@@ -349,8 +355,8 @@ def _save_debug_info(button_name: str, confidence: float, config: Dict[str, Any]
 
                 if all_locations:
                     print(f"  ℹ Found {len(all_locations)} candidate(s) with confidence {test_confidence}")
-                    # Save up to 3 candidates at this confidence level
-                    for idx, loc in enumerate(all_locations[:3]):
+                    # Save up to DEBUG_MAX_CANDIDATES candidates at this confidence level
+                    for idx, loc in enumerate(all_locations[:DEBUG_MAX_CANDIDATES]):
                         candidate_info = {
                             "confidence_used": test_confidence,
                             "left": loc.left,
@@ -374,7 +380,7 @@ def _save_debug_info(button_name: str, confidence: float, config: Dict[str, Any]
                             print(f"  ⚠ Could not save candidate image: {e}")
 
                     # Stop after finding candidates
-                    if len(candidates) >= 3:
+                    if len(candidates) >= DEBUG_MAX_CANDIDATES:
                         break
 
         except Exception as e:
@@ -577,12 +583,11 @@ def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:
                     bottom = max(y + h for y, h in zip(ys, hs))
 
                     # Expand the region to account for button padding
-                    padding = 20
                     region = {
-                        "left": max(0, left - padding),
-                        "top": max(0, top - padding),
-                        "right": min(screenshot.width, right + padding),
-                        "bottom": min(screenshot.height, bottom + padding),
+                        "left": max(0, left - OCR_BUTTON_PADDING),
+                        "top": max(0, top - OCR_BUTTON_PADDING),
+                        "right": min(screenshot.width, right + OCR_BUTTON_PADDING),
+                        "bottom": min(screenshot.height, bottom + OCR_BUTTON_PADDING),
                     }
                     found_regions.append(region)
 

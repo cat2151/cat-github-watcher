@@ -1,4 +1,4 @@
-Last updated: 2026-02-02
+Last updated: 2026-02-05
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -219,6 +219,7 @@ Last updated: 2026-02-02
 - docs/VERIFICATION_GUIDE.md
 - docs/browser-automation-approaches.en.md
 - docs/browser-automation-approaches.md
+- docs/button-detection-improvements.ja.md
 - docs/window-activation-feature.md
 - generated-docs/project-overview-generated-prompt.md
 - pytest.ini
@@ -390,23 +391,31 @@ env: で値を渡し、process.env で参照するのが正しい
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-74b5fc0 Merge pull request #153 from cat2151/copilot/fix-auto-assign-issue
-e55257a Implement fail-fast for missing pygetwindow library
-63f59ac Address code review feedback: improve docstring and fix misleading print messages
-852173f Add documentation for window activation feature
-2c095ef Implement window activation feature for PyAutoGUI automation
-649abae Initial plan
+c95f521 Merge branch 'main' of github.com:cat2151/cat-github-watcher into main
+c4f2b7b #154 に関連して、png変更
+0df58b6 Auto-translate README.ja.md to README.md [auto]
+583cdee Merge pull request #155 from cat2151/copilot/fix-auto-assign-button-issue
+6f2c7a9 Remove Playwright code and documentation per user feedback
+9a35a12 Fix review comments: clarify HTML detection is not integrated, remove redundant import
+6182ae7 Code review improvements: clarify comments and improve centering accuracy
+0a640f9 Add comprehensive documentation for button detection improvements
+409e6f8 Refactor: Extract magic numbers to constants and improve comments
+b4480ee Add tests and documentation for OCR fallback and enhanced debug
 
 ### 変更されたファイル:
+.github/copilot-instructions.md
+README.ja.md
 README.md
 STRUCTURE.md
 config.toml.example
+docs/button-detection-improvements.ja.md
 docs/window-activation-feature.md
 generated-docs/development-status-generated-prompt.md
 generated-docs/development-status.md
 generated-docs/project-overview-generated-prompt.md
 generated-docs/project-overview.md
 requirements-automation.txt
+screenshots/assign_to_copilot.png
 src/gh_pr_phase_monitor/__init__.py
 src/gh_pr_phase_monitor/browser_automation.py
 src/gh_pr_phase_monitor/display.py
@@ -426,4 +435,4 @@ tests/test_status_summary.py
 
 
 ---
-Generated at: 2026-02-02 07:01:46 JST
+Generated at: 2026-02-05 07:02:21 JST

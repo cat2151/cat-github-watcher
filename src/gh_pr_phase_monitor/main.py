@@ -132,13 +132,22 @@ def main():
                     # worked on simultaneously, we pause auto-assignment to prevent API rate limits
                     llm_working_count = sum(1 for phase in pr_phases if phase == PHASE_LLM_WORKING)
 
-                    # Look for new issues to assign only when all PRs are in "LLM working" phase
-                    # This means all existing work is in progress (not waiting for review or action)
+                    # Look for new issues to assign when:
+                    # 1. All PRs are in "LLM working" phase (existing work is in progress), OR
+                    # 2. PR count is less than 3 (few PRs, so we can look for more work)
                     # The llm_working_count throttles assignment when parallel work is too high
-                    if pr_phases and all(phase == PHASE_LLM_WORKING for phase in pr_phases):
-                        print(f"\n{'=' * 50}")
-                        print("All PRs are in 'LLM working' phase")
-                        print(f"{'=' * 50}")
+                    total_pr_count = len(all_prs)
+                    all_llm_working = pr_phases and all(phase == PHASE_LLM_WORKING for phase in pr_phases)
+
+                    if all_llm_working or total_pr_count < 3:
+                        if all_llm_working and total_pr_count >= 3:
+                            print(f"\n{'=' * 50}")
+                            print("All PRs are in 'LLM working' phase")
+                            print(f"{'=' * 50}")
+                        elif total_pr_count < 3:
+                            print(f"\n{'=' * 50}")
+                            print(f"PR count is {total_pr_count} (less than 3)")
+                            print(f"{'=' * 50}")
                         # Display issues and potentially auto-assign new work
                         # Throttling is applied inside the function based on llm_working_count
                         display_issues_from_repos_without_prs(config, llm_working_count=llm_working_count)

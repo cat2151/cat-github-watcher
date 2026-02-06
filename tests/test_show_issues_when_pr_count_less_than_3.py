@@ -96,6 +96,7 @@ def test_display_issues_when_two_prs_in_phase3(
     try:
         main()
     except KeyboardInterrupt:
+        # Expected - mock_wait raises KeyboardInterrupt to exit after first iteration
         pass
 
     # Verify display_issues_from_repos_without_prs was called
@@ -148,6 +149,7 @@ def test_display_issues_when_one_pr_in_any_phase(
     try:
         main()
     except KeyboardInterrupt:
+        # Expected - mock_wait raises KeyboardInterrupt to exit after first iteration
         pass
 
     # Verify display_issues_from_repos_without_prs was called
@@ -200,6 +202,7 @@ def test_no_display_issues_when_three_or_more_prs_not_llm_working(
     try:
         main()
     except KeyboardInterrupt:
+        # Expected - mock_wait raises KeyboardInterrupt to exit after first iteration
         pass
 
     # Verify display_issues_from_repos_without_prs was NOT called
@@ -253,6 +256,7 @@ def test_display_issues_when_three_or_more_prs_all_llm_working(
     try:
         main()
     except KeyboardInterrupt:
+        # Expected - mock_wait raises KeyboardInterrupt to exit after first iteration
         pass
 
     # Verify display_issues_from_repos_without_prs was called

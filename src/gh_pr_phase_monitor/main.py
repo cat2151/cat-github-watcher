@@ -140,11 +140,11 @@ def main():
                     all_llm_working = pr_phases and all(phase == PHASE_LLM_WORKING for phase in pr_phases)
 
                     if all_llm_working or total_pr_count < 3:
-                        if all_llm_working:
+                        if all_llm_working and total_pr_count >= 3:
                             print(f"\n{'=' * 50}")
                             print("All PRs are in 'LLM working' phase")
                             print(f"{'=' * 50}")
-                        if total_pr_count < 3:
+                        elif total_pr_count < 3:
                             print(f"\n{'=' * 50}")
                             print(f"PR count is {total_pr_count} (less than 3)")
                             print(f"{'=' * 50}")

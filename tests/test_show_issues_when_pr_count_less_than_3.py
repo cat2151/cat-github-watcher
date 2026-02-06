@@ -263,20 +263,3 @@ def test_display_issues_when_three_or_more_prs_all_llm_working(
     call_args = mock_display_issues.call_args
     assert call_args is not None
     assert call_args[1]["llm_working_count"] == 3
-
-
-if __name__ == "__main__":
-    # Run all tests
-    test_display_issues_when_two_prs_in_phase3()
-    print("✓ Test 1 passed: display_issues_when_two_prs_in_phase3")
-
-    test_display_issues_when_one_pr_in_any_phase()
-    print("✓ Test 2 passed: display_issues_when_one_pr_in_any_phase")
-
-    test_no_display_issues_when_three_or_more_prs_not_llm_working()
-    print("✓ Test 3 passed: no_display_issues_when_three_or_more_prs_not_llm_working")
-
-    test_display_issues_when_three_or_more_prs_all_llm_working()
-    print("✓ Test 4 passed: display_issues_when_three_or_more_prs_all_llm_working")
-
-    print("\n✅ All tests passed!")

@@ -1,64 +1,50 @@
-Last updated: 2026-02-05
+Last updated: 2026-02-07
 
 # Development Status
 
 ## 現在のIssues
-- [Issue #143](../issue-notes/143.md)では、自動assign機能の再有効化と、失敗時に生成されるスクリーンショットを利用した原因特定が必要です。
-- [Issue #87](../issue-notes/87.md)は、大規模な仕様変更が実施されたため、実際の運用環境でのテスト（ドッグフーディング）を通じて全体的な動作検証を行う必要があります。
-- これらのオープンIssueは、既存機能の安定性向上と、新機能導入後の実運用テストに焦点を当てています。
+- [Issue #143](../issue-notes/143.md) は、自動assign機能が失敗する問題について、失敗時に生成されるスクリーンショットを活用して原因を特定・修正することを目指しています。
+- [Issue #87](../issue-notes/87.md) は、最近の大幅な仕様変更後、システム全体が期待通りに機能するかを確認するためのドッグフーディング（自己利用テスト）が求められています。
+- 最近追加されたPR数に応じてIssueリストを表示する機能 ([#157](https://github.com/cat2151/cat-github-watcher/pull/157)) も含まれており、これらのIssueの解決と並行して機能の安定性確保が重要です。
 
 ## 次の一手候補
-1. [Issue #143](../issue-notes/143.md): 自動assignを改めてonにし、失敗時に生成されるスクリーンショットを利用して調査する
-   - 最初の小さな一歩: `config.toml.example`を確認し、自動assignを有効にするための設定項目を特定し、一時的に`True`に設定する変更案を作成する。
+1. [Issue #143](../issue-notes/143.md): 自動assign失敗時の原因調査と修正
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/browser_automation.py` 内の自動assign関連処理とスクリーンショット保存ロジックを確認し、assign操作が失敗した場合にスクリーンショットが確実に取得されるよう検証する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `config.toml.example`, `src/gh_pr_phase_monitor/config.py`, `src/gh_pr_phase_monitor/browser_automation.py`
+     対象ファイル: `src/gh_pr_phase_monitor/browser_automation.py`, `screenshots/` ディレクトリ (出力先)
 
-     実行内容: 自動assign機能を制御する設定項目を`config.py`内で特定し、`config.toml.example`におけるその設定方法を分析してください。次に、`browser_automation.py`内で自動assignの呼び出し箇所および失敗時にスクリーンショットが生成されるロジック（ファイルパス、条件など）を特定してください。
+     実行内容: `src/gh_pr_phase_monitor/browser_automation.py` 内の自動assignロジック (特に`assign_to_copilot`関数や関連するUI操作部分) を分析し、assign操作が失敗した場合にスクリーンショットが保存されることを保証するメカニズムを確認してください。
 
-     確認事項: 自動assign機能のON/OFFを切り替える既存の設定項目があるか、またその設定が`browser_automation.py`にどのように伝達されているかを確認してください。関連する既存のテストケースも参照してください。
+     確認事項: 既存の `browser_automation.py` の `perform_browser_automation` 関数がどのように `assign_to_copilot` を呼び出しているか、およびスクリーンショット取得 (`take_screenshot`) の呼び出し箇所とエラーハンドリングを確認してください。
 
-     期待する出力:
-     1. 自動assignを有効にするための具体的な設定変更方法（`config.toml`のどの項目を`True`にするか）をmarkdown形式で記述してください。
-     2. 自動assignが失敗した際にスクリーンショットが生成されるロジックについて、`browser_automation.py`から抽出した情報をmarkdown形式で記述してください。
+     期待する出力: `browser_automation.py` のどの部分が自動assignを担当し、どのようにスクリーンショットをトリガーしているかを説明するmarkdown形式の分析結果。また、スクリーンショットが失敗時に確実に取得されるための改善点があれば提案してください。
      ```
 
-2. [Issue #87](../issue-notes/87.md): 大幅な仕様変更をしたのでドッグフーディングする
-   - 最初の小さな一歩: 最近のコミット履歴と関連ドキュメントを確認し、大幅な仕様変更によって影響を受けた主要な機能領域を特定する。
+2. [Issue #87](../issue-notes/87.md): 大幅な仕様変更後のドッグフーディング計画
+   - 最初の小さな一歩: 最近のコミット (`show-open-issues-list` 関連や `fix-auto-assign-button-issue` 関連) が `src/gh_pr_phase_monitor/main.py`, `monitor.py`, `display.py` に与えた影響をレビューし、主要な機能が依然として意図通りに動作するかを確認するための簡単なテストシナリオをリストアップする。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `docs/IMPLEMENTATION_SUMMARY.md`, `docs/PR67_IMPLEMENTATION.md`, `docs/button-detection-improvements.ja.md`, `src/gh_pr_phase_monitor/browser_automation.py`, `src/gh_pr_phase_monitor/main.py`, `src/gh_pr_phase_monitor/monitor.py`
+     対象ファイル: `src/gh_pr_phase_monitor/main.py`, `src/gh_pr_phase_monitor/monitor.py`, `src/gh_pr_phase_monitor/display.py`, `tests/` ディレクトリ配下の関連テストファイル
 
-     実行内容: 最近のコミット履歴と関連ドキュメント（特に`docs`ディレクトリ内の変更に関するもの）を基に、大幅な仕様変更によって影響を受けた主要な機能領域（例: ブラウザ自動化、PRフェーズ検出、コメント管理、通知）を特定してください。これに基づいて、ドッグフーディングで検証すべき主要な機能と、その検証観点を3点以上提案してください。
+     実行内容: 大幅な仕様変更 ([Issue #87](../issue-notes/87.md) 参照) 後、プロジェクトの主要機能 (PR監視、Issue表示、通知など) が正常に動作するかを確認するためのドッグフーディング計画を提案してください。特に、最近のコミットで変更されたファイル (`display.py`, `browser_automation.py` など) に焦点を当ててください。
 
-     確認事項: 最近の変更がどの機能に集中しているか、またそれらの変更がユーザー体験にどのような影響を与える可能性があるかを確認してください。既存のテストスイートがこれらの変更を十分にカバーしているかどうかも考慮に入れてください。
+     確認事項: 既存のテスト (`tests/` ディレクトリ) が現在の機能変更をカバーしているか、または不足しているテストケースがないかを確認してください。`config.toml.example` も参照し、設定による動作の違いも考慮に入れてください。
 
-     期待する出力:
-     1. ドッグフーディングで重点的に検証すべき機能領域とその理由をmarkdown形式でリストアップしてください。
-     2. 各機能領域に対して、具体的な検証観点（例: 「ボタン検出の精度」「コメント投稿の安定性」「通知の即時性」など）をmarkdown形式で記述してください。
-     3. ドッグフーディング計画の最初のステップとして、これらの検証観点に基づいたテストケースの簡単な記述（例: 「〇〇機能をXXのデータでYYの操作を行い、ZZを確認する」）を提案してください。
+     期待する出力: ドッグフーディングで検証すべき主要機能のリストと、それらを検証するための具体的な手順（簡単な手動テストシナリオや、既存テストの実行と結果評価）をmarkdown形式で出力してください。
      ```
 
-3. 共通ワークフローの利用状況とメンテナンスを確認する
-   - 最初の小さな一歩: プロジェクトの`.github/workflows`ディレクトリにある`call-*.yml`ファイル群と、`.github/actions-tmp/.github/workflows/`にある対応する共通ワークフローファイル（例: `call-issue-note.yml`と`issue-note.yml`）を比較し、最新性と整合性を確認する。
+3. 新規Issue表示機能のレビューと表示形式の改善 (関連PR: #157)
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/display.py` の `show_issues_when_pr_count_less_than_3` ロジックと、`tests/test_show_issues_when_pr_count_less_than_3.py` のテストケースを詳細にレビューし、Issue情報の取得と表示が期待通りか確認する。
    - Agent実行プロンプト:
      ```
-     対象ファイル:
-     - 呼び出し元: `.github/workflows/call-daily-project-summary.yml`, `.github/workflows/call-issue-note.yml`, `.github/workflows/call-translate-readme.yml`
-     - 共通ワークフロー: `.github/actions-tmp/.github/workflows/daily-project-summary.yml`, `.github/actions-tmp/.github/workflows/issue-note.yml`, `.github/actions-tmp/.github/workflows/translate-readme.yml`
-     - ドキュメント: `.github/actions-tmp/issue-notes/3.md`
+     対象ファイル: `src/gh_pr_phase_monitor/display.py`, `tests/test_show_issues_when_pr_count_less_than_3.py`, `src/gh_pr_phase_monitor/issue_fetcher.py`
 
-     実行内容: 各呼び出し元ワークフロー（`.github/workflows/call-*.yml`）が対応する共通ワークフロー（`.github/actions-tmp/.github/workflows/*.yml`）を正しく参照しているか、および必要な`inputs`と`secrets`を適切に渡しているかを確認してください。特に、[Issue #3](../issue-notes/3.md)で指摘された`actions/github-script`内での`inputs`参照の問題が他の共通ワークフローで再発していないかをチェックしてください。
+     実行内容: PR数が3未満の場合にIssueリストを表示する新機能 (関連PR: #157) について、`src/gh_pr_phase_monitor/display.py` 内のIssue表示ロジックとそのテスト (`test_show_issues_when_pr_count_less_than_3.py`) を分析してください。特に、Issue情報の取得、整形、表示の一連の流れが適切であるか、およびユーザーにとって視認性の高い表示形式となっているかを評価してください。
 
-     確認事項:
-     1. 呼び出し元ワークフローと共通ワークフロー間で`inputs`/`secrets`の定義と利用が一致しているか確認してください。
-     2. `actions/github-script`を使用している共通ワークフローが存在する場合、`inputs`の参照方法が[Issue #3](../issue-notes/3.md)で修正された「`env`で渡して`process.env`で参照する」パターンになっているか確認してください。
-     3. 共通ワークフローが想定通りに実行されているか（過去の実行ログを参照できる場合は参照する）確認してください。
+     確認事項: `issue_fetcher.py` からIssueデータがどのように取得され、`display.py` でどのようにフォーマットされているかを確認してください。また、Issueリンクの形式が `[Issue #番号](../issue-notes/番号.md)` となっているかも検証してください。
 
-     期待する出力:
-     1. 各共通ワークフローについて、呼び出し元からの`inputs`/`secrets`の渡し方と、共通ワークフロー内での受け取り方の整合性に関する評価をmarkdown形式で記述してください。
-     2. もし不整合や潜在的な問題が発見された場合、具体的な修正提案をmarkdown形式で記述してください。
-     3. 特に、[Issue #3](../issue-notes/3.md)の教訓が他の共通ワークフローに適用されているかのチェック結果を明記してください。
+     期待する出力: 新規Issue表示機能の現状の評価と、Issueの表示形式や情報量に関して改善できる点があれば、具体的な変更提案をmarkdown形式で出力してください。例えば、情報の追加（ラベル、更新日時など）や表示順序の最適化などが考えられます。
 
 ---
-Generated at: 2026-02-05 07:02:42 JST
+Generated at: 2026-02-07 07:01:55 JST

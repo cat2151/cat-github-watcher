@@ -1,4 +1,4 @@
-Last updated: 2026-02-05
+Last updated: 2026-02-07
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -272,6 +272,7 @@ Last updated: 2026-02-05
 - tests/test_pr_actions_rulesets_features.py
 - tests/test_pr_actions_with_rulesets.py
 - tests/test_repos_with_prs_structure.py
+- tests/test_show_issues_when_pr_count_less_than_3.py
 - tests/test_status_summary.py
 - tests/test_validate_phase3_merge_config.py
 - tests/test_verbose_config.py
@@ -391,16 +392,16 @@ env: で値を渡し、process.env で参照するのが正しい
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
+858dab5 Merge pull request #157 from cat2151/copilot/show-open-issues-list
+06cfeb2 Address PR review comments: use elif to avoid duplicate messages and add explanatory comments to except clauses
+dea7c03 Remove unnecessary __main__ block from test file
+7e0c959 Add logic to show issue table when PR count is less than 3
+17c793b Initial plan
+51c2f67 Update project summaries (overview & development status) [auto]
 c95f521 Merge branch 'main' of github.com:cat2151/cat-github-watcher into main
 c4f2b7b #154 に関連して、png変更
 0df58b6 Auto-translate README.ja.md to README.md [auto]
 583cdee Merge pull request #155 from cat2151/copilot/fix-auto-assign-button-issue
-6f2c7a9 Remove Playwright code and documentation per user feedback
-9a35a12 Fix review comments: clarify HTML detection is not integrated, remove redundant import
-6182ae7 Code review improvements: clarify comments and improve centering accuracy
-0a640f9 Add comprehensive documentation for button detection improvements
-409e6f8 Refactor: Extract magic numbers to constants and improve comments
-b4480ee Add tests and documentation for OCR fallback and enhanced debug
 
 ### 変更されたファイル:
 .github/copilot-instructions.md
@@ -430,9 +431,9 @@ tests/test_interval_contamination_bug.py
 tests/test_max_llm_working_parallel.py
 tests/test_no_change_timeout.py
 tests/test_no_open_prs_issue_display.py
-tests/test_repos_with_prs_structure.py
+tests/test_show_issues_when_pr_count_less_than_3.py
 tests/test_status_summary.py
 
 
 ---
-Generated at: 2026-02-05 07:02:21 JST
+Generated at: 2026-02-07 07:01:37 JST

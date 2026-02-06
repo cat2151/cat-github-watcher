@@ -1,4 +1,4 @@
-Last updated: 2026-02-05
+Last updated: 2026-02-07
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -508,6 +508,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_pr_actions_rulesets_features.py
   📄 test_pr_actions_with_rulesets.py
   📄 test_repos_with_prs_structure.py
+  📄 test_show_issues_when_pr_count_less_than_3.py
   📄 test_status_summary.py
   📄 test_validate_phase3_merge_config.py
   📄 test_verbose_config.py
@@ -546,4 +547,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-02-05 07:02:21 JST
+Generated at: 2026-02-07 07:01:37 JST

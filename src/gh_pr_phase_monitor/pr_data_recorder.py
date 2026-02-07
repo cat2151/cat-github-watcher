@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Optional, Set
 
 from .phase_detector import PHASE_LLM_WORKING, has_comments_with_reactions
 
-# Snapshots are stored next to existing screenshots for easy discovery
-DEFAULT_SNAPSHOT_BASE_DIR = Path("screenshots") / "pr_phase_snapshots"
+# Snapshots are stored alongside screenshots (not inside) for easy discovery
+DEFAULT_SNAPSHOT_BASE_DIR = Path("pr_phase_snapshots")
 _recorded_snapshots: Set[str] = set()
 
 
@@ -73,7 +73,12 @@ def _summarize_review_threads(review_threads: Any) -> str:
 
 
 def _build_markdown(
-    pr: Dict[str, Any], reason: str, timestamp_str: str, reactions_summary: List[str], snapshot_prefix: str
+    pr: Dict[str, Any],
+    reason: str,
+    timestamp_str: str,
+    reactions_summary: List[str],
+    snapshot_prefix: str,
+    markdown_raw_snapshot: str,
 ) -> str:
     """Build human-readable markdown representation of the snapshot."""
     repo_info = pr.get("repository") or {}
@@ -86,6 +91,7 @@ def _build_markdown(
     reviews = pr.get("reviews") or []
     latest_review = reviews[-1] if reviews else {}
     review_threads = pr.get("reviewThreads")
+    body_text = (pr.get("body") or "").replace("\r\n", "\n")
 
     lines = [
         f"# PR snapshot {owner}/{name} #{pr_number}",
@@ -114,10 +120,63 @@ def _build_markdown(
         lines.append("- None")
 
     lines.append("")
+    if body_text:
+        lines.append("## Body (rendered)")
+        lines.append("```text")
+        lines.append(body_text)
+        lines.append("```")
+        lines.append("")
+
     lines.append("## Raw snapshot")
     lines.append(f"- Saved at: {timestamp_str}")
+    lines.append("")
+    lines.append("```json")
+    lines.append(markdown_raw_snapshot)
+    lines.append("```")
 
     return "\n".join(lines)
+
+
+def _filter_reactions(comment_nodes: Any) -> List[Dict[str, Any]]:
+    """Filter out comments without any reactions and drop zero-count reaction groups."""
+    if not isinstance(comment_nodes, list):
+        return []
+
+    filtered_comments: List[Dict[str, Any]] = []
+    for comment in comment_nodes:
+        reaction_groups = []
+        for group in comment.get("reactionGroups") or []:
+            count = (group.get("users") or {}).get("totalCount", 0)
+            if count:
+                reaction_groups.append(group)
+
+        if reaction_groups:
+            comment_copy = dict(comment)
+            comment_copy["reactionGroups"] = reaction_groups
+            filtered_comments.append(comment_copy)
+
+    return filtered_comments
+
+
+def _prepare_markdown_raw(pr: Dict[str, Any]) -> str:
+    """Prepare a markdown-friendly JSON representation of the PR with filters applied."""
+    pr_copy = json.loads(json.dumps(pr, ensure_ascii=False))
+    pr_copy["commentNodes"] = _filter_reactions(pr_copy.get("commentNodes", []))
+    pr_copy["comments"] = _filter_reactions(pr_copy.get("comments", []))
+
+    return json.dumps(pr_copy, ensure_ascii=False, indent=2)
+
+
+def _write_if_changed(path: Path, content: str) -> None:
+    """Write content to a file only when it changed."""
+    if path.exists():
+        try:
+            if path.read_text(encoding="utf-8") == content:
+                return
+        except OSError:
+            # If reading fails (permissions/I/O), overwrite with new content below
+            pass
+    path.write_text(content, encoding="utf-8")
 
 
 def save_pr_snapshot(
@@ -150,12 +209,20 @@ def save_pr_snapshot(
     markdown_path = snapshot_dir / f"{snapshot_prefix}_summary.md"
     timestamp_str = _format_timestamp(effective_time)
     reactions_summary = _summarize_reactions(pr.get("commentNodes", pr.get("comments", [])))
+    markdown_raw_snapshot = _prepare_markdown_raw(pr)
 
-    with raw_path.open("w", encoding="utf-8") as raw_file:
-        json.dump(pr, raw_file, ensure_ascii=False, indent=2)
+    raw_json = json.dumps(pr, ensure_ascii=False, indent=2)
+    _write_if_changed(raw_path, raw_json)
 
-    markdown_content = _build_markdown(pr, reason, timestamp_str, reactions_summary, snapshot_prefix)
-    markdown_path.write_text(markdown_content, encoding="utf-8")
+    markdown_content = _build_markdown(
+        pr,
+        reason,
+        timestamp_str,
+        reactions_summary,
+        snapshot_prefix,
+        markdown_raw_snapshot,
+    )
+    _write_if_changed(markdown_path, markdown_content)
 
     return {
         "snapshot_dir": snapshot_dir,

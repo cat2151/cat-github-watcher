@@ -5,6 +5,7 @@ Tests for PR actions including browser opening behavior
 from unittest.mock import patch
 
 from src.gh_pr_phase_monitor import pr_actions
+from src.gh_pr_phase_monitor.phase_detector import PHASE_2, PHASE_3
 from src.gh_pr_phase_monitor.pr_actions import process_pr
 
 
@@ -99,6 +100,35 @@ class TestProcessPR:
             process_pr(pr, {})
             # Browser should not be called for LLM working
             mock_browser.assert_not_called()
+
+    def test_author_displayed_for_phase2(self, capsys):
+        """Author login should be printed for phase2"""
+        pr = {
+            "author": {"login": "phase2-author"},
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "Phase2 PR",
+            "url": "https://github.com/test-owner/test-repo/pull/2",
+        }
+
+        process_pr(pr, {}, phase=PHASE_2)
+        output = capsys.readouterr().out
+        assert "Author: phase2-author" in output
+
+    def test_author_displayed_for_phase3(self, capsys):
+        """Author login should be printed for phase3"""
+        pr = {
+            "author": {"login": "phase3-author"},
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "Phase3 PR",
+            "url": "https://github.com/test-owner/test-repo/pull/3",
+        }
+
+        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser:
+            mock_browser.return_value = True
+            process_pr(pr, {}, phase=PHASE_3)
+
+        output = capsys.readouterr().out
+        assert "Author: phase3-author" in output
 
     def test_browser_opened_only_once_for_phase3(self):
         """Browser should open only once for phase3, even if called multiple times"""

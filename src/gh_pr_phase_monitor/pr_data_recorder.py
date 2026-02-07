@@ -6,12 +6,13 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from .phase_detector import PHASE_LLM_WORKING, has_comments_with_reactions
 
 # Snapshots are stored next to existing screenshots for easy discovery
 DEFAULT_SNAPSHOT_BASE_DIR = Path("screenshots") / "pr_phase_snapshots"
+_recorded_snapshots: Set[str] = set()
 
 
 def _sanitize_component(value: Any) -> str:
@@ -136,16 +137,18 @@ def save_pr_snapshot(
     Returns:
         Paths for the saved snapshot directory and files.
     """
+    effective_time = current_time if current_time is not None else datetime.now()
+
     base_path = Path(base_dir) if base_dir is not None else DEFAULT_SNAPSHOT_BASE_DIR
     base_path = base_path.expanduser().resolve()
 
-    snapshot_prefix = _build_snapshot_prefix(pr, current_time)
+    snapshot_prefix = _build_snapshot_prefix(pr, effective_time)
     snapshot_dir = base_path / snapshot_prefix
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
     raw_path = snapshot_dir / f"{snapshot_prefix}_raw.json"
     markdown_path = snapshot_dir / f"{snapshot_prefix}_summary.md"
-    timestamp_str = _format_timestamp(current_time)
+    timestamp_str = _format_timestamp(effective_time)
     reactions_summary = _summarize_reactions(pr.get("commentNodes", pr.get("comments", [])))
 
     with raw_path.open("w", encoding="utf-8") as raw_file:
@@ -185,9 +188,20 @@ def record_reaction_snapshot(
     if not has_comments_with_reactions(comment_nodes):
         return None
 
-    return save_pr_snapshot(
+    pr_key = pr.get("url") or _build_snapshot_prefix(pr, current_time)
+    if pr_key in _recorded_snapshots:
+        return None
+
+    snapshot_paths = save_pr_snapshot(
         pr,
         reason="comment_reactions_detected",
         base_dir=base_dir,
         current_time=current_time,
     )
+    _recorded_snapshots.add(pr_key)
+    return snapshot_paths
+
+
+def _reset_snapshot_cache() -> None:
+    """Test helper to clear recorded snapshot cache."""
+    _recorded_snapshots.clear()

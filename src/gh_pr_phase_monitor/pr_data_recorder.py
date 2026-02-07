@@ -91,6 +91,7 @@ def _build_markdown(
     reviews = pr.get("reviews") or []
     latest_review = reviews[-1] if reviews else {}
     review_threads = pr.get("reviewThreads")
+    body_text = (pr.get("body") or "").replace("\r\n", "\n")
 
     lines = [
         f"# PR snapshot {owner}/{name} #{pr_number}",
@@ -119,6 +120,13 @@ def _build_markdown(
         lines.append("- None")
 
     lines.append("")
+    if body_text:
+        lines.append("## Body (rendered)")
+        lines.append("```text")
+        lines.append(body_text)
+        lines.append("```")
+        lines.append("")
+
     lines.append("## Raw snapshot")
     lines.append(f"- Saved at: {timestamp_str}")
     lines.append("")
@@ -156,9 +164,7 @@ def _prepare_markdown_raw(pr: Dict[str, Any]) -> str:
     pr_copy["commentNodes"] = _filter_reactions(pr_copy.get("commentNodes", []))
     pr_copy["comments"] = _filter_reactions(pr_copy.get("comments", []))
 
-    raw_json = json.dumps(pr_copy, ensure_ascii=False, indent=2)
-    raw_json = raw_json.replace("\\r\\n", "\n").replace("\\n", "\n")
-    return raw_json
+    return json.dumps(pr_copy, ensure_ascii=False, indent=2)
 
 
 def _write_if_changed(path: Path, content: str) -> None:
@@ -168,6 +174,7 @@ def _write_if_changed(path: Path, content: str) -> None:
             if path.read_text(encoding="utf-8") == content:
                 return
         except OSError:
+            # If reading fails (permissions/I/O), overwrite with new content below
             pass
     path.write_text(content, encoding="utf-8")
 

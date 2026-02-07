@@ -50,6 +50,11 @@ check_process_before_autoraise = true
 # Default: false
 verbose = false
 
+# Coding agent mention override (optional)
+# Set to override the default @copilot mention when posting apply comments
+[coding_agent]
+agent_name = "@copilot"
+
 # Note: This tool monitors user-owned repositories under the current GitHub user account
 # It uses GraphQL API to efficiently fetch all repositories with open PRs
 # Organization repositories are NOT included (YAGNI principle - keeping it simple)

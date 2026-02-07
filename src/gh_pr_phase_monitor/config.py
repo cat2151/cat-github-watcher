@@ -313,6 +313,11 @@ def print_config(config: Dict[str, Any]) -> None:
         f"  check_process_before_autoraise: {config.get('check_process_before_autoraise', DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE)}"
     )
 
+    coding_agent = config.get("coding_agent")
+    if coding_agent and isinstance(coding_agent, dict):
+        print("\n[Coding Agent]")
+        print(f"  agent_name: {coding_agent.get('agent_name', 'N/A')}")
+
     # Print rulesets
     rulesets = config.get("rulesets", [])
     if rulesets and isinstance(rulesets, list):

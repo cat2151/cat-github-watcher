@@ -411,7 +411,7 @@ class TestDryRunMode:
             mock_comment.return_value = True
             process_pr(pr, config)
             # post_phase2_comment should be called when execution is enabled
-            mock_comment.assert_called_once_with(pr, None)
+            mock_comment.assert_called_once_with(pr, None, config)
 
     def test_phase3_dry_run_ntfy_by_default(self):
         """Phase3 should not send ntfy when flag is false (default)"""

@@ -8,16 +8,29 @@ from typing import Any, Dict, List, Optional
 
 from .github_client import get_existing_comments
 
+CLAUDE_AGENT_LOGINS = {
+    "claude",
+    "claude-ai",
+    "claude-dev",
+    "claude-coding-agent",
+}
+
+CODEX_AGENT_LOGINS = {
+    "codex",
+    "codex-ai",
+    "codex-coding-agent",
+}
+
 
 def _get_agent_mention(pr: Dict[str, Any]) -> str:
     """Resolve which agent to mention based on PR author"""
     author_login = (pr.get("author") or {}).get("login", "")
     normalized = author_login.lower()
 
-    if "claude" in normalized:
+    if normalized in CLAUDE_AGENT_LOGINS or normalized.endswith("-claude-coding-agent"):
         return "@claude[agent]"
 
-    if "codex" in normalized:
+    if normalized in CODEX_AGENT_LOGINS or normalized.endswith("-codex-coding-agent"):
         return "@codex[agent]"
 
     return "@copilot"

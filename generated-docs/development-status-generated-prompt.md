@@ -1,4 +1,4 @@
-Last updated: 2026-02-07
+Last updated: 2026-02-08
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -244,6 +244,7 @@ Last updated: 2026-02-07
 - src/gh_pr_phase_monitor/notifier.py
 - src/gh_pr_phase_monitor/phase_detector.py
 - src/gh_pr_phase_monitor/pr_actions.py
+- src/gh_pr_phase_monitor/pr_data_recorder.py
 - src/gh_pr_phase_monitor/pr_fetcher.py
 - src/gh_pr_phase_monitor/repository_fetcher.py
 - src/gh_pr_phase_monitor/state_tracker.py
@@ -271,6 +272,7 @@ Last updated: 2026-02-07
 - tests/test_pr_actions.py
 - tests/test_pr_actions_rulesets_features.py
 - tests/test_pr_actions_with_rulesets.py
+- tests/test_pr_data_recorder.py
 - tests/test_repos_with_prs_structure.py
 - tests/test_show_issues_when_pr_count_less_than_3.py
 - tests/test_status_summary.py
@@ -278,6 +280,33 @@ Last updated: 2026-02-07
 - tests/test_verbose_config.py
 
 ## 現在のオープンIssues
+## [Issue #172](../issue-notes/172.md): phase3 / LLM Working の判定がデータ不足で失敗することがある。対策として、curlで当該pageのhtmlを取得して保存する。さらに、それをmarkdownに可視化したものも保存する。pr_phase_snapshots/ 配下に保存する
+
+ラベル: 
+--- issue-notes/172.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #171](../issue-notes/171.md): Codex Coding Agentが稀に「Addressing PR comments」というPR titleにしてしまう
+
+ラベル: 
+--- issue-notes/171.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #168](../issue-notes/168.md): PR authorがCodex Coding Agentか？の判定条件に、PR author = "openai-code-agent" を追加する。表示させて確認した
+
+ラベル: 
+--- issue-notes/168.md の内容 ---
+
+```markdown
+
+```
+
 ## [Issue #143](../issue-notes/143.md): 自動assignを改めてonにし、失敗時に生成されるスクリーンショットを利用して調査する
 
 ラベル: 
@@ -297,6 +326,181 @@ Last updated: 2026-02-07
 ```
 
 ## ドキュメントで言及されているファイルの内容
+### .github/actions-tmp/issue-notes/2.md
+```md
+{% raw %}
+# issue GitHub Actions「関数コールグラフhtmlビジュアライズ生成」を共通ワークフロー化する #2
+[issues #2](https://github.com/cat2151/github-actions/issues/2)
+
+
+# prompt
+```
+あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
+このymlファイルを、以下の2つのファイルに分割してください。
+1. 共通ワークフロー       cat2151/github-actions/.github/workflows/callgraph_enhanced.yml
+2. 呼び出し元ワークフロー cat2151/github-actions/.github/workflows/call-callgraph_enhanced.yml
+まずplanしてください
+```
+
+# 結果
+- indent
+    - linter？がindentのエラーを出しているがyml内容は見た感じOK
+    - テキストエディタとagentの相性問題と判断する
+    - 別のテキストエディタでsaveしなおし、テキストエディタをreload
+    - indentのエラーは解消した
+- LLMレビュー
+    - agent以外の複数のLLMにレビューさせる
+    - prompt
+```
+あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
+以下の2つのファイルをレビューしてください。最優先で、エラーが発生するかどうかだけレビューしてください。エラー以外の改善事項のチェックをするかわりに、エラー発生有無チェックに最大限注力してください。
+
+--- 共通ワークフロー
+
+# GitHub Actions Reusable Workflow for Call Graph Generation
+name: Generate Call Graph
+
+# TODO Windowsネイティブでのtestをしていた名残が残っているので、今後整理していく。今はWSL act でtestしており、Windowsネイティブ環境依存問題が解決した
+#  ChatGPTにレビューさせるとそこそこ有用そうな提案が得られたので、今後それをやる予定
+#  agentに自己チェックさせる手も、セカンドオピニオンとして選択肢に入れておく
+
+on:
+  workflow_call:
+
+jobs:
+  check-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50 # 過去のコミットを取得
+
+      - name: Check for user commits in last 24 hours
+        id: check
+        run: |
+          node .github/scripts/callgraph_enhanced/check-commits.cjs
+
+  generate-callgraph:
+    needs: check-commits
+    if: needs.check-commits.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      security-events: write
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Remove old CodeQL packages cache
+        run: rm -rf ~/.codeql/packages
+
+      - name: Check Node.js version
+        run: |
+          node .github/scripts/callgraph_enhanced/check-node-version.cjs
+
+      - name: Install CodeQL CLI
+        run: |
+          wget https://github.com/github/codeql-cli-binaries/releases/download/v2.22.1/codeql-linux64.zip
+          unzip codeql-linux64.zip
+          sudo mv codeql /opt/codeql
+          echo "/opt/codeql" >> $GITHUB_PATH
+
+      - name: Install CodeQL query packs
+        run: |
+          /opt/codeql/codeql pack install .github/codeql-queries
+
+      - name: Check CodeQL exists
+        run: |
+          node .github/scripts/callgraph_enhanced/check-codeql-exists.cjs
+
+      - name: Verify CodeQL Configuration
+        run: |
+          node .github/scripts/callgraph_enhanced/analyze-codeql.cjs verify-config
+
+      - name: Remove existing CodeQL DB (if any)
+        run: |
+          rm -rf codeql-db
+
+      - name: Perform CodeQL Analysis
+        run: |
+          node .github/scripts/callgraph_enhanced/analyze-codeql.cjs analyze
+
+      - name: Check CodeQL Analysis Results
+        run: |
+          node .github/scripts/callgraph_enhanced/analyze-codeql.cjs check-results
+
+      - name: Debug CodeQL execution
+        run: |
+          node .github/scripts/callgraph_enhanced/analyze-codeql.cjs debug
+
+      - name: Wait for CodeQL results
+        run: |
+          node -e "setTimeout(()=>{}, 10000)"
+
+      - name: Find and process CodeQL results
+        run: |
+          node .github/scripts/callgraph_enhanced/find-process-results.cjs
+
+      - name: Generate HTML graph
+        run: |
+          node .github/scripts/callgraph_enhanced/generate-html-graph.cjs
+
+      - name: Copy files to generated-docs and commit results
+        run: |
+          node .github/scripts/callgraph_enhanced/copy-commit-results.cjs
+
+--- 呼び出し元
+# 呼び出し元ワークフロー: call-callgraph_enhanced.yml
+name: Call Call Graph Enhanced
+
+on:
+  schedule:
+    # 毎日午前5時(JST) = UTC 20:00前日
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+jobs:
+  call-callgraph-enhanced:
+    # uses: cat2151/github-actions/.github/workflows/callgraph_enhanced.yml
+    uses: ./.github/workflows/callgraph_enhanced.yml # ローカルでのテスト用
+```
+
+# レビュー結果OKと判断する
+- レビュー結果を人力でレビューした形になった
+
+# test
+- #4 同様にローカル WSL + act でtestする
+- エラー。userのtest設計ミス。
+  - scriptの挙動 : src/ がある前提
+  - 今回の共通ワークフローのリポジトリ : src/ がない
+  - 今回testで実現したいこと
+    - 仮のソースでよいので、関数コールグラフを生成させる
+  - 対策
+    - src/ にダミーを配置する
+- test green
+  - ただしcommit pushはしてないので、html内容が0件NG、といったケースの検知はできない
+  - もしそうなったら別issueとしよう
+
+# test green
+
+# commit用に、yml 呼び出し元 uses をlocal用から本番用に書き換える
+
+# closeとする
+- もしhtml内容が0件NG、などになったら、別issueとするつもり
+
+{% endraw %}
+```
+
 ### .github/actions-tmp/issue-notes/3.md
 ```md
 {% raw %}
@@ -390,50 +594,113 @@ env: で値を渡し、process.env で参照するのが正しい
 {% endraw %}
 ```
 
+### .github/actions-tmp/issue-notes/8.md
+```md
+{% raw %}
+# issue 関数コールグラフhtmlビジュアライズ生成の対象ソースファイルを、呼び出し元ymlで指定できるようにする #8
+[issues #8](https://github.com/cat2151/github-actions/issues/8)
+
+# これまでの課題
+- 以下が決め打ちになっていた
+```
+  const allowedFiles = [
+    'src/main.js',
+    'src/mml2json.js',
+    'src/play.js'
+  ];
+```
+
+# 対策
+- 呼び出し元ymlで指定できるようにする
+
+# agent
+- agentにやらせることができれば楽なので、初手agentを試した
+- 失敗
+    - ハルシネーションしてscriptを大量破壊した
+- 分析
+    - 修正対象scriptはagentが生成したもの
+    - 低品質な生成結果でありソースが巨大
+    - ハルシネーションで破壊されやすいソース
+    - AIの生成したソースは、必ずしもAIフレンドリーではない
+
+# 人力リファクタリング
+- 低品質コードを、最低限agentが扱えて、ハルシネーションによる大量破壊を防止できる内容、にする
+- 手短にやる
+    - そもそもビジュアライズは、agentに雑に指示してやらせたもので、
+    - 今後別のビジュアライザを選ぶ可能性も高い
+    - 今ここで手間をかけすぎてコンコルド効果（サンクコストバイアス）を増やすのは、project群をトータルで俯瞰して見たとき、損
+- 対象
+    - allowedFiles のあるソース
+        - callgraph-utils.cjs
+            - たかだか300行未満のソースである
+            - この程度でハルシネーションされるのは予想外
+            - やむなし、リファクタリングでソース分割を進める
+
+# agentに修正させる
+## prompt
+```
+allowedFilesを引数で受け取るようにしたいです。
+ないならエラー。
+最終的に呼び出し元すべてに波及して修正したいです。
+
+呼び出し元をたどってエントリポイントも見つけて、
+エントリポイントにおいては、
+引数で受け取ったjsonファイル名 allowedFiles.js から
+jsonファイル allowedFiles.jsonの内容をreadして
+変数 allowedFilesに格納、
+後続処理に引き渡す、としたいです。
+
+まずplanしてください。
+planにおいては、修正対象のソースファイル名と関数名を、呼び出し元を遡ってすべて特定し、listしてください。
+```
+
+# 修正が順調にできた
+- コマンドライン引数から受け取る作りになっていなかったので、そこだけ指示して修正させた
+- yml側は人力で修正した
+
+# 他のリポジトリから呼び出した場合にバグらないよう修正する
+- 気付いた
+    - 共通ワークフローとして他のリポジトリから使った場合はバグるはず。
+        - ymlから、共通ワークフロー側リポジトリのcheckoutが漏れているので。
+- 他のyml同様に修正する
+- あわせて全体にymlをリファクタリングし、修正しやすくし、今後のyml読み書きの学びにしやすくする
+
+# local WSL + act : test green
+
+# closeとする
+- もし生成されたhtmlがNGの場合は、別issueとするつもり
+
+{% endraw %}
+```
+
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-858dab5 Merge pull request #157 from cat2151/copilot/show-open-issues-list
-06cfeb2 Address PR review comments: use elif to avoid duplicate messages and add explanatory comments to except clauses
-dea7c03 Remove unnecessary __main__ block from test file
-7e0c959 Add logic to show issue table when PR count is less than 3
-17c793b Initial plan
-51c2f67 Update project summaries (overview & development status) [auto]
-c95f521 Merge branch 'main' of github.com:cat2151/cat-github-watcher into main
-c4f2b7b #154 に関連して、png変更
-0df58b6 Auto-translate README.ja.md to README.md [auto]
-583cdee Merge pull request #155 from cat2151/copilot/fix-auto-assign-button-issue
+a3bdd0a Merge pull request #170 from cat2151/codex/move-pr-phase-snapshots
+7c896f1 fix: keep snapshot json valid and clarify write guard
+2b61b3c feat: relocate pr snapshots and enhance markdown output
+a38f202 Initial plan
+bacffcf Merge pull request #167 from cat2151/codex/add-local-screenshot-archive
+82e6f5e chore: stabilize snapshot timestamp and dedupe
+feb43fe feat: record llm working snapshots
+a5c6e81 Initial plan
+1bf05c2 Merge pull request #165 from cat2151/codex/update-pr-163-author-display
+78e34d3 chore: remove unused phase imports
 
 ### 変更されたファイル:
-.github/copilot-instructions.md
 README.ja.md
 README.md
-STRUCTURE.md
 config.toml.example
-docs/button-detection-improvements.ja.md
-docs/window-activation-feature.md
-generated-docs/development-status-generated-prompt.md
-generated-docs/development-status.md
-generated-docs/project-overview-generated-prompt.md
-generated-docs/project-overview.md
-requirements-automation.txt
-screenshots/assign_to_copilot.png
-src/gh_pr_phase_monitor/__init__.py
-src/gh_pr_phase_monitor/browser_automation.py
+src/gh_pr_phase_monitor/comment_manager.py
+src/gh_pr_phase_monitor/config.py
 src/gh_pr_phase_monitor/display.py
 src/gh_pr_phase_monitor/main.py
-src/gh_pr_phase_monitor/monitor.py
-src/gh_pr_phase_monitor/state_tracker.py
-src/gh_pr_phase_monitor/time_utils.py
-src/gh_pr_phase_monitor/wait_handler.py
-tests/test_browser_automation.py
-tests/test_elapsed_time_display.py
-tests/test_interval_contamination_bug.py
-tests/test_max_llm_working_parallel.py
-tests/test_no_change_timeout.py
-tests/test_no_open_prs_issue_display.py
-tests/test_show_issues_when_pr_count_less_than_3.py
+src/gh_pr_phase_monitor/pr_actions.py
+src/gh_pr_phase_monitor/pr_data_recorder.py
+tests/test_post_comment.py
+tests/test_pr_actions.py
+tests/test_pr_data_recorder.py
 tests/test_status_summary.py
 
 
 ---
-Generated at: 2026-02-07 07:01:37 JST
+Generated at: 2026-02-08 07:02:33 JST

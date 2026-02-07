@@ -1,4 +1,4 @@
-Last updated: 2026-02-07
+Last updated: 2026-02-08
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -175,6 +175,10 @@ cat-github-watcher/
    # サポートされる形式: "30s", "1m", "5m", "30m", "1h", "1d"
    # デフォルト: "30m" (30分 - 安定性優先)
    no_change_timeout = "30m"
+   
+   # 投稿コメントで使うコーディングエージェントのメンションを上書き（省略時は@copilot）
+   [coding_agent]
+   agent_name = "@codex[agent]"
    
    # 省電力モード時の監視間隔
    # no_change_timeout期間で状態変化が検知されない場合、
@@ -479,6 +483,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
     📄 notifier.py
     📄 phase_detector.py
     📄 pr_actions.py
+    📄 pr_data_recorder.py
     📄 pr_fetcher.py
     📄 repository_fetcher.py
     📄 state_tracker.py
@@ -507,6 +512,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_pr_actions.py
   📄 test_pr_actions_rulesets_features.py
   📄 test_pr_actions_with_rulesets.py
+  📄 test_pr_data_recorder.py
   📄 test_repos_with_prs_structure.py
   📄 test_show_issues_when_pr_count_less_than_3.py
   📄 test_status_summary.py
@@ -547,4 +553,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-02-07 07:01:37 JST
+Generated at: 2026-02-08 07:02:33 JST

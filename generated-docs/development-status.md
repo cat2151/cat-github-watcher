@@ -1,50 +1,51 @@
-Last updated: 2026-02-07
+Last updated: 2026-02-08
 
 # Development Status
 
 ## 現在のIssues
-- [Issue #143](../issue-notes/143.md) は、自動assign機能が失敗する問題について、失敗時に生成されるスクリーンショットを活用して原因を特定・修正することを目指しています。
-- [Issue #87](../issue-notes/87.md) は、最近の大幅な仕様変更後、システム全体が期待通りに機能するかを確認するためのドッグフーディング（自己利用テスト）が求められています。
-- 最近追加されたPR数に応じてIssueリストを表示する機能 ([#157](https://github.com/cat2151/cat-github-watcher/pull/157)) も含まれており、これらのIssueの解決と並行して機能の安定性確保が重要です。
+- [Issue #172](../issue-notes/172.md) は、phase3 / LLM Working 判定時のデータ不足問題に対し、PRページのHTMLスナップショットをpr_phase_snapshots/に保存する機能の実装を進めています。
+- [Issue #171](../issue-notes/171.md) は、Codex Coding Agentが「Addressing PR comments」という不適切なPRタイトルを生成する稀なケースの解決を目指しています。
+- [Issue #168](../issue-notes/168.md) は、PR authorがCodex Coding Agentであるかどうかの判定条件に"openai-code-agent"を追加する変更を実施します。
 
 ## 次の一手候補
-1. [Issue #143](../issue-notes/143.md): 自動assign失敗時の原因調査と修正
-   - 最初の小さな一歩: `src/gh_pr_phase_monitor/browser_automation.py` 内の自動assign関連処理とスクリーンショット保存ロジックを確認し、assign操作が失敗した場合にスクリーンショットが確実に取得されるよう検証する。
+1. [Issue #172](../issue-notes/172.md): phase3/LLM Working判定の安定化（HTMLスナップショット保存機能の実装）
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/pr_data_recorder.py` に、PRページのHTMLコンテンツをファイルに保存する基本機能を実装する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `src/gh_pr_phase_monitor/browser_automation.py`, `screenshots/` ディレクトリ (出力先)
+     対象ファイル: `src/gh_pr_phase_monitor/pr_data_recorder.py`
 
-     実行内容: `src/gh_pr_phase_monitor/browser_automation.py` 内の自動assignロジック (特に`assign_to_copilot`関数や関連するUI操作部分) を分析し、assign操作が失敗した場合にスクリーンショットが保存されることを保証するメカニズムを確認してください。
+     実行内容: PRの詳細情報を記録する際に、指定されたURLからHTMLコンテンツを取得し、`pr_phase_snapshots/` ディレクトリ配下にPR番号とタイムスタンプを含むファイル名で保存する関数 `save_pr_html_snapshot(pr_number, html_content)` を追加してください。既に同じPR番号とタイムスタンプのファイルが存在する場合は上書きせず、追記もしないでください。
 
-     確認事項: 既存の `browser_automation.py` の `perform_browser_automation` 関数がどのように `assign_to_copilot` を呼び出しているか、およびスクリーンショット取得 (`take_screenshot`) の呼び出し箇所とエラーハンドリングを確認してください。
+     確認事項: GitHub APIのレートリミットを考慮し、HTML取得が頻繁に行われないよう呼び出し元との連携方法を検討してください。また、`pr_phase_snapshots/` ディレクトリが存在しない場合の作成処理を含めるか検討してください。HTML保存時のファイル名規則が既存のスナップショット（JSONなど）と競合しないか確認してください。
 
-     期待する出力: `browser_automation.py` のどの部分が自動assignを担当し、どのようにスクリーンショットをトリガーしているかを説明するmarkdown形式の分析結果。また、スクリーンショットが失敗時に確実に取得されるための改善点があれば提案してください。
+     期待する出力: HTMLコンテンツをファイルに保存する`save_pr_html_snapshot` 関数が追加された `pr_data_recorder.py` の修正案を提示してください。
      ```
 
-2. [Issue #87](../issue-notes/87.md): 大幅な仕様変更後のドッグフーディング計画
-   - 最初の小さな一歩: 最近のコミット (`show-open-issues-list` 関連や `fix-auto-assign-button-issue` 関連) が `src/gh_pr_phase_monitor/main.py`, `monitor.py`, `display.py` に与えた影響をレビューし、主要な機能が依然として意図通りに動作するかを確認するための簡単なテストシナリオをリストアップする。
+2. [Issue #171](../issue-notes/171.md): Codex Coding Agentによる不適切なPRタイトル問題の調査
+   - 最初の小さな一歩: 現在のPRタイトル取得ロジックと、`pr_actions.py` や `phase_detector.py` など、PRタイトルが利用される箇所を特定し、関連するコードをレビューする。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `src/gh_pr_phase_monitor/main.py`, `src/gh_pr_phase_monitor/monitor.py`, `src/gh_pr_phase_monitor/display.py`, `tests/` ディレクトリ配下の関連テストファイル
+     対象ファイル: `src/gh_pr_phase_monitor/pr_actions.py`, `src/gh_pr_phase_monitor/phase_detector.py`, `src/gh_pr_phase_monitor/pr_fetcher.py`
 
-     実行内容: 大幅な仕様変更 ([Issue #87](../issue-notes/87.md) 参照) 後、プロジェクトの主要機能 (PR監視、Issue表示、通知など) が正常に動作するかを確認するためのドッグフーディング計画を提案してください。特に、最近のコミットで変更されたファイル (`display.py`, `browser_automation.py` など) に焦点を当ててください。
+     実行内容: Codex Coding Agentによって生成されるPRタイトルが「Addressing PR comments」となる原因を特定するため、PRタイトルを取得・利用している箇所と、Agent判定ロジックがどのように連携しているかを分析してください。特に、PRタイトルがどこで取得され、どのロジックによって「Addressing PR comments」と判定される可能性があるか調査してください。
 
-     確認事項: 既存のテスト (`tests/` ディレクトリ) が現在の機能変更をカバーしているか、または不足しているテストケースがないかを確認してください。`config.toml.example` も参照し、設定による動作の違いも考慮に入れてください。
+     確認事項: GitHub APIからPRタイトルがどのように取得されるか、およびその値が後続の処理（特にphase_detector）にどのように渡されるかを確認してください。AgentがPRタイトルを生成する際のGitHub Actionsまたはスクリプト側の挙動も考慮に入れる必要があります。
 
-     期待する出力: ドッグフーディングで検証すべき主要機能のリストと、それらを検証するための具体的な手順（簡単な手動テストシナリオや、既存テストの実行と結果評価）をmarkdown形式で出力してください。
+     期待する出力: PRタイトルが「Addressing PR comments」となる可能性のあるコードパスと、その原因となる可能性のある箇所をまとめたmarkdown形式の分析レポートを生成してください。
      ```
 
-3. 新規Issue表示機能のレビューと表示形式の改善 (関連PR: #157)
-   - 最初の小さな一歩: `src/gh_pr_phase_monitor/display.py` の `show_issues_when_pr_count_less_than_3` ロジックと、`tests/test_show_issues_when_pr_count_less_than_3.py` のテストケースを詳細にレビューし、Issue情報の取得と表示が期待通りか確認する。
+3. [Issue #168](../issue-notes/168.md): PR Author判定条件に"openai-code-agent"を追加
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/phase_detector.py` 内のPR author判定ロジックに `"openai-code-agent"` を追加する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `src/gh_pr_phase_monitor/display.py`, `tests/test_show_issues_when_pr_count_less_than_3.py`, `src/gh_pr_phase_monitor/issue_fetcher.py`
+     対象ファイル: `src/gh_pr_phase_monitor/phase_detector.py`
 
-     実行内容: PR数が3未満の場合にIssueリストを表示する新機能 (関連PR: #157) について、`src/gh_pr_phase_monitor/display.py` 内のIssue表示ロジックとそのテスト (`test_show_issues_when_pr_count_less_than_3.py`) を分析してください。特に、Issue情報の取得、整形、表示の一連の流れが適切であるか、およびユーザーにとって視認性の高い表示形式となっているかを評価してください。
+     実行内容: PR authorがCodex Coding Agentであるかを判定するロジック (`is_codex_coding_agent_pr`) に、判定条件としてPR author名が `"openai-code-agent"` である場合を追加してください。既存の判定ロジック（例: `github-actions[bot]` など）は維持し、新たに追加する条件が他のAgent判定に影響を与えないようにしてください。
 
-     確認事項: `issue_fetcher.py` からIssueデータがどのように取得され、`display.py` でどのようにフォーマットされているかを確認してください。また、Issueリンクの形式が `[Issue #番号](../issue-notes/番号.md)` となっているかも検証してください。
+     確認事項: 既存のテストケース (`tests/test_phase_detection.py` など) に、新しい判定条件が正しく機能することを確認するテストケースを追加する必要があるか検討してください。また、この変更が他のAgentによるPRの誤判定に繋がらないかを確認してください。
 
-     期待する出力: 新規Issue表示機能の現状の評価と、Issueの表示形式や情報量に関して改善できる点があれば、具体的な変更提案をmarkdown形式で出力してください。例えば、情報の追加（ラベル、更新日時など）や表示順序の最適化などが考えられます。
+     期待する出力: `is_codex_coding_agent_pr` 関数が更新された `phase_detector.py` の修正案を提示してください。
+     ```
 
 ---
-Generated at: 2026-02-07 07:01:55 JST
+Generated at: 2026-02-08 07:02:47 JST

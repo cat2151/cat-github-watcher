@@ -17,7 +17,6 @@ from .github_client import (
     get_issues_from_repositories,
     get_repositories_with_no_prs_and_open_issues,
 )
-from .phase_detector import PHASE_2, PHASE_3
 from .state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from .time_utils import format_elapsed_time
 

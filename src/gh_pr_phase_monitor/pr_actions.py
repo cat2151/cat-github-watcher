@@ -170,7 +170,7 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         execution_enabled = exec_config["enable_execution_phase2_to_phase3"]
         if execution_enabled:
             print("    Posting comment for phase2...")
-            result = post_phase2_comment(pr, None)
+            result = post_phase2_comment(pr, None, config)
             if result is True:
                 print("    Comment posted successfully")
             elif result is False:

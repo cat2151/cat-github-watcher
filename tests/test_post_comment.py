@@ -317,6 +317,34 @@ class TestPostPhase2Comment:
 
     @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
     @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    def test_post_comment_uses_configured_agent_name(self, mock_run, mock_get_comments):
+        """Ensure configured agent mention overrides defaults"""
+        mock_get_comments.return_value = []
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {"url": "https://github.com/user/repo/pull/123", "author": {"login": "some-user"}, "reviews": []}
+        config = {"coding_agent": {"agent_name": "@codex[agent]"}}
+
+        result = post_phase2_comment(pr, None, config)
+
+        assert result is True
+        cmd = mock_run.call_args[0][0]
+        assert cmd[5].startswith("@codex[agent] apply changes")
+
+    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
+    def test_post_comment_skips_when_custom_agent_comment_exists(self, mock_get_comments):
+        """Ensure existing custom agent comment prevents duplicate posting"""
+        mock_get_comments.return_value = [{"body": "@custom-agent apply changes based on the comments"}]
+
+        pr = {"url": "https://github.com/user/repo/pull/123", "reviews": []}
+        config = {"coding_agent": {"agent_name": "@custom-agent"}}
+
+        result = post_phase2_comment(pr, None, config)
+
+        assert result is None
+
+    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
     def test_post_comment_avoids_false_positive_codex_substring(self, mock_run, mock_get_comments):
         """Ensure human users with codex substring still use copilot mention"""
         mock_get_comments.return_value = []

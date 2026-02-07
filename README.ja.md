@@ -113,6 +113,10 @@ cat-github-watcher/
    # デフォルト: "30m" (30分 - 安定性優先)
    no_change_timeout = "30m"
    
+   # 投稿コメントで使うコーディングエージェントのメンションを上書き（省略時は@copilot）
+   [coding_agent]
+   agent_name = "@codex[agent]"
+   
    # 省電力モード時の監視間隔
    # no_change_timeout期間で状態変化が検知されない場合、
    # 監視間隔がこの間隔に切り替わりAPI使用量を削減します

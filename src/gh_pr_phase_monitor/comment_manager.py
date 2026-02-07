@@ -22,8 +22,13 @@ CODEX_AGENT_LOGINS = {
 }
 
 
-def _get_agent_mention(pr: Dict[str, Any]) -> str:
+def _get_agent_mention(pr: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> str:
     """Resolve which agent to mention based on PR author"""
+    coding_agent_config = (config or {}).get("coding_agent", {})
+    custom_agent_name = coding_agent_config.get("agent_name")
+    if isinstance(custom_agent_name, str) and custom_agent_name.strip():
+        return custom_agent_name.strip()
+
     author_login = (pr.get("author") or {}).get("login", "")
     normalized = author_login.lower()
 
@@ -55,7 +60,7 @@ def has_copilot_apply_comment(comments: List[Dict[str, Any]], agent_mention: str
     return False
 
 
-def post_phase2_comment(pr: Dict[str, Any], repo_dir: Path = None) -> Optional[bool]:
+def post_phase2_comment(pr: Dict[str, Any], repo_dir: Path = None, config: Optional[Dict[str, Any]] = None) -> Optional[bool]:
     """Post a comment to PR when phase2 is detected
 
     Args:
@@ -71,7 +76,7 @@ def post_phase2_comment(pr: Dict[str, Any], repo_dir: Path = None) -> Optional[b
     if not pr_url:
         return False
 
-    agent_mention = _get_agent_mention(pr)
+    agent_mention = _get_agent_mention(pr, config)
 
     # Check if we already posted a comment for this agent
     existing_comments = get_existing_comments(pr_url, repo_dir)

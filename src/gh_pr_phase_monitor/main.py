@@ -19,6 +19,7 @@ from .github_client import get_pr_details_batch, get_repositories_with_open_prs
 from .monitor import check_no_state_change_timeout
 from .phase_detector import PHASE_LLM_WORKING, determine_phase
 from .pr_actions import process_pr
+from .pr_data_recorder import record_reaction_snapshot
 from .wait_handler import wait_with_countdown
 
 
@@ -125,6 +126,14 @@ def main():
                     for pr in all_prs:
                         phase = determine_phase(pr)
                         pr_phases.append(phase)
+
+                        try:
+                            snapshot_paths = record_reaction_snapshot(pr, phase)
+                            if snapshot_paths:
+                                print(f"    Saved PR snapshot: {snapshot_paths['markdown_path']}")
+                        except Exception as snapshot_error:
+                            print(f"    Failed to save PR snapshot: {snapshot_error}")
+
                         process_pr(pr, config, phase)
 
                     # Count how many PRs are in "LLM working" phase

@@ -8,19 +8,49 @@ from typing import Any, Dict, List, Optional
 
 from .github_client import get_existing_comments
 
+CLAUDE_AGENT_LOGINS = {
+    "claude",
+    "claude-ai",
+    "claude-dev",
+    "claude-coding-agent",
+}
 
-def has_copilot_apply_comment(comments: List[Dict[str, Any]]) -> bool:
-    """Check if a '@copilot apply changes' comment already exists
+CODEX_AGENT_LOGINS = {
+    "codex",
+    "codex-ai",
+    "codex-coding-agent",
+}
+
+
+def _get_agent_mention(pr: Dict[str, Any]) -> str:
+    """Resolve which agent to mention based on PR author"""
+    author_login = (pr.get("author") or {}).get("login", "")
+    normalized = author_login.lower()
+
+    if normalized in CLAUDE_AGENT_LOGINS or normalized.endswith("-claude-coding-agent"):
+        return "@claude[agent]"
+
+    if normalized in CODEX_AGENT_LOGINS or normalized.endswith("-codex-coding-agent"):
+        return "@codex[agent]"
+
+    return "@copilot"
+
+
+def has_copilot_apply_comment(comments: List[Dict[str, Any]], agent_mention: str = "@copilot") -> bool:
+    """Check if an apply comment for the agent already exists
 
     Args:
         comments: List of comment dictionaries
+        agent_mention: Agent mention to search for (defaults to Copilot)
 
     Returns:
         True if comment exists, False otherwise
     """
+    target = f"{agent_mention} apply changes"
+
     for comment in comments:
         body = comment.get("body", "")
-        if "@copilot apply changes" in body:
+        if target in body:
             return True
     return False
 
@@ -41,15 +71,17 @@ def post_phase2_comment(pr: Dict[str, Any], repo_dir: Path = None) -> Optional[b
     if not pr_url:
         return False
 
-    # Check if we already posted a comment
+    agent_mention = _get_agent_mention(pr)
+
+    # Check if we already posted a comment for this agent
     existing_comments = get_existing_comments(pr_url, repo_dir)
-    if has_copilot_apply_comment(existing_comments):
+    if has_copilot_apply_comment(existing_comments, agent_mention):
         print("    Comment already exists, skipping")
         return None
 
     # Construct comment body linking to the PR
     # Reviews don't have direct URLs in the JSON, but we can link to the PR
-    comment_body = f"@copilot apply changes based on the comments in [this pull request]({pr_url})"
+    comment_body = f"{agent_mention} apply changes based on the comments in [this pull request]({pr_url})"
 
     cmd = ["gh", "pr", "comment", pr_url, "--body", comment_body]
 

@@ -394,6 +394,40 @@ class TestPostPhase2Comment:
         cmd = mock_run.call_args[0][0]
         assert cmd[5].startswith("@copilot apply changes")
 
+    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    def test_post_comment_uses_openai_code_agent(self, mock_run, mock_get_comments):
+        """Ensure openai-code-agent PR uses codex mention"""
+        mock_get_comments.return_value = []
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {"url": "https://github.com/user/repo/pull/123", "author": {"login": "openai-code-agent"}, "reviews": []}
+
+        result = post_phase2_comment(pr, None)
+
+        assert result is True
+        cmd = mock_run.call_args[0][0]
+        assert "@codex[agent] apply changes" in cmd[5]
+
+    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    def test_post_comment_uses_anthropic_code_agent(self, mock_run, mock_get_comments):
+        """Ensure anthropic-code-agent PR uses claude mention"""
+        mock_get_comments.return_value = []
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {
+            "url": "https://github.com/user/repo/pull/123",
+            "author": {"login": "anthropic-code-agent"},
+            "reviews": [],
+        }
+
+        result = post_phase2_comment(pr, None)
+
+        assert result is True
+        cmd = mock_run.call_args[0][0]
+        assert "@claude[agent] apply changes" in cmd[5]
+
 
 class TestMarkPRReady:
     """Test the mark_pr_ready function"""

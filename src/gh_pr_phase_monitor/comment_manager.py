@@ -13,12 +13,14 @@ CLAUDE_AGENT_LOGINS = {
     "claude-ai",
     "claude-dev",
     "claude-coding-agent",
+    "anthropic-code-agent",
 }
 
 CODEX_AGENT_LOGINS = {
     "codex",
     "codex-ai",
     "codex-coding-agent",
+    "openai-code-agent",
 }
 
 

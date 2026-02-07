@@ -1,10 +1,12 @@
 import json
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 
 from src.gh_pr_phase_monitor.phase_detector import PHASE_LLM_WORKING
 from src.gh_pr_phase_monitor.pr_data_recorder import (
+    DEFAULT_SNAPSHOT_BASE_DIR,
     _reset_snapshot_cache,
     record_reaction_snapshot,
     save_pr_snapshot,
@@ -64,6 +66,7 @@ def test_save_pr_snapshot_writes_json_and_markdown(tmp_path):
     markdown_content = markdown_path.read_text(encoding="utf-8")
     assert "comment_reactions_detected" in markdown_content
     assert "Comment 1: EYES x1" in markdown_content
+    assert "commentNodes" in markdown_content
 
 
 def test_record_reaction_snapshot_respects_phase_and_reactions(tmp_path):
@@ -100,3 +103,47 @@ def test_record_reaction_snapshot_deduplicates_per_pr(tmp_path):
     assert second is None
     snapshot_dirs = [p for p in tmp_path.iterdir() if p.is_dir()]
     assert len(snapshot_dirs) == 1
+
+
+def test_markdown_filters_zero_reaction_comments_and_renders_body(tmp_path):
+    pr = _sample_pr()
+    pr["commentNodes"].append(
+        {
+            "body": "No reactions here",
+            "reactionGroups": [
+                {"content": "THUMBS_UP", "users": {"totalCount": 0}},
+            ],
+        }
+    )
+    pr["body"] = "Line1\nLine2"
+    current_time = datetime(2024, 1, 2, 3, 4, 5)
+
+    result = save_pr_snapshot(pr, reason="comment_reactions_detected", base_dir=tmp_path, current_time=current_time)
+
+    markdown_content = result["markdown_path"].read_text(encoding="utf-8")
+    assert "THUMBS_UP" not in markdown_content
+    assert "Line1\nLine2" in markdown_content
+    assert "commentNodes" in markdown_content
+
+
+def test_snapshot_not_rewritten_when_unchanged(tmp_path):
+    pr = _sample_pr()
+    current_time = datetime(2024, 1, 2, 3, 4, 5)
+
+    result = save_pr_snapshot(pr, reason="comment_reactions_detected", base_dir=tmp_path, current_time=current_time)
+    raw_path = result["raw_path"]
+    markdown_path = result["markdown_path"]
+
+    raw_mtime = raw_path.stat().st_mtime_ns
+    markdown_mtime = markdown_path.stat().st_mtime_ns
+
+    result_second = save_pr_snapshot(pr, reason="comment_reactions_detected", base_dir=tmp_path, current_time=current_time)
+
+    assert result_second["raw_path"] == raw_path
+    assert result_second["markdown_path"] == markdown_path
+    assert raw_path.stat().st_mtime_ns == raw_mtime
+    assert markdown_path.stat().st_mtime_ns == markdown_mtime
+
+
+def test_default_snapshot_dir():
+    assert DEFAULT_SNAPSHOT_BASE_DIR == Path("pr_phase_snapshots")

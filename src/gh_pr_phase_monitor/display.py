@@ -17,6 +17,7 @@ from .github_client import (
     get_issues_from_repositories,
     get_repositories_with_no_prs_and_open_issues,
 )
+from .phase_detector import PHASE_2, PHASE_3
 from .state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from .time_utils import format_elapsed_time
 
@@ -53,6 +54,7 @@ def display_status_summary(
         repo_name = repo_info.get("name", "Unknown")
         title = pr.get("title", "Unknown")
         url = pr.get("url", "")
+        author_login = (pr.get("author") or {}).get("login", "") or "Unknown"
 
         # Track state for elapsed time
         state_key = (url, phase)
@@ -65,13 +67,16 @@ def display_status_summary(
 
         # Display phase with colors using the same format
         phase_display = colorize_phase(phase)
+        base_line = f"  [{repo_name}] {phase_display} {title}"
+        if phase in (PHASE_2, PHASE_3):
+            base_line = f"{base_line} (Author: {author_login})"
 
         # Show elapsed time if state has persisted for more than 60 seconds
         if elapsed >= 60:
             elapsed_str = format_elapsed_time(elapsed)
-            print(f"  [{repo_name}] {phase_display} {title} (現在、検知してから{elapsed_str}経過)")
+            print(f"{base_line} (現在、検知してから{elapsed_str}経過)")
         else:
-            print(f"  [{repo_name}] {phase_display} {title}")
+            print(base_line)
 
     # Clean up old PR states that are no longer present
     cleanup_old_pr_states(current_states)

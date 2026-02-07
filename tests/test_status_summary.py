@@ -174,3 +174,31 @@ class TestDisplayStatusSummary:
 
             # Verify that "Status Summary" header is displayed
             assert "Status Summary:" in output
+
+    def test_display_status_summary_includes_author_for_phase2_and_phase3(self):
+        """Author login should be shown for phase2 and phase3 entries"""
+        all_prs = [
+            {
+                "title": "Phase2 PR",
+                "url": "https://github.com/owner/repo1/pulls/10",
+                "author": {"login": "phase2-author"},
+                "repository": {"name": "repo1", "owner": "owner"},
+            },
+            {
+                "title": "Phase3 PR",
+                "url": "https://github.com/owner/repo1/pulls/11",
+                "author": {"login": "phase3-author"},
+                "repository": {"name": "repo1", "owner": "owner"},
+            },
+        ]
+        pr_phases = [PHASE_2, PHASE_3]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 2}]
+
+        with patch("builtins.print") as mock_print:
+            display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+            calls = [str(call) for call in mock_print.call_args_list]
+            output = " ".join(calls)
+
+            assert "Author: phase2-author" in output
+            assert "Author: phase3-author" in output

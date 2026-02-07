@@ -23,8 +23,15 @@ CODEX_AGENT_LOGINS = {
 
 
 def _get_agent_mention(pr: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> str:
-    """Resolve which agent to mention based on PR author"""
-    coding_agent_config = (config or {}).get("coding_agent", {})
+    """Resolve which agent to mention, preferring config override, then PR author, then default
+
+    Precedence:
+        1. If config["coding_agent"]["agent_name"] is a non-empty string, use that (after stripping).
+        2. Otherwise, detect the agent based on the PR author's login (Claude/Codex heuristics).
+        3. If no match is found, fall back to "@copilot".
+    """
+    raw_coding_agent_config = (config or {}).get("coding_agent", {})
+    coding_agent_config = raw_coding_agent_config if isinstance(raw_coding_agent_config, dict) else {}
     custom_agent_name = coding_agent_config.get("agent_name")
     if isinstance(custom_agent_name, str) and custom_agent_name.strip():
         return custom_agent_name.strip()
@@ -60,7 +67,9 @@ def has_copilot_apply_comment(comments: List[Dict[str, Any]], agent_mention: str
     return False
 
 
-def post_phase2_comment(pr: Dict[str, Any], repo_dir: Path = None, config: Optional[Dict[str, Any]] = None) -> Optional[bool]:
+def post_phase2_comment(
+    pr: Dict[str, Any], repo_dir: Path = None, config: Optional[Dict[str, Any]] = None
+) -> Optional[bool]:
     """Post a comment to PR when phase2 is detected
 
     Args:

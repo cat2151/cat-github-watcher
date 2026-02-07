@@ -292,7 +292,11 @@ class TestPostPhase2Comment:
         mock_get_comments.return_value = []
         mock_run.return_value = MagicMock(returncode=0)
 
-        pr = {"url": "https://github.com/user/repo/pull/123", "author": {"login": "acme-claude-coding-agent"}, "reviews": []}
+        pr = {
+            "url": "https://github.com/user/repo/pull/123",
+            "author": {"login": "acme-claude-coding-agent"},
+            "reviews": [],
+        }
 
         result = post_phase2_comment(pr, None)
 
@@ -330,6 +334,38 @@ class TestPostPhase2Comment:
         assert result is True
         cmd = mock_run.call_args[0][0]
         assert cmd[5].startswith("@codex[agent] apply changes")
+
+    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    def test_post_comment_handles_malformed_coding_agent_string(self, mock_run, mock_get_comments):
+        """Gracefully handle string coding_agent config by falling back to detection"""
+        mock_get_comments.return_value = []
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {"url": "https://github.com/user/repo/pull/123", "author": {"login": "codex-coding-agent"}, "reviews": []}
+        config = {"coding_agent": "@codex[agent]"}
+
+        result = post_phase2_comment(pr, None, config)
+
+        assert result is True
+        cmd = mock_run.call_args[0][0]
+        assert cmd[5].startswith("@codex[agent] apply changes")
+
+    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    def test_post_comment_handles_malformed_coding_agent_list(self, mock_run, mock_get_comments):
+        """Gracefully handle list coding_agent config by falling back to default"""
+        mock_get_comments.return_value = []
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {"url": "https://github.com/user/repo/pull/123", "author": {"login": "human-user"}, "reviews": []}
+        config = {"coding_agent": ["@codex[agent]"]}
+
+        result = post_phase2_comment(pr, None, config)
+
+        assert result is True
+        cmd = mock_run.call_args[0][0]
+        assert cmd[5].startswith("@copilot apply changes")
 
     @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
     def test_post_comment_skips_when_custom_agent_comment_exists(self, mock_get_comments):

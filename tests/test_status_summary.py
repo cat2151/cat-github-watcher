@@ -175,9 +175,15 @@ class TestDisplayStatusSummary:
             # Verify that "Status Summary" header is displayed
             assert "Status Summary:" in output
 
-    def test_display_status_summary_includes_author_for_phase2_and_phase3(self):
-        """Author login should be shown for phase2 and phase3 entries"""
+    def test_display_status_summary_includes_author_for_all_phases(self):
+        """Author login should be shown for all phases"""
         all_prs = [
+            {
+                "title": "Phase1 PR",
+                "url": "https://github.com/owner/repo1/pulls/9",
+                "author": {"login": "phase1-author"},
+                "repository": {"name": "repo1", "owner": "owner"},
+            },
             {
                 "title": "Phase2 PR",
                 "url": "https://github.com/owner/repo1/pulls/10",
@@ -190,9 +196,15 @@ class TestDisplayStatusSummary:
                 "author": {"login": "phase3-author"},
                 "repository": {"name": "repo1", "owner": "owner"},
             },
+            {
+                "title": "LLM PR",
+                "url": "https://github.com/owner/repo1/pulls/12",
+                "author": {"login": "llm-author"},
+                "repository": {"name": "repo1", "owner": "owner"},
+            },
         ]
-        pr_phases = [PHASE_2, PHASE_3]
-        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 2}]
+        pr_phases = [PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 4}]
 
         with patch("builtins.print") as mock_print:
             display_status_summary(all_prs, pr_phases, repos_with_prs)
@@ -200,5 +212,7 @@ class TestDisplayStatusSummary:
             calls = [str(call) for call in mock_print.call_args_list]
             output = " ".join(calls)
 
+            assert "Author: phase1-author" in output
             assert "Author: phase2-author" in output
             assert "Author: phase3-author" in output
+            assert "Author: llm-author" in output

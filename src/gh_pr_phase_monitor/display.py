@@ -67,9 +67,7 @@ def display_status_summary(
 
         # Display phase with colors using the same format
         phase_display = colorize_phase(phase)
-        base_line = f"  [{repo_name}] {phase_display} {title}"
-        if phase in (PHASE_2, PHASE_3):
-            base_line = f"{base_line} (Author: {author_login})"
+        base_line = f"  [{repo_name}] {phase_display} {title} (Author: {author_login})"
 
         # Show elapsed time if state has persisted for more than 60 seconds
         if elapsed >= 60:

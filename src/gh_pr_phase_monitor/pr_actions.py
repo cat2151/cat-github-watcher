@@ -136,8 +136,7 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
     phase_display = colorize_phase(phase)
     print(f"  [{repo_name}] {phase_display} {title}")
     print(f"    URL: {url}")
-    if phase in (PHASE_2, PHASE_3):
-        print(f"    Author: {author_login}")
+    print(f"    Author: {author_login}")
 
     # Resolve execution config for this repository
     if config:

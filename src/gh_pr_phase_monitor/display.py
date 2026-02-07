@@ -17,7 +17,6 @@ from .github_client import (
     get_issues_from_repositories,
     get_repositories_with_no_prs_and_open_issues,
 )
-from .phase_detector import PHASE_2, PHASE_3
 from .state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from .time_utils import format_elapsed_time
 
@@ -67,9 +66,7 @@ def display_status_summary(
 
         # Display phase with colors using the same format
         phase_display = colorize_phase(phase)
-        base_line = f"  [{repo_name}] {phase_display} {title}"
-        if phase in (PHASE_2, PHASE_3):
-            base_line = f"{base_line} (Author: {author_login})"
+        base_line = f"  [{repo_name}] {phase_display} {title} (Author: {author_login})"
 
         # Show elapsed time if state has persisted for more than 60 seconds
         if elapsed >= 60:

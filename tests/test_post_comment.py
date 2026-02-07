@@ -66,6 +66,12 @@ class TestHasCopilotApplyComment:
 
         assert has_copilot_apply_comment(comments) is False
 
+    def test_comment_exists_for_claude_agent(self):
+        """Test detection for Claude agent mention"""
+        comments = [{"body": "@claude[agent] apply changes based on the comments"}]
+
+        assert has_copilot_apply_comment(comments, "@claude[agent]") is True
+
     def test_empty_comments(self):
         """Test with empty comment list"""
         assert has_copilot_apply_comment([]) is False
@@ -248,6 +254,36 @@ class TestPostPhase2Comment:
         result = post_phase2_comment(pr, repo_dir)
 
         assert result is False
+
+    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    def test_post_comment_uses_claude_agent(self, mock_run, mock_get_comments):
+        """Ensure Claude agent PR uses claude mention"""
+        mock_get_comments.return_value = []
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {"url": "https://github.com/user/repo/pull/123", "author": {"login": "claude-coding-agent"}, "reviews": []}
+
+        result = post_phase2_comment(pr, None)
+
+        assert result is True
+        cmd = mock_run.call_args[0][0]
+        assert "@claude[agent] apply changes" in cmd[5]
+
+    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    def test_post_comment_uses_codex_agent(self, mock_run, mock_get_comments):
+        """Ensure Codex agent PR uses codex mention"""
+        mock_get_comments.return_value = []
+        mock_run.return_value = MagicMock(returncode=0)
+
+        pr = {"url": "https://github.com/user/repo/pull/123", "author": {"login": "codex-coding-agent"}, "reviews": []}
+
+        result = post_phase2_comment(pr, None)
+
+        assert result is True
+        cmd = mock_run.call_args[0][0]
+        assert "@codex[agent] apply changes" in cmd[5]
 
 
 class TestMarkPRReady:

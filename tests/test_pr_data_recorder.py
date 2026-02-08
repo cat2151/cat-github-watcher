@@ -9,6 +9,7 @@ from src.gh_pr_phase_monitor.phase_detector import PHASE_LLM_WORKING
 from src.gh_pr_phase_monitor.pr_data_recorder import (
     DEFAULT_SNAPSHOT_BASE_DIR,
     _escape_newlines,
+    _extract_llm_statuses,
     _fetch_pr_html,
     _html_to_simple_markdown,
     _json_to_markdown,
@@ -562,13 +563,54 @@ def test_save_pr_snapshot_extracts_llm_statuses_from_timeline_events(tmp_path):
         "Codex started work on behalf of cat2151 9 minutes ago",
         "Codex finished work on behalf of cat2151 5 minutes ago",
         "Copilot started reviewing on behalf of cat2151",
-        "cat2151 commented 10 minutes ago @codex[agent] apply changes based on the comments in this pull request",
     ]
     assert result["llm_statuses"] == [
         "Codex started work on behalf of cat2151 9 minutes ago",
         "Codex finished work on behalf of cat2151 5 minutes ago",
         "Copilot started reviewing on behalf of cat2151",
-        "cat2151 commented 10 minutes ago @codex[agent] apply changes based on the comments in this pull request",
+    ]
+
+
+def test_extract_llm_statuses_filters_noise_and_keeps_timeline():
+    """Timeline bodies with session IDs should be kept while nav noise is dropped."""
+    html = """
+    <html>
+    <body>
+        <div class="TimelineItem-body">
+            <strong>Codex</strong>
+            <a title="View session" href="https://github.com/example/agents/pull/91?session_id=aaa">started work</a>
+            on behalf of <a href="/cat2151">cat2151</a>
+            <relative-time datetime="2026-02-08T11:59:00Z">11:59</relative-time>
+        </div>
+        <div class="TimelineItem-body">
+            <strong>Codex</strong>
+            <a title="View session" href="https://github.com/example/agents/pull/91?session_id=bbb">finished work</a>
+            on behalf of <a href="/cat2151">cat2151</a>
+            <relative-time datetime="2026-02-08T12:09:00Z">12:09</relative-time>
+        </div>
+        <div class="TimelineItem-body">
+            <strong>Copilot</strong>
+            <a title="View session" href="https://github.com/example/agents/pull/91?session_id=ccc">started reviewing</a>
+            on behalf of <a href="/cat2151">cat2151</a>
+            <relative-time datetime="2026-02-08T12:10:00Z">12:10</relative-time>
+        </div>
+        <div class="TimelineItem-body">
+            Sign up for free to join this conversation on GitHub. Already have an account? Sign in to comment
+        </div>
+        <div class="TimelineItem-body">
+            Uh oh! There was an error while loading. <a href="https://example.com/reload">Please reload this page</a>.
+        </div>
+    </body>
+    </html>
+    """
+    html_md = _html_to_simple_markdown(html)
+
+    statuses = _extract_llm_statuses(html, html_md)
+
+    assert statuses == [
+        "Codex started work on behalf of cat2151 11:59",
+        "Codex finished work on behalf of cat2151 12:09",
+        "Copilot started reviewing on behalf of cat2151 12:10",
     ]
 
 

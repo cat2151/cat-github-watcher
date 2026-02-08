@@ -101,8 +101,8 @@ class TestProcessPR:
             # Browser should not be called for LLM working
             mock_browser.assert_not_called()
 
-    def test_author_displayed_for_phase2(self, capsys):
-        """Author login should be printed for phase2"""
+    def test_author_hidden_by_default(self, capsys):
+        """Author login should be hidden when display_pr_author is not enabled"""
         pr = {
             "author": {"login": "phase2-author"},
             "repository": {"name": "test-repo", "owner": "test-owner"},
@@ -112,10 +112,23 @@ class TestProcessPR:
 
         process_pr(pr, {}, phase=PHASE_2)
         output = capsys.readouterr().out
+        assert "Author:" not in output
+
+    def test_author_displayed_for_phase2(self, capsys):
+        """Author login should be printed for phase2 when enabled"""
+        pr = {
+            "author": {"login": "phase2-author"},
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "Phase2 PR",
+            "url": "https://github.com/test-owner/test-repo/pull/2",
+        }
+
+        process_pr(pr, {"display_pr_author": True}, phase=PHASE_2)
+        output = capsys.readouterr().out
         assert "Author: phase2-author" in output
 
     def test_author_displayed_for_phase3(self, capsys):
-        """Author login should be printed for phase3"""
+        """Author login should be printed for phase3 when enabled"""
         pr = {
             "author": {"login": "phase3-author"},
             "repository": {"name": "test-repo", "owner": "test-owner"},
@@ -125,13 +138,13 @@ class TestProcessPR:
 
         with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser:
             mock_browser.return_value = True
-            process_pr(pr, {}, phase=PHASE_3)
+            process_pr(pr, {"display_pr_author": True}, phase=PHASE_3)
 
         output = capsys.readouterr().out
         assert "Author: phase3-author" in output
 
     def test_author_displayed_for_phase1(self, capsys):
-        """Author login should be printed for phase1"""
+        """Author login should be printed for phase1 when enabled"""
         pr = {
             "author": {"login": "phase1-author"},
             "repository": {"name": "test-repo", "owner": "test-owner"},
@@ -139,12 +152,12 @@ class TestProcessPR:
             "url": "https://github.com/test-owner/test-repo/pull/4",
         }
 
-        process_pr(pr, {}, phase=PHASE_1)
+        process_pr(pr, {"display_pr_author": True}, phase=PHASE_1)
         output = capsys.readouterr().out
         assert "Author: phase1-author" in output
 
     def test_author_displayed_for_llm_working(self, capsys):
-        """Author login should be printed for LLM working"""
+        """Author login should be printed for LLM working when enabled"""
         pr = {
             "author": {"login": "llm-author"},
             "repository": {"name": "test-repo", "owner": "test-owner"},
@@ -152,7 +165,7 @@ class TestProcessPR:
             "url": "https://github.com/test-owner/test-repo/pull/5",
         }
 
-        process_pr(pr, {}, phase=PHASE_LLM_WORKING)
+        process_pr(pr, {"display_pr_author": True}, phase=PHASE_LLM_WORKING)
         output = capsys.readouterr().out
         assert "Author: llm-author" in output
 

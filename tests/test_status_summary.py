@@ -175,8 +175,29 @@ class TestDisplayStatusSummary:
             # Verify that "Status Summary" header is displayed
             assert "Status Summary:" in output
 
+    def test_display_status_summary_hides_author_by_default(self):
+        """Author login should be hidden when display_pr_author is disabled"""
+        all_prs = [
+            {
+                "title": "Phase1 PR",
+                "url": "https://github.com/owner/repo1/pulls/9",
+                "author": {"login": "phase1-author"},
+                "repository": {"name": "repo1", "owner": "owner"},
+            }
+        ]
+        pr_phases = [PHASE_1]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
+
+        with patch("builtins.print") as mock_print:
+            display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+            calls = [str(call) for call in mock_print.call_args_list]
+            output = " ".join(calls)
+
+            assert "Author:" not in output
+
     def test_display_status_summary_includes_author_for_all_phases(self):
-        """Author login should be shown for all phases"""
+        """Author login should be shown for all phases when enabled"""
         all_prs = [
             {
                 "title": "Phase1 PR",
@@ -207,7 +228,7 @@ class TestDisplayStatusSummary:
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 4}]
 
         with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+            display_status_summary(all_prs, pr_phases, repos_with_prs, {"display_pr_author": True})
 
             calls = [str(call) for call in mock_print.call_args_list]
             output = " ".join(calls)

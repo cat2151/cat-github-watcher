@@ -188,7 +188,7 @@ def main():
         # Note: If an error occurred during data collection, the summary will show
         # incomplete or empty data, which is acceptable as it reflects the actual
         # state that was successfully retrieved before the error.
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, pr_phases, repos_with_prs, config)
 
         # Check if PR state has not changed for too long and switch to reduced frequency mode
         use_reduced_frequency = check_no_state_change_timeout(all_prs, pr_phases, config)

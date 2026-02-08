@@ -101,7 +101,7 @@ def _llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
     if last_started_idx is None and last_finished_idx is None:
         return None
 
-    if last_finished_idx is not None and (last_started_idx is None or last_finished_idx > last_started_idx):
+    if last_finished_idx is not None and last_started_idx is not None and last_finished_idx > last_started_idx:
         return False
 
     if last_started_idx is not None and (last_finished_idx is None or last_started_idx > last_finished_idx):

@@ -508,9 +508,10 @@ class TestDeterminePhase:
         </div>
         """
         current_time = datetime(2024, 1, 2, 3, 4, 5)
-        record_reaction_snapshot(
+        snapshot = record_reaction_snapshot(
             pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=current_time, html_content=html_content
         )
+        assert snapshot is not None
 
         # Without a finished work status after starting, remain in LLM working
         assert determine_phase(pr) == PHASE_LLM_WORKING

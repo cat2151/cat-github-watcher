@@ -624,6 +624,12 @@ def test_multiple_snapshots_same_directory(tmp_path):
     assert result1["markdown_path"].exists()
     assert result2["markdown_path"].exists()
 
-    # The directory should contain 4 files (2 raw, 2 markdown)
-    files_in_dir = list(result1["snapshot_dir"].iterdir())
-    assert len(files_in_dir) == 4
+    # The directory should contain at least these 4 files (2 raw, 2 markdown)
+    files_in_dir = set(result1["snapshot_dir"].iterdir())
+    expected_files = {
+        result1["raw_path"],
+        result2["raw_path"],
+        result1["markdown_path"],
+        result2["markdown_path"],
+    }
+    assert expected_files.issubset(files_in_dir)

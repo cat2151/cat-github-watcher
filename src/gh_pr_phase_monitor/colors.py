@@ -2,8 +2,6 @@
 ANSI color codes and colorization functions for terminal output
 """
 
-from typing import Optional
-
 
 class Colors:
     """ANSI color codes for terminal output"""
@@ -18,7 +16,7 @@ class Colors:
     BLUE = "\033[94m"
 
 
-def colorize_phase(phase: str, llm_progress: Optional[str] = None) -> str:
+def colorize_phase(phase: str, llm_progress: str | None = None) -> str:
     """Add color to phase string
 
     Args:

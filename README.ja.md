@@ -35,7 +35,7 @@ GitHub Copilotが自動実装を行うPRのフェーズを監視し、適切な�
 - **フェーズ検知**: PRの状態（phase1: Draft状態、phase2: レビュー指摘対応中、phase3: レビュー待ち、LLM working: コーディングエージェント作業中）を自動判定
 - **Dry-runモード**: デフォルトでは監視のみ行い、実際のアクション（コメント投稿、PR Ready化、通知送信）は実行しない。明示的に有効化することで安全に運用可能
 - **自動コメント投稿**: フェーズに応じて適切なコメントを自動投稿（要：設定ファイルで有効化）
-- **マルチエージェント対応**: PR作成者が`openai-code-agent`なら`@codex[agent]`、`anthropic-code-agent`なら`@claude[agent]`を自動メンション（`[coding_agent].agent_name`で上書き可能）
+- **マルチエージェント対応**: PR作成者が`openai-code-agent`など`*-codex-coding-agent`系なら`@codex[agent]`、`anthropic-code-agent`など`*-claude-coding-agent`系なら`@claude[agent]`を自動メンションし、これらに該当しない場合は`@copilot`にフォールバック（`[coding_agent].agent_name`で上書き可能、未設定時は@copilot）
 - **Draft PR自動Ready化**: phase2でのレビュー指摘対応のため、Draft PRを自動的にReady状態に変更（要：設定ファイルで有効化）
 - **モバイル通知**: ntfy.shを利用してphase3（レビュー待ち）を検知したらモバイル端末に通知（要：設定ファイルで有効化）
   - 個別のPRがphase3になったときに通知

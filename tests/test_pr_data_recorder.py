@@ -8,6 +8,7 @@ import pytest
 from src.gh_pr_phase_monitor.phase_detector import PHASE_LLM_WORKING
 from src.gh_pr_phase_monitor.pr_data_recorder import (
     DEFAULT_SNAPSHOT_BASE_DIR,
+    _escape_newlines,
     _fetch_pr_html,
     _html_to_simple_markdown,
     _json_to_markdown,
@@ -311,6 +312,15 @@ def test_json_to_markdown_simple_dict():
     assert "- **empty**: null" in result
 
 
+def test_escape_newlines():
+    """Test the newline escape helper function"""
+    assert _escape_newlines("Line 1\nLine 2") == "Line 1\\nLine 2"
+    assert _escape_newlines("Line 1\r\nLine 2") == "Line 1\\r\\nLine 2"
+    assert _escape_newlines("No newlines") == "No newlines"
+    assert _escape_newlines("") == ""
+    assert _escape_newlines("\n\r") == "\\n\\r"
+
+
 def test_json_to_markdown_nested_dict():
     """Test JSON to markdown conversion for nested dictionary"""
     data = {"user": {"login": "octocat", "id": 123}, "settings": {}}
@@ -336,7 +346,12 @@ def test_json_to_markdown_list():
 
 def test_json_to_markdown_list_of_dicts():
     """Test JSON to markdown conversion for list of dictionaries"""
-    data = {"comments": [{"body": "First comment", "author": "user1"}, {"body": "Second comment", "author": "user2"}]}
+    data = {
+        "comments": [
+            {"body": "First comment", "author": "user1"},
+            {"body": "Second comment", "author": "user2"},
+        ],
+    }
     result = _json_to_markdown(data)
 
     assert "- **comments**: (2 items)" in result

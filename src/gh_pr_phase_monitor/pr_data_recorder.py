@@ -157,8 +157,20 @@ def _filter_reactions(comment_nodes: Any) -> List[Dict[str, Any]]:
     return filtered_comments
 
 
+def _escape_newlines(value: str) -> str:
+    """Escape newline and carriage return characters in strings for markdown readability.
+
+    Args:
+        value: String value to escape
+
+    Returns:
+        String with escaped newlines and carriage returns
+    """
+    return value.replace("\n", "\\n").replace("\r", "\\r")
+
+
 def _json_to_markdown(data: Any, indent_level: int = 0) -> str:
-    """Convert JSON data to markdown format with headers and bullet lists.
+    """Convert JSON data to a nested markdown bullet list representation.
 
     Args:
         data: JSON data to convert (dict, list, or primitive)
@@ -177,7 +189,7 @@ def _json_to_markdown(data: Any, indent_level: int = 0) -> str:
             elif isinstance(value, (str, int, float, bool)):
                 # Escape newlines in string values for readability
                 if isinstance(value, str):
-                    value_str = value.replace("\n", "\\n").replace("\r", "\\r")
+                    value_str = _escape_newlines(value)
                 else:
                     value_str = str(value)
                 lines.append(f"{indent}- **{key}**: {value_str}")
@@ -199,7 +211,7 @@ def _json_to_markdown(data: Any, indent_level: int = 0) -> str:
         for idx, item in enumerate(data, start=1):
             if isinstance(item, (str, int, float, bool)):
                 if isinstance(item, str):
-                    item_str = item.replace("\n", "\\n").replace("\r", "\\r")
+                    item_str = _escape_newlines(item)
                 else:
                     item_str = str(item)
                 lines.append(f"{indent}- [{idx}]: {item_str}")
@@ -220,7 +232,7 @@ def _json_to_markdown(data: Any, indent_level: int = 0) -> str:
     else:
         # Primitive value at root level
         if isinstance(data, str):
-            lines.append(data.replace("\n", "\\n").replace("\r", "\\r"))
+            lines.append(_escape_newlines(data))
         else:
             lines.append(str(data))
 

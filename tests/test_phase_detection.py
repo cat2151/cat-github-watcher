@@ -7,6 +7,7 @@ Tests cover the following scenarios:
 - Phase 3: Copilot reviewer approved or no comments, copilot-swe-agent modifications
 - LLM working: No reviews, unknown reviewers, or comments with reactions
 """
+
 import copy
 from datetime import datetime
 from unittest.mock import patch
@@ -510,7 +511,9 @@ class TestDeterminePhase:
         </div>
         """
         current_time = datetime(2024, 1, 2, 3, 4, 5)
-        record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=current_time, html_content=html_content)
+        record_reaction_snapshot(
+            pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=current_time, html_content=html_content
+        )
         assert determine_phase(pr) == PHASE_3
 
         # Next iteration: a new comment is inserted before the reaction comment.

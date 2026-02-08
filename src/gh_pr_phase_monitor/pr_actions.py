@@ -23,7 +23,14 @@ from .comment_manager import (
 )
 from .config import get_phase3_merge_config, print_repo_execution_config, resolve_execution_config_for_repo
 from .notifier import send_phase3_notification
-from .phase_detector import PHASE_1, PHASE_2, PHASE_3, determine_phase
+from .phase_detector import (
+    PHASE_1,
+    PHASE_2,
+    PHASE_3,
+    PHASE_LLM_WORKING,
+    determine_phase,
+    get_llm_working_progress_label,
+)
 
 # Track which PRs have had their browser opened: set of (url, phase) tuples
 _browser_opened: Set[Tuple[str, str]] = set()
@@ -135,7 +142,8 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         phase = determine_phase(pr)
 
     # Display phase with colors
-    phase_display = colorize_phase(phase)
+    progress_label = get_llm_working_progress_label(pr) if phase == PHASE_LLM_WORKING else None
+    phase_display = colorize_phase(phase, progress_label)
     print(f"  [{repo_name}] {phase_display} {title}")
     print(f"    URL: {url}")
     print(f"    Author: {author_login}")

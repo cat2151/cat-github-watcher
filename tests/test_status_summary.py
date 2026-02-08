@@ -216,3 +216,51 @@ class TestDisplayStatusSummary:
             assert "Author: phase2-author" in output
             assert "Author: phase3-author" in output
             assert "Author: llm-author" in output
+
+    def test_display_status_summary_shows_llm_progress(self):
+        """LLM working output should include how far the pipeline has progressed"""
+        all_prs = [
+            {
+                "title": "Draft PR",
+                "url": "https://github.com/owner/repo1/pulls/1",
+                "isDraft": True,
+                "reviewRequests": [],
+                "repository": {"name": "repo1", "owner": "owner"},
+            },
+            {
+                "title": "Ready PR",
+                "url": "https://github.com/owner/repo1/pulls/2",
+                "isDraft": False,
+                "reviews": [],
+                "latestReviews": [],
+                "repository": {"name": "repo1", "owner": "owner"},
+            },
+            {
+                "title": "Reviewed PR",
+                "url": "https://github.com/owner/repo1/pulls/3",
+                "isDraft": False,
+                "reviews": [
+                    {
+                        "author": {"login": "copilot-pull-request-reviewer"},
+                        "state": "APPROVED",
+                        "body": "Looks good!",
+                    }
+                ],
+                "latestReviews": [
+                    {"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"},
+                ],
+                "repository": {"name": "repo1", "owner": "owner"},
+            },
+        ]
+
+        pr_phases = [PHASE_LLM_WORKING, PHASE_LLM_WORKING, PHASE_LLM_WORKING]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 3}]
+
+        with patch("builtins.print") as mock_print:
+            display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+            output = " ".join(str(call) for call in mock_print.call_args_list)
+
+            assert "Phase 1 in progress, LLM working" in output
+            assert "Phase 1 completed, LLM working" in output
+            assert "Phase 2 completed, LLM working" in output

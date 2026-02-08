@@ -17,6 +17,7 @@ from .github_client import (
     get_issues_from_repositories,
     get_repositories_with_no_prs_and_open_issues,
 )
+from .phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label
 from .state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from .time_utils import format_elapsed_time
 
@@ -65,7 +66,8 @@ def display_status_summary(
         elapsed = current_time - get_pr_state_time(url, phase)
 
         # Display phase with colors using the same format
-        phase_display = colorize_phase(phase)
+        progress_label = get_llm_working_progress_label(pr) if phase == PHASE_LLM_WORKING else None
+        phase_display = colorize_phase(phase, progress_label)
         base_line = f"  [{repo_name}] {phase_display} {title} (Author: {author_login})"
 
         # Show elapsed time if state has persisted for more than 60 seconds

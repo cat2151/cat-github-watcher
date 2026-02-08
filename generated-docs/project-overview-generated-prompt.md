@@ -1,4 +1,4 @@
-Last updated: 2026-02-08
+Last updated: 2026-02-09
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -140,7 +140,7 @@ cat-github-watcher/
 
 ### 前提条件
 
-- Python 3.x がインストールされている
+- Python 3.10 以上がインストールされている
 - GitHub CLI (`gh`) がインストールされ、認証済みである
   ```bash
   gh auth login
@@ -193,6 +193,11 @@ cat-github-watcher/
    # 設定ミスの検出に役立ちます
    # デフォルト: false
    verbose = false
+   
+   # PR作者の表示切り替え
+   # CLI出力で "Author: <login>" を表示するかどうかを制御します
+   # デフォルト: false
+   display_pr_author = false
    
    # 実行制御フラグ - [[rulesets]]セクション内でのみ指定可能
    # グローバルフラグはサポートされなくなりました
@@ -513,6 +518,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_pr_actions_rulesets_features.py
   📄 test_pr_actions_with_rulesets.py
   📄 test_pr_data_recorder.py
+  📄 test_pr_title_fix.py
   📄 test_repos_with_prs_structure.py
   📄 test_show_issues_when_pr_count_less_than_3.py
   📄 test_status_summary.py
@@ -553,4 +559,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-02-08 07:02:33 JST
+Generated at: 2026-02-09 07:02:45 JST

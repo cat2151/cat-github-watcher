@@ -17,7 +17,7 @@ DEFAULT_SNAPSHOT_BASE_DIR = Path("pr_phase_snapshots")
 # Once flag to prevent duplicate snapshots within the same iteration
 _recorded_in_current_iteration: Set[str] = set()
 
-# Store previous iteration's content for comparison (PR key -> {json, html})
+# Store previous iteration's content for comparison (PR key -> {json, html_md})
 _previous_pr_content: Dict[str, Dict[str, str]] = {}
 
 
@@ -412,6 +412,7 @@ def save_pr_snapshot(
     base_dir: Optional[Path] = None,
     current_time: Optional[datetime] = None,
     fetch_html: bool = True,
+    html_content: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Save raw PR data, HTML, and markdown summary to disk.
 
@@ -421,6 +422,7 @@ def save_pr_snapshot(
         base_dir: Optional base directory for storing snapshots.
         current_time: Optional timestamp for deterministic testing.
         fetch_html: Whether to fetch HTML page (default: True). Set to False to avoid blocking network calls.
+        html_content: Optional pre-fetched HTML content. If provided, this HTML is used instead of fetching.
 
     Returns:
         Dictionary containing:
@@ -475,15 +477,28 @@ def save_pr_snapshot(
         "saved_html": "",
     }
 
-    if fetch_html and pr_url:
-        html_content = _fetch_pr_html(pr_url)
-        if html_content:
-            _write_if_changed(html_path, html_content)
+    # Use pre-fetched HTML if provided, otherwise fetch if requested
+    if html_content:
+        # Use provided HTML content
+        _write_if_changed(html_path, html_content)
+        result_dict["html_path"] = html_path
+        result_dict["saved_html"] = html_content
+
+        # Convert HTML to markdown for better readability
+        html_as_markdown = _html_to_simple_markdown(html_content)
+        if html_as_markdown:
+            _write_if_changed(html_md_path, html_as_markdown)
+            result_dict["html_md_path"] = html_md_path
+    elif fetch_html and pr_url:
+        # Fetch HTML if not provided
+        fetched_html = _fetch_pr_html(pr_url)
+        if fetched_html:
+            _write_if_changed(html_path, fetched_html)
             result_dict["html_path"] = html_path
-            result_dict["saved_html"] = html_content
+            result_dict["saved_html"] = fetched_html
 
             # Convert HTML to markdown for better readability
-            html_as_markdown = _html_to_simple_markdown(html_content)
+            html_as_markdown = _html_to_simple_markdown(fetched_html)
             if html_as_markdown:
                 _write_if_changed(html_md_path, html_as_markdown)
                 result_dict["html_md_path"] = html_md_path
@@ -500,7 +515,11 @@ def record_reaction_snapshot(
     """Record a snapshot when comment reactions force LLM working detection.
 
     Uses content-based deduplication: only saves a new timestamped snapshot when
-    the PR JSON or HTML content has changed since the previous iteration.
+    the PR JSON or HTML content (converted to markdown) has changed since the previous iteration.
+    HTML is converted to markdown before comparison to avoid false changes from HTML tag variations.
+
+    Optimization: HTML is only fetched when JSON hasn't changed, avoiding unnecessary network
+    calls when JSON changes already indicate content updates.
 
     Args:
         pr: PR data dictionary.
@@ -530,18 +549,27 @@ def record_reaction_snapshot(
     # Check content-based deduplication: compare with previous iteration
     previous_content = _previous_pr_content.get(pr_key, {})
     previous_json = previous_content.get("json", "")
-    previous_html = previous_content.get("html", "")
+    previous_html_md = previous_content.get("html_md", "")
 
-    # Fetch HTML for comparison (even if we won't save it)
+    # Short-circuit: if JSON changed, we know content changed (no need to fetch HTML for comparison)
+    json_changed = current_json != previous_json
+
+    # Only fetch HTML if JSON hasn't changed (to check if HTML changed)
+    # This avoids unnecessary network calls when JSON already indicates a change
+    current_html_md = ""
+    fetched_html = None
     pr_url = pr.get("url", "")
-    current_html = ""
-    if pr_url:
+
+    if not json_changed and pr_url:
+        # JSON unchanged, check HTML for changes
         fetched_html = _fetch_pr_html(pr_url)
         if fetched_html:
-            current_html = fetched_html
+            # Convert HTML to markdown for comparison to avoid HTML tag noise
+            current_html_md = _html_to_simple_markdown(fetched_html)
 
-    # Check if content has changed
-    content_changed = (current_json != previous_json) or (current_html != previous_html)
+    # Check if content has changed (compare markdown instead of raw HTML)
+    html_changed = current_html_md != previous_html_md
+    content_changed = json_changed or html_changed
 
     if not content_changed and previous_json:
         # Content unchanged, mark as recorded and skip saving
@@ -549,17 +577,28 @@ def record_reaction_snapshot(
         return None
 
     # Content changed or first time: save snapshot with timestamp
+    # Pass pre-fetched HTML to avoid double-fetch
     snapshot_paths = save_pr_snapshot(
         pr,
         reason="comment_reactions_detected",
         base_dir=base_dir,
         current_time=current_time,
+        html_content=fetched_html,  # Pass pre-fetched HTML if available
     )
 
+    # If HTML wasn't fetched during comparison (because JSON changed), fetch it now for caching
+    # This ensures we have HTML for the next iteration's comparison
+    if fetched_html is None and pr_url:
+        # HTML was saved by save_pr_snapshot, retrieve it from the result
+        saved_html = snapshot_paths.get("saved_html", "")
+        if saved_html:
+            current_html_md = _html_to_simple_markdown(saved_html)
+
     # Update previous content cache for next iteration
+    # Store markdown version of HTML to avoid false changes from HTML tag variations
     _previous_pr_content[pr_key] = {
         "json": snapshot_paths.get("saved_json", current_json),
-        "html": snapshot_paths.get("saved_html", current_html),
+        "html_md": current_html_md,
     }
 
     # Mark as recorded in current iteration
@@ -568,11 +607,17 @@ def record_reaction_snapshot(
     return snapshot_paths
 
 
-def reset_snapshot_cache() -> None:
+def reset_snapshot_cache(clear_content_cache: bool = False) -> None:
     """Clear the once flag for the current iteration.
 
     This should be called at the start of each monitoring iteration to allow
     recording snapshots again. The previous content cache is preserved for
-    content-based deduplication across iterations.
+    content-based deduplication across iterations unless explicitly cleared.
+
+    Args:
+        clear_content_cache: If True, also clear the previous content cache.
+            This should be set to True for tests to ensure clean state.
     """
     _recorded_in_current_iteration.clear()
+    if clear_content_cache:
+        _previous_pr_content.clear()

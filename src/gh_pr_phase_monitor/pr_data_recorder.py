@@ -420,18 +420,32 @@ def _html_to_simple_markdown(html: Optional[str]) -> str:
     return text.strip()
 
 
-def _split_status_tokens(text: str, seen: Set[str]) -> List[str]:
-    """Split potential status text into unique, lowercased tokens."""
-    statuses: List[str] = []
-    for token in re.findall(r"[A-Za-z][A-Za-z0-9_-]*", text or ""):
-        token_lower = token.lower()
-        if token_lower in seen:
-            continue
-        if token_lower in {"llm", "status", "session", "view", "work"}:
-            continue
-        seen.add(token_lower)
-        statuses.append(token_lower)
-    return statuses
+def _normalize_status_text(text: str) -> str:
+    """Normalize status text by removing markup and collapsing whitespace."""
+    cleaned = html_lib.unescape(text or "")
+    cleaned = re.sub(r"<[^>]+>", " ", cleaned)
+    cleaned = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", cleaned)
+    cleaned = cleaned.replace("**", "").replace("__", "")
+    cleaned = re.sub(r"^\s*#+\s*", "", cleaned)
+    cleaned = re.sub(r"\bView session\b", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*[-*]\s+", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
+
+
+def _add_status(statuses: List[str], seen: Set[str], text: str) -> None:
+    """Append normalized status text if it's new."""
+    normalized = _normalize_status_text(text)
+    if not normalized:
+        return
+    normalized = re.sub(r"^llm status[:\s-]+", "", normalized, flags=re.IGNORECASE).strip()
+    if not normalized or normalized.lower() == "llm status":
+        return
+    key = normalized.lower()
+    if key in seen:
+        return
+    seen.add(key)
+    statuses.append(normalized)
 
 
 def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> List[str]:
@@ -440,42 +454,40 @@ def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> L
     if not html_markdown:
         return statuses
 
-    lines = html_markdown.split("\n")
-    for idx, line in enumerate(lines):
-        lowered = line.lower()
-        if "llm status" not in lowered:
-            continue
+    segments = [segment.strip() for segment in re.split(r"\n{2,}", html_markdown) if segment.strip()]
+    idx = 0
+    while idx < len(segments):
+        segment = segments[idx]
+        lowered = segment.lower()
+        combined = segment
 
-        # Inline statuses on the same line after a colon
-        if ":" in line:
-            _, inline = line.split(":", 1)
-            statuses.extend(_split_status_tokens(inline, seen))
+        should_collect_trailing = "llm status" in lowered or re.search(r"\bcommented\b", lowered)
+        if should_collect_trailing:
+            next_idx = idx + 1
+            while next_idx < len(segments):
+                next_segment = segments[next_idx]
+                next_lower = next_segment.lower()
+                if (
+                    "llm status" in next_lower
+                    or "session_id=" in next_segment
+                    or re.search(r"\bcommented\b", next_lower)
+                ):
+                    break
+                if "llm status" in lowered:
+                    _add_status(statuses, seen, next_segment)
+                else:
+                    combined = f"{combined} {next_segment}"
+                next_idx += 1
+            idx = next_idx - 1
 
-        # Collect bullet lines immediately following the heading/label
-        collected = False
-        for follow in lines[idx + 1 :]:
-            stripped = follow.strip()
-            if not stripped:
-                continue
-            if stripped.startswith("#"):
-                break
-            if stripped.startswith(("-", "*")):
-                statuses.extend(_split_status_tokens(stripped.lstrip("-* ").strip(), seen))
-                collected = True
-                continue
-            # Stop at the first non-bullet content
-            if collected:
-                break
-            break
+        if "llm status" in lowered:
+            payload = re.sub(r"^llm status[:\s-]+", "", segment, flags=re.IGNORECASE).strip()
+            if payload:
+                _add_status(statuses, seen, payload)
+        elif "session_id=" in segment or re.search(r"\bcommented\b", lowered):
+            _add_status(statuses, seen, combined)
 
-    for match in re.finditer(r"\[([^\]]+)\]\([^)]+session_id=[^)]+\)", html_markdown, flags=re.IGNORECASE):
-        link_text = match.group(1).strip()
-        if not link_text:
-            continue
-        lowered_link = link_text.lower()
-        if "view session" in lowered_link:
-            continue
-        statuses.extend(_split_status_tokens(link_text, seen))
+        idx += 1
 
     return statuses
 
@@ -493,23 +505,7 @@ def _extract_llm_statuses_from_html(html: str, seen: Set[str]) -> List[str]:
     ]
     for pattern in attribute_patterns:
         for match in re.finditer(pattern, html, flags=re.IGNORECASE):
-            statuses.extend(_split_status_tokens(match.group(1), seen))
-
-    for match in re.finditer(r"LLM status[^<]{0,80}", html, flags=re.IGNORECASE):
-        statuses.extend(_split_status_tokens(match.group(0), seen))
-
-    for match in re.finditer(
-        r'<a[^>]*href=["\'][^"\']*session_id=[^"\']*["\'][^>]*>([^<]+)</a>',
-        html,
-        flags=re.IGNORECASE,
-    ):
-        link_text = html_lib.unescape(match.group(1)).strip()
-        if not link_text:
-            continue
-        lowered_link = link_text.lower()
-        if "view session" in lowered_link:
-            continue
-        statuses.extend(_split_status_tokens(link_text, seen))
+            _add_status(statuses, seen, match.group(1))
 
     return statuses
 

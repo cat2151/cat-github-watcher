@@ -505,8 +505,8 @@ def test_save_pr_snapshot_extracts_llm_statuses_from_attributes(tmp_path):
     status_path = result["llm_status_path"]
     assert status_path.exists()
     status_data = json.loads(status_path.read_text(encoding="utf-8"))
-    assert status_data["llm_statuses"] == ["finished", "comment"]
-    assert result["llm_statuses"] == ["finished", "comment"]
+    assert status_data["llm_statuses"] == ["finished, comment"]
+    assert result["llm_statuses"] == ["finished, comment"]
 
 
 def test_save_pr_snapshot_extracts_llm_statuses_from_timeline_events(tmp_path):
@@ -519,17 +519,27 @@ def test_save_pr_snapshot_extracts_llm_statuses_from_timeline_events(tmp_path):
                 <strong>Codex</strong>
                 <a title="View session" class="Link--secondary" href="https://github.com/example/agents/pull/22?session_id=aaa">started work</a>
                 on behalf of <a href="/cat2151">cat2151</a>
+                <relative-time datetime="2024-05-01T00:00:00Z">9 minutes ago</relative-time>
                 <a href="https://github.com/example/agents/pull/22?session_id=aaa">View session</a>
             </div>
             <div class="TimelineItem-body">
                 <strong>Codex</strong>
                 <a title="View session" class="Link--secondary" href="https://github.com/example/tasks/pull/PR_123?session_id=bbb">finished work</a>
                 on behalf of <a href="/cat2151">cat2151</a>
+                <relative-time datetime="2024-05-01T00:00:00Z">5 minutes ago</relative-time>
             </div>
             <div class="TimelineItem-body">
                 <strong>Copilot</strong>
                 <a title="View session" class="Link--secondary" href="https://github.com/example/agents/pull/22?session_id=ccc">started reviewing</a>
                 on behalf of <a href="/cat2151">cat2151</a>
+            </div>
+            <div class="TimelineItem-body">
+                <span class="author">cat2151</span>
+                commented
+                <relative-time datetime="2024-05-01T00:00:00Z">10 minutes ago</relative-time>
+                <div class="comment-body">
+                    <p>@codex[agent] apply changes based on the comments in this pull request</p>
+                </div>
             </div>
         </div>
     </body>
@@ -548,8 +558,18 @@ def test_save_pr_snapshot_extracts_llm_statuses_from_timeline_events(tmp_path):
     status_path = result["llm_status_path"]
     assert status_path.exists()
     status_data = json.loads(status_path.read_text(encoding="utf-8"))
-    assert status_data["llm_statuses"] == ["started", "finished", "reviewing"]
-    assert result["llm_statuses"] == ["started", "finished", "reviewing"]
+    assert status_data["llm_statuses"] == [
+        "Codex started work on behalf of cat2151 9 minutes ago",
+        "Codex finished work on behalf of cat2151 5 minutes ago",
+        "Copilot started reviewing on behalf of cat2151",
+        "cat2151 commented 10 minutes ago @codex[agent] apply changes based on the comments in this pull request",
+    ]
+    assert result["llm_statuses"] == [
+        "Codex started work on behalf of cat2151 9 minutes ago",
+        "Codex finished work on behalf of cat2151 5 minutes ago",
+        "Copilot started reviewing on behalf of cat2151",
+        "cat2151 commented 10 minutes ago @codex[agent] apply changes based on the comments in this pull request",
+    ]
 
 
 def test_save_pr_snapshot_without_html_when_fetch_fails(tmp_path):

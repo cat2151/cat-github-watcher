@@ -544,7 +544,7 @@ def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> L
 
 
 def _extract_llm_statuses_from_html(html: str, seen: Set[str]) -> List[str]:
-    """Extract LLM statuses from raw HTML attributes and nearby text."""
+    """Extract LLM statuses from timeline session blocks and HTML attributes."""
     statuses: List[str] = []
     if not html:
         return statuses

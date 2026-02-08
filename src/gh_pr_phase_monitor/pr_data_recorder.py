@@ -613,8 +613,9 @@ def record_reaction_snapshot(
             current_html_md = _html_to_simple_markdown(saved_html)
 
     # Update reaction resolution cache based on HTML snapshot content
-    reactions_finished = _eyes_reaction_finished(current_html_md)
-    update_comment_reaction_resolution(pr, comment_nodes, reactions_finished)
+    if current_html_md:
+        reactions_finished = _eyes_reaction_finished(current_html_md)
+        update_comment_reaction_resolution(pr, comment_nodes, reactions_finished)
 
     # Update previous content cache for next iteration
     # Store markdown version of HTML to avoid false changes from HTML tag variations

@@ -131,3 +131,102 @@ def post_phase3_comment(pr: Dict[str, Any], comment_text: str, repo_dir: Path = 
         stderr = getattr(e, "stderr", "No stderr available")
         print(f"    stderr: {stderr}")
         return False
+
+
+def has_problematic_pr_title(title: str) -> bool:
+    """Check if PR title indicates addressing review comments
+
+    Args:
+        title: PR title to check
+
+    Returns:
+        True if title is problematic (e.g., "Addressing PR comments", contains "PR review"), False otherwise
+    """
+    if not title:
+        return False
+
+    title_lower = title.lower()
+
+    # Check for exact match or common variations
+    problematic_patterns = [
+        "addressing pr comments",
+        "address pr comments",
+        "pr review",
+    ]
+
+    return any(pattern in title_lower for pattern in problematic_patterns)
+
+
+def has_pr_title_fix_comment(comments: List[Dict[str, Any]]) -> bool:
+    """Check if a PR title fix comment already exists
+
+    Args:
+        comments: List of comment dictionaries
+
+    Returns:
+        True if comment exists, False otherwise
+    """
+    # Look for the unique marker text in the comment
+    # We only check the marker text (not agent mention) to prevent duplicates
+    # even if the mention changes (e.g., via config override or detection logic changes)
+    marker_text = "PR titleとPR冒頭を、以下の方針で修正してください："
+
+    for comment in comments:
+        body = comment.get("body", "")
+        if marker_text in body:
+            return True
+    return False
+
+
+def post_pr_title_fix_comment(
+    pr: Dict[str, Any], repo_dir: Path = None, config: Optional[Dict[str, Any]] = None
+) -> Optional[bool]:
+    """Post a comment to PR when title indicates addressing review comments
+
+    Args:
+        pr: PR data dictionary containing url and title
+        repo_dir: Repository directory (optional, not used when working with URLs)
+        config: Configuration dictionary (optional, used for agent detection)
+
+    Returns:
+        True if comment was posted successfully
+        None if comment already exists (skipped)
+        False if posting failed (e.g., invalid PR URL, subprocess error)
+    """
+    pr_url = pr.get("url", "")
+    if not pr_url:
+        return False
+
+    agent_mention = _get_agent_mention(pr, config)
+
+    # Check if we already posted a comment (check marker text only to prevent
+    # duplicates even if mention changes via config or detection logic)
+    existing_comments = get_existing_comments(pr_url, repo_dir)
+    if has_pr_title_fix_comment(existing_comments):
+        print("    PR title fix comment already exists, skipping")
+        return None
+
+    # Construct the comment body
+    comment_body = f"""{agent_mention}
+- PR titleとPR冒頭を、以下の方針で修正してください：
+    - これまでの課題：
+        - PR titleとPR冒頭に、「PR review commentに対応： レビュー指摘されたxxxを修正」のように書いてあるのはNGです。
+        - なぜなら、将来git logを見たとき、このPRが何を改善したのかが分かりません。
+    - 修正方針：
+        - PR titleとPR冒頭に、「PR review commentに対応： レビュー指摘されたxxxを修正」のように書くことを禁止します。
+        - PR titleとPR冒頭に、「このPR全体が達成したことの中核」を書いてください。
+    - user向け補足：
+        - この問題は単に、agentの実装のバグの後始末の応急対策です。
+        - agentは指示を受け取ってPR titleとPR冒頭を修正したあと「修正できません」という回答をしますが、それもバグです。
+        - ですので気にしなくてOKです。今後、この応急対策が不要になることを希望しています。"""
+
+    cmd = ["gh", "pr", "comment", pr_url, "--body", comment_body]
+
+    try:
+        subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"    Error posting PR title fix comment: {e}")
+        stderr = getattr(e, "stderr", "No stderr available")
+        print(f"    stderr: {stderr}")
+        return False

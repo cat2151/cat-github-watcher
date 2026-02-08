@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from .phase_detector import PHASE_LLM_WORKING, has_comments_with_reactions
+from .phase_detector import PHASE_LLM_WORKING, has_comments_with_reactions, update_comment_reaction_resolution
 
 # Snapshots are stored alongside screenshots (not inside) for easy discovery
 DEFAULT_SNAPSHOT_BASE_DIR = Path("pr_phase_snapshots")
@@ -75,6 +75,19 @@ def _summarize_review_threads(review_threads: Any) -> str:
         1 for thread in review_threads if not thread.get("isResolved", False) and not thread.get("isOutdated", False)
     )
     return f"{unresolved} unresolved"
+
+
+def _eyes_reaction_finished(html_markdown: str) -> bool:
+    """Detect whether eyes reactions were followed by a 'finished work' marker in the snapshot."""
+    if not html_markdown:
+        return False
+
+    lowered = html_markdown.lower()
+    eyes_index = lowered.rfind("reacted with eyes emoji")
+    if eyes_index == -1:
+        return False
+
+    return lowered.find("finished work", eyes_index) != -1
 
 
 def _build_markdown(
@@ -511,6 +524,7 @@ def record_reaction_snapshot(
     phase: str,
     base_dir: Optional[Path] = None,
     current_time: Optional[datetime] = None,
+    html_content: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Record a snapshot when comment reactions force LLM working detection.
 
@@ -526,6 +540,7 @@ def record_reaction_snapshot(
         phase: Detected phase for the PR.
         base_dir: Optional base directory for storing snapshots.
         current_time: Optional timestamp for deterministic testing.
+        html_content: Optional pre-fetched HTML content to avoid network calls.
 
     Returns:
         Paths for created snapshot files, or None when no snapshot is recorded.
@@ -557,10 +572,13 @@ def record_reaction_snapshot(
     # Only fetch HTML if JSON hasn't changed (to check if HTML changed)
     # This avoids unnecessary network calls when JSON already indicates a change
     current_html_md = ""
-    fetched_html = None
+    fetched_html = html_content
     pr_url = pr.get("url", "")
 
-    if not json_changed and pr_url:
+    if html_content:
+        current_html_md = _html_to_simple_markdown(html_content)
+
+    if fetched_html is None and not json_changed and pr_url:
         # JSON unchanged, check HTML for changes
         fetched_html = _fetch_pr_html(pr_url)
         if fetched_html:
@@ -593,6 +611,10 @@ def record_reaction_snapshot(
         saved_html = snapshot_paths.get("saved_html", "")
         if saved_html:
             current_html_md = _html_to_simple_markdown(saved_html)
+
+    # Update reaction resolution cache based on HTML snapshot content
+    reactions_finished = _eyes_reaction_finished(current_html_md)
+    update_comment_reaction_resolution(pr, comment_nodes, reactions_finished)
 
     # Update previous content cache for next iteration
     # Store markdown version of HTML to avoid false changes from HTML tag variations

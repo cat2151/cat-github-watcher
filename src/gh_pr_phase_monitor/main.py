@@ -131,9 +131,7 @@ def main():
                         pr_phases.append(phase)
 
                         try:
-                            snapshot_paths = record_reaction_snapshot(pr, phase)
-                            if snapshot_paths:
-                                print(f"    Saved PR snapshot: {snapshot_paths['markdown_path']}")
+                            record_reaction_snapshot(pr, phase)
                         except Exception as snapshot_error:
                             print(f"    Failed to save PR snapshot: {snapshot_error}")
 

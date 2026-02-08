@@ -636,33 +636,55 @@ def test_multiple_snapshots_same_directory(tmp_path):
 
 
 def test_record_reaction_snapshot_across_iterations(tmp_path):
-    """Test that snapshots are recorded in each iteration after cache reset"""
+    """Test content-based deduplication across iterations"""
     pr = _sample_pr()
     time1 = datetime(2024, 1, 2, 3, 4, 5)
     time2 = datetime(2024, 1, 2, 3, 5, 10)
+    time3 = datetime(2024, 1, 2, 3, 10, 15)
 
-    # First iteration - should record snapshot
-    result1 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time1)
-    assert result1 is not None
-    assert result1["markdown_path"].exists()
+    # Mock HTML fetching to return deterministic content
+    mock_html = "<html><body><h1>Test PR</h1></body></html>"
 
-    # Same iteration - should NOT record (deduplication)
-    result2 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time1)
-    assert result2 is None
+    with patch("src.gh_pr_phase_monitor.pr_data_recorder.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = mock_html
 
-    # Simulate new iteration by resetting cache
-    reset_snapshot_cache()
+        # First iteration - should record snapshot
+        result1 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time1)
+        assert result1 is not None
+        assert result1["markdown_path"].exists()
 
-    # New iteration - should record snapshot again
-    result3 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time2)
-    assert result3 is not None
-    assert result3["markdown_path"].exists()
+        # Same iteration - should NOT record (once flag)
+        result2 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time1)
+        assert result2 is None
 
-    # Verify both snapshots are in the same directory but have different timestamps
-    assert result1["snapshot_dir"] == result3["snapshot_dir"]
-    assert result1["markdown_path"].name == "20240102_030405_summary.md"
-    assert result3["markdown_path"].name == "20240102_030510_summary.md"
+        # Simulate new iteration by resetting cache
+        reset_snapshot_cache()
 
-    # Both files should exist
-    assert result1["markdown_path"].exists()
-    assert result3["markdown_path"].exists()
+        # New iteration with SAME content - should NOT record (content unchanged)
+        result3 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time2)
+        assert result3 is None
+
+        # Modify PR content
+        pr["title"] = "Modified Test PR"
+
+        # Simulate another new iteration
+        reset_snapshot_cache()
+
+        # New iteration with CHANGED content - should record new snapshot
+        result4 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time3)
+        assert result4 is not None
+        assert result4["markdown_path"].exists()
+
+        # Verify both snapshots are in the same directory but have different timestamps
+        assert result1["snapshot_dir"] == result4["snapshot_dir"]
+        assert result1["markdown_path"].name == "20240102_030405_summary.md"
+        assert result4["markdown_path"].name == "20240102_031015_summary.md"
+
+        # Both files should exist
+        assert result1["markdown_path"].exists()
+        assert result4["markdown_path"].exists()
+
+        # Only 2 snapshots should have been created (not 3)
+        snapshot_files = [f for f in result1["snapshot_dir"].iterdir() if f.name.endswith("_summary.md")]
+        assert len(snapshot_files) == 2

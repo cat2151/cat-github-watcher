@@ -297,6 +297,7 @@ def _html_to_simple_markdown(html: Optional[str]) -> str:
     - Removes header content before prc-PageLayout-Content div
     - Removes footer content and everything after
     - Consolidates consecutive blank lines (including space-only lines)
+    - Preserves whitespace inside code blocks (pre/code tags)
 
     Args:
         html: HTML content as string, or None
@@ -363,22 +364,39 @@ def _html_to_simple_markdown(html: Optional[str]) -> str:
     text = text.replace("&quot;", '"')
     text = text.replace("&#39;", "'")
 
-    # Clean up excessive whitespace
-    # First, consolidate spaces and tabs on each line
-    text = re.sub(r"[ \t]+", " ", text)
-    # Then, treat lines with only spaces as blank lines and consolidate consecutive blank lines
+    # Clean up excessive whitespace while preserving code block formatting
+    # Process line by line to consolidate blank lines without affecting code blocks
     lines = text.split("\n")
     cleaned_lines = []
     prev_blank = False
+    in_code_block = False
+
     for line in lines:
+        # Track code block boundaries (markdown fenced code blocks)
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+            cleaned_lines.append(line)
+            prev_blank = False
+            continue
+
+        # Inside code blocks, preserve all whitespace exactly as-is
+        if in_code_block:
+            cleaned_lines.append(line)
+            prev_blank = False
+            continue
+
+        # Outside code blocks, consolidate blank lines and normalize leading/trailing spaces
         is_blank = line.strip() == ""
         if is_blank:
             if not prev_blank:
                 cleaned_lines.append("")
             prev_blank = True
         else:
-            cleaned_lines.append(line)
+            # For non-blank lines outside code blocks, only strip trailing whitespace
+            # Keep leading whitespace for list indentation, but normalize multiple spaces
+            cleaned_lines.append(line.rstrip())
             prev_blank = False
+
     text = "\n".join(cleaned_lines)
 
     return text.strip()

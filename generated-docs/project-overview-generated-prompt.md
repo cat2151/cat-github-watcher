@@ -452,14 +452,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
 📄 config.toml.example
 📄 demo_automation.py
 📁 docs/
-  📖 IMPLEMENTATION_SUMMARY.ja.md
-  📖 IMPLEMENTATION_SUMMARY.md
-  📖 PR67_IMPLEMENTATION.md
   📖 RULESETS.md
-  📖 VERIFICATION_GUIDE.en.md
-  📖 VERIFICATION_GUIDE.md
-  📖 browser-automation-approaches.en.md
-  📖 browser-automation-approaches.md
   📖 button-detection-improvements.ja.md
   📖 window-activation-feature.md
 📁 generated-docs/
@@ -538,14 +531,7 @@ PHASE3_MERGE_IMPLEMENTATION.md
 README.ja.md
 README.md
 STRUCTURE.md
-docs/IMPLEMENTATION_SUMMARY.ja.md
-docs/IMPLEMENTATION_SUMMARY.md
-docs/PR67_IMPLEMENTATION.md
 docs/RULESETS.md
-docs/VERIFICATION_GUIDE.en.md
-docs/VERIFICATION_GUIDE.md
-docs/browser-automation-approaches.en.md
-docs/browser-automation-approaches.md
 docs/button-detection-improvements.ja.md
 docs/window-activation-feature.md
 

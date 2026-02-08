@@ -36,14 +36,13 @@ def _format_timestamp(current_time: Optional[datetime] = None) -> str:
     return (current_time or datetime.now()).strftime("%Y%m%d_%H%M%S")
 
 
-def _build_snapshot_prefix(pr: Dict[str, Any], current_time: Optional[datetime]) -> str:
-    """Build snapshot prefix like owner_repo_PR123_20260102_030405."""
+def _build_snapshot_dir_name(pr: Dict[str, Any]) -> str:
+    """Build snapshot directory name like owner_repo_PR123 (no timestamp)."""
     repo_info = pr.get("repository") or {}
     owner = _sanitize_component(repo_info.get("owner", "unknown"))
     name = _sanitize_component(repo_info.get("name", "unknown"))
     pr_number = _extract_pr_number(pr.get("url", ""))
-    timestamp_str = _format_timestamp(current_time)
-    return f"{owner}_{name}_PR{pr_number}_{timestamp_str}"
+    return f"{owner}_{name}_PR{pr_number}"
 
 
 def _summarize_reactions(comment_nodes: Any) -> List[str]:
@@ -78,7 +77,7 @@ def _build_markdown(
     reason: str,
     timestamp_str: str,
     reactions_summary: List[str],
-    snapshot_prefix: str,
+    snapshot_dir_name: str,
     markdown_raw_snapshot: str,
 ) -> str:
     """Build human-readable markdown representation of the snapshot."""
@@ -98,7 +97,7 @@ def _build_markdown(
         f"# PR snapshot {owner}/{name} #{pr_number}",
         "",
         f"- Timestamp: {timestamp_str}",
-        f"- Snapshot prefix: {snapshot_prefix}",
+        f"- Snapshot directory: {snapshot_dir_name}",
         f"- URL: {url}",
         f"- Title: {title}",
         f"- Author: {author}",
@@ -426,16 +425,20 @@ def save_pr_snapshot(
     base_path = Path(base_dir) if base_dir is not None else DEFAULT_SNAPSHOT_BASE_DIR
     base_path = base_path.expanduser().resolve()
 
-    snapshot_prefix = _build_snapshot_prefix(pr, effective_time)
-    snapshot_dir = base_path / snapshot_prefix
+    # Directory name without timestamp (e.g., owner_repo_PR123)
+    snapshot_dir_name = _build_snapshot_dir_name(pr)
+    snapshot_dir = base_path / snapshot_dir_name
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
-    raw_path = snapshot_dir / f"{snapshot_prefix}_raw.json"
-    markdown_path = snapshot_dir / f"{snapshot_prefix}_summary.md"
-    html_path = snapshot_dir / f"{snapshot_prefix}_page.html"
-    html_md_path = snapshot_dir / f"{snapshot_prefix}_page.md"
-
+    # File prefix with timestamp (e.g., 20260102_030405)
     timestamp_str = _format_timestamp(effective_time)
+    file_prefix = timestamp_str
+
+    raw_path = snapshot_dir / f"{file_prefix}_raw.json"
+    markdown_path = snapshot_dir / f"{file_prefix}_summary.md"
+    html_path = snapshot_dir / f"{file_prefix}_page.html"
+    html_md_path = snapshot_dir / f"{file_prefix}_page.md"
+
     reactions_summary = _summarize_reactions(pr.get("commentNodes", pr.get("comments", [])))
     markdown_raw_snapshot = _prepare_markdown_raw(pr)
 
@@ -449,7 +452,7 @@ def save_pr_snapshot(
         reason,
         timestamp_str,
         reactions_summary,
-        snapshot_prefix,
+        snapshot_dir_name,
         markdown_raw_snapshot,
     )
     _write_if_changed(markdown_path, markdown_content)
@@ -501,7 +504,7 @@ def record_reaction_snapshot(
     if not has_comments_with_reactions(comment_nodes):
         return None
 
-    pr_key = pr.get("url") or _build_snapshot_prefix(pr, current_time)
+    pr_key = pr.get("url") or _build_snapshot_dir_name(pr)
     if pr_key in _recorded_snapshots:
         return None
 

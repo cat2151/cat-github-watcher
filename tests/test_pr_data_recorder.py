@@ -63,7 +63,11 @@ def test_save_pr_snapshot_writes_json_and_markdown(tmp_path):
     assert snapshot_dir.is_dir()
     assert raw_path.exists()
     assert markdown_path.exists()
-    assert snapshot_dir.name.startswith("octocat_hello-world_PR123_20240102_030405")
+    # Directory name should NOT include timestamp
+    assert snapshot_dir.name == "octocat_hello-world_PR123"
+    # File names should include timestamp
+    assert raw_path.name == "20240102_030405_raw.json"
+    assert markdown_path.name == "20240102_030405_summary.md"
 
     saved_pr = json.loads(raw_path.read_text(encoding="utf-8"))
     assert saved_pr["url"].endswith("/pull/123")
@@ -593,3 +597,33 @@ def test_save_pr_snapshot_markdown_contains_formatted_data(tmp_path):
     assert '"title":' not in markdown_content
     assert '"author": {' not in markdown_content
     assert "```json" not in markdown_content
+
+
+def test_multiple_snapshots_same_directory(tmp_path):
+    """Test that multiple snapshots of the same PR go into the same directory"""
+    pr = _sample_pr()
+    time1 = datetime(2024, 1, 2, 3, 4, 5)
+    time2 = datetime(2024, 1, 2, 4, 5, 6)
+
+    result1 = save_pr_snapshot(pr, reason="first_snapshot", base_dir=tmp_path, current_time=time1, fetch_html=False)
+    result2 = save_pr_snapshot(pr, reason="second_snapshot", base_dir=tmp_path, current_time=time2, fetch_html=False)
+
+    # Both snapshots should be in the same directory
+    assert result1["snapshot_dir"] == result2["snapshot_dir"]
+    assert result1["snapshot_dir"].name == "octocat_hello-world_PR123"
+
+    # But the files should be different (different timestamps)
+    assert result1["raw_path"].name == "20240102_030405_raw.json"
+    assert result2["raw_path"].name == "20240102_040506_raw.json"
+    assert result1["markdown_path"].name == "20240102_030405_summary.md"
+    assert result2["markdown_path"].name == "20240102_040506_summary.md"
+
+    # Both files should exist
+    assert result1["raw_path"].exists()
+    assert result2["raw_path"].exists()
+    assert result1["markdown_path"].exists()
+    assert result2["markdown_path"].exists()
+
+    # The directory should contain 4 files (2 raw, 2 markdown)
+    files_in_dir = list(result1["snapshot_dir"].iterdir())
+    assert len(files_in_dir) == 4

@@ -74,7 +74,12 @@ def display_status_summary(
         progress_label = get_llm_working_progress_label(pr) if phase == PHASE_LLM_WORKING else None
         phase_display = colorize_phase(phase, progress_label)
         author_suffix = f" (Author: {author_login})" if display_pr_author else ""
-        base_line = f"  [{repo_name}] {phase_display} {title}{author_suffix}"
+        status_suffix = ""
+        if phase == PHASE_LLM_WORKING:
+            llm_statuses = pr.get("llm_statuses") or []
+            if llm_statuses:
+                status_suffix = f" (Latest LLM status: {llm_statuses[-1]})"
+        base_line = f"  [{repo_name}] {phase_display}{status_suffix} {title}{author_suffix}"
 
         # Show elapsed time if state has persisted for more than 60 seconds
         if elapsed >= 60:

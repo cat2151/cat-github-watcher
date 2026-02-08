@@ -145,7 +145,12 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
     # Display phase with colors
     progress_label = get_llm_working_progress_label(pr) if phase == PHASE_LLM_WORKING else None
     phase_display = colorize_phase(phase, progress_label)
-    print(f"  [{repo_name}] {phase_display} {title}")
+    latest_llm_status = ""
+    if phase == PHASE_LLM_WORKING:
+        llm_statuses = pr.get("llm_statuses") or []
+        if llm_statuses:
+            latest_llm_status = f" (Latest LLM status: {llm_statuses[-1]})"
+    print(f"  [{repo_name}] {phase_display}{latest_llm_status} {title}")
     print(f"    URL: {url}")
     if display_pr_author:
         print(f"    Author: {author_login}")

@@ -285,3 +285,24 @@ class TestDisplayStatusSummary:
             assert "Phase 1 in progress, LLM working" in output
             assert "Phase 1 completed, LLM working" in output
             assert "Phase 2 completed, LLM working" in output
+
+    def test_status_summary_includes_latest_llm_status(self):
+        """Latest LLM status should be shown next to LLM working phase"""
+        all_prs = [
+            {
+                "title": "LLM PR",
+                "url": "https://github.com/owner/repo1/pulls/5",
+                "repository": {"name": "repo1", "owner": "owner"},
+                "llm_statuses": ["started work", "finished work items"],
+            },
+        ]
+
+        pr_phases = [PHASE_LLM_WORKING]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
+
+        with patch("builtins.print") as mock_print:
+            display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+            output = " ".join(str(call) for call in mock_print.call_args_list)
+
+            assert "Latest LLM status: finished work items" in output

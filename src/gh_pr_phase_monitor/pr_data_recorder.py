@@ -2,6 +2,7 @@
 Utilities for capturing PR snapshots to aid debugging of phase detection.
 """
 
+import html as html_lib
 import json
 import re
 import subprocess
@@ -426,7 +427,7 @@ def _split_status_tokens(text: str, seen: Set[str]) -> List[str]:
         token_lower = token.lower()
         if token_lower in seen:
             continue
-        if token_lower in {"llm", "status"}:
+        if token_lower in {"llm", "status", "session", "view", "work"}:
             continue
         seen.add(token_lower)
         statuses.append(token_lower)
@@ -467,6 +468,15 @@ def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> L
                 break
             break
 
+    for match in re.finditer(r"\[([^\]]+)\]\([^)]+session_id=[^)]+\)", html_markdown, flags=re.IGNORECASE):
+        link_text = match.group(1).strip()
+        if not link_text:
+            continue
+        lowered_link = link_text.lower()
+        if "view session" in lowered_link:
+            continue
+        statuses.extend(_split_status_tokens(link_text, seen))
+
     return statuses
 
 
@@ -487,6 +497,19 @@ def _extract_llm_statuses_from_html(html: str, seen: Set[str]) -> List[str]:
 
     for match in re.finditer(r"LLM status[^<]{0,80}", html, flags=re.IGNORECASE):
         statuses.extend(_split_status_tokens(match.group(0), seen))
+
+    for match in re.finditer(
+        r'<a[^>]*href=["\'][^"\']*session_id=[^"\']*["\'][^>]*>([^<]+)</a>',
+        html,
+        flags=re.IGNORECASE,
+    ):
+        link_text = html_lib.unescape(match.group(1)).strip()
+        if not link_text:
+            continue
+        lowered_link = link_text.lower()
+        if "view session" in lowered_link:
+            continue
+        statuses.extend(_split_status_tokens(link_text, seen))
 
     return statuses
 

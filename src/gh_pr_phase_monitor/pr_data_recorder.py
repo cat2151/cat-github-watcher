@@ -13,7 +13,12 @@ from .phase_detector import PHASE_LLM_WORKING, has_comments_with_reactions
 
 # Snapshots are stored alongside screenshots (not inside) for easy discovery
 DEFAULT_SNAPSHOT_BASE_DIR = Path("pr_phase_snapshots")
-_recorded_snapshots: Set[str] = set()
+
+# Once flag to prevent duplicate snapshots within the same iteration
+_recorded_in_current_iteration: Set[str] = set()
+
+# Store previous iteration's content for comparison (PR key -> {json, html})
+_previous_pr_content: Dict[str, Dict[str, str]] = {}
 
 
 def _sanitize_component(value: Any) -> str:
@@ -407,7 +412,7 @@ def save_pr_snapshot(
     base_dir: Optional[Path] = None,
     current_time: Optional[datetime] = None,
     fetch_html: bool = True,
-) -> Dict[str, Path]:
+) -> Dict[str, Any]:
     """Save raw PR data, HTML, and markdown summary to disk.
 
     Args:
@@ -418,7 +423,10 @@ def save_pr_snapshot(
         fetch_html: Whether to fetch HTML page (default: True). Set to False to avoid blocking network calls.
 
     Returns:
-        Paths for the saved snapshot directory and files.
+        Dictionary containing:
+        - snapshot_dir, raw_path, markdown_path (Path objects)
+        - html_path, html_md_path (Path objects, if HTML was fetched)
+        - saved_json, saved_html (str, the actual content that was saved)
     """
     effective_time = current_time if current_time is not None else datetime.now()
 
@@ -463,6 +471,8 @@ def save_pr_snapshot(
         "snapshot_dir": snapshot_dir,
         "raw_path": raw_path,
         "markdown_path": markdown_path,
+        "saved_json": raw_json,
+        "saved_html": "",
     }
 
     if fetch_html and pr_url:
@@ -470,6 +480,7 @@ def save_pr_snapshot(
         if html_content:
             _write_if_changed(html_path, html_content)
             result_dict["html_path"] = html_path
+            result_dict["saved_html"] = html_content
 
             # Convert HTML to markdown for better readability
             html_as_markdown = _html_to_simple_markdown(html_content)
@@ -485,8 +496,11 @@ def record_reaction_snapshot(
     phase: str,
     base_dir: Optional[Path] = None,
     current_time: Optional[datetime] = None,
-) -> Optional[Dict[str, Path]]:
+) -> Optional[Dict[str, Any]]:
     """Record a snapshot when comment reactions force LLM working detection.
+
+    Uses content-based deduplication: only saves a new timestamped snapshot when
+    the PR JSON or HTML content has changed since the previous iteration.
 
     Args:
         pr: PR data dictionary.
@@ -505,19 +519,60 @@ def record_reaction_snapshot(
         return None
 
     pr_key = pr.get("url") or _build_snapshot_dir_name(pr)
-    if pr_key in _recorded_snapshots:
+
+    # Check once flag: prevent duplicate recording within the same iteration
+    if pr_key in _recorded_in_current_iteration:
         return None
 
+    # Prepare content for comparison (must match the format saved in save_pr_snapshot)
+    current_json = json.dumps(pr, ensure_ascii=False, indent=2)
+
+    # Check content-based deduplication: compare with previous iteration
+    previous_content = _previous_pr_content.get(pr_key, {})
+    previous_json = previous_content.get("json", "")
+    previous_html = previous_content.get("html", "")
+
+    # Fetch HTML for comparison (even if we won't save it)
+    pr_url = pr.get("url", "")
+    current_html = ""
+    if pr_url:
+        fetched_html = _fetch_pr_html(pr_url)
+        if fetched_html:
+            current_html = fetched_html
+
+    # Check if content has changed
+    content_changed = (current_json != previous_json) or (current_html != previous_html)
+
+    if not content_changed and previous_json:
+        # Content unchanged, mark as recorded and skip saving
+        _recorded_in_current_iteration.add(pr_key)
+        return None
+
+    # Content changed or first time: save snapshot with timestamp
     snapshot_paths = save_pr_snapshot(
         pr,
         reason="comment_reactions_detected",
         base_dir=base_dir,
         current_time=current_time,
     )
-    _recorded_snapshots.add(pr_key)
+
+    # Update previous content cache for next iteration
+    _previous_pr_content[pr_key] = {
+        "json": snapshot_paths.get("saved_json", current_json),
+        "html": snapshot_paths.get("saved_html", current_html),
+    }
+
+    # Mark as recorded in current iteration
+    _recorded_in_current_iteration.add(pr_key)
+
     return snapshot_paths
 
 
-def _reset_snapshot_cache() -> None:
-    """Test helper to clear recorded snapshot cache."""
-    _recorded_snapshots.clear()
+def reset_snapshot_cache() -> None:
+    """Clear the once flag for the current iteration.
+
+    This should be called at the start of each monitoring iteration to allow
+    recording snapshots again. The previous content cache is preserved for
+    content-based deduplication across iterations.
+    """
+    _recorded_in_current_iteration.clear()

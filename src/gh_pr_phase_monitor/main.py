@@ -19,7 +19,7 @@ from .github_client import get_pr_details_batch, get_repositories_with_open_prs
 from .monitor import check_no_state_change_timeout
 from .phase_detector import PHASE_LLM_WORKING, determine_phase
 from .pr_actions import process_pr
-from .pr_data_recorder import record_reaction_snapshot
+from .pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
 from .wait_handler import wait_with_countdown
 
 
@@ -80,6 +80,9 @@ def main():
         print(f"\n{'=' * 50}")
         print(f"Check #{iteration} - {time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'=' * 50}")
+
+        # Reset snapshot cache to allow recording new snapshots in this iteration
+        reset_snapshot_cache()
 
         # Initialize variables to track status for summary
         all_prs = []

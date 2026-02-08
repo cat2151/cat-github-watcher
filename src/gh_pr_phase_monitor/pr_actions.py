@@ -143,17 +143,24 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         phase = determine_phase(pr)
 
     # Display phase with colors
+    llm_statuses = pr.get("llm_statuses") or []
     progress_label = get_llm_working_progress_label(pr) if phase == PHASE_LLM_WORKING else None
     phase_display = colorize_phase(phase, progress_label)
     latest_llm_status = ""
     if phase == PHASE_LLM_WORKING:
-        llm_statuses = pr.get("llm_statuses") or []
         if llm_statuses:
             latest_llm_status = f" (Latest LLM status: {llm_statuses[-1]})"
     print(f"  [{repo_name}] {phase_display}{latest_llm_status} {title}")
     print(f"    URL: {url}")
     if display_pr_author:
         print(f"    Author: {author_login}")
+    if phase == PHASE_LLM_WORKING and progress_label and "completed" in progress_label.lower():
+        print("    LLM status timeline (latest last):")
+        if llm_statuses:
+            for idx, status in enumerate(llm_statuses, start=1):
+                print(f"      {idx}. {status}")
+        else:
+            print("      (no captured LLM statuses)")
 
     # Resolve execution config for this repository
     if config:

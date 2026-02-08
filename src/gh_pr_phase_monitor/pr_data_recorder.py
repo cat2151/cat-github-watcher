@@ -425,7 +425,8 @@ def _normalize_status_text(text: str) -> str:
     cleaned = html_lib.unescape(text or "")
     cleaned = re.sub(r"<[^>]+>", " ", cleaned)
     cleaned = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", cleaned)
-    cleaned = cleaned.replace("**", "").replace("__", "").replace("#", "")
+    cleaned = cleaned.replace("**", "").replace("__", "")
+    cleaned = re.sub(r"^\s*#+\s*", "", cleaned)
     cleaned = re.sub(r"\bView session\b", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\s*[-*]\s+", " ", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned)
@@ -437,7 +438,8 @@ def _add_status(statuses: List[str], seen: Set[str], text: str) -> None:
     normalized = _normalize_status_text(text)
     if not normalized:
         return
-    if normalized.lower() == "llm status":
+    normalized = re.sub(r"^llm status[:\s-]+", "", normalized, flags=re.IGNORECASE).strip()
+    if not normalized or normalized.lower() == "llm status":
         return
     key = normalized.lower()
     if key in seen:
@@ -471,11 +473,18 @@ def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> L
                     or re.search(r"\bcommented\b", next_lower)
                 ):
                     break
-                combined = f"{combined} {next_segment}"
+                if "llm status" in lowered:
+                    _add_status(statuses, seen, next_segment)
+                else:
+                    combined = f"{combined} {next_segment}"
                 next_idx += 1
             idx = next_idx - 1
 
-        if "llm status" in lowered or "session_id=" in segment or re.search(r"\bcommented\b", lowered):
+        if "llm status" in lowered:
+            payload = re.sub(r"^llm status[:\s-]+", "", segment, flags=re.IGNORECASE).strip()
+            if payload:
+                _add_status(statuses, seen, payload)
+        elif "session_id=" in segment or re.search(r"\bcommented\b", lowered):
             _add_status(statuses, seen, combined)
 
         idx += 1

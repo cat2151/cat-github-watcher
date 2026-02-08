@@ -436,7 +436,7 @@ def test_save_pr_snapshot_with_html(tmp_path):
         assert result["html_md_path"].exists()
         assert "llm_status_path" in result
         assert result["llm_status_path"].exists()
-        assert result["llm_statuses"] == ["LLM status comment finished"]
+        assert result["llm_statuses"] == ["comment", "finished"]
 
         # Verify HTML content
         html_content = result["html_path"].read_text(encoding="utf-8")
@@ -446,7 +446,7 @@ def test_save_pr_snapshot_with_html(tmp_path):
         html_md_content = result["html_md_path"].read_text(encoding="utf-8")
         assert "# Test PR Page" in html_md_content
         assert "Some content" in html_md_content
-        assert "LLM status: LLM status comment finished" in html_md_content
+        assert "LLM status: comment, finished" in html_md_content
 
 
 def test_save_pr_snapshot_extracts_llm_statuses_from_html(tmp_path):
@@ -477,8 +477,8 @@ def test_save_pr_snapshot_extracts_llm_statuses_from_html(tmp_path):
     status_path = result["llm_status_path"]
     assert status_path.exists()
     status_data = json.loads(status_path.read_text(encoding="utf-8"))
-    assert status_data["llm_statuses"] == ["LLM status comment finished"]
-    assert result["llm_statuses"] == ["LLM status comment finished"]
+    assert status_data["llm_statuses"] == ["comment", "finished"]
+    assert result["llm_statuses"] == ["comment", "finished"]
 
 
 def test_save_pr_snapshot_extracts_llm_statuses_from_attributes(tmp_path):

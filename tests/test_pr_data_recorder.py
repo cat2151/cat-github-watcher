@@ -1,12 +1,15 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from src.gh_pr_phase_monitor.phase_detector import PHASE_LLM_WORKING
 from src.gh_pr_phase_monitor.pr_data_recorder import (
     DEFAULT_SNAPSHOT_BASE_DIR,
+    _fetch_pr_html,
+    _html_to_simple_markdown,
     _reset_snapshot_cache,
     record_reaction_snapshot,
     save_pr_snapshot,
@@ -149,3 +152,123 @@ def test_snapshot_not_rewritten_when_unchanged(tmp_path):
 
 def test_default_snapshot_dir():
     assert DEFAULT_SNAPSHOT_BASE_DIR == Path("pr_phase_snapshots")
+
+
+def test_html_to_simple_markdown():
+    """Test HTML to markdown conversion"""
+    html = """
+    <html>
+    <head><title>Test</title></head>
+    <body>
+        <h1>Main Title</h1>
+        <h2>Subtitle</h2>
+        <p>This is a <strong>bold</strong> paragraph with a <a href="https://example.com">link</a>.</p>
+        <ul>
+            <li>Item 1</li>
+            <li>Item 2</li>
+        </ul>
+        <pre>code block</pre>
+        <script>alert('test');</script>
+    </body>
+    </html>
+    """
+    result = _html_to_simple_markdown(html)
+
+    assert "# Main Title" in result
+    assert "## Subtitle" in result
+    assert "**bold**" in result
+    assert "[link](https://example.com)" in result
+    assert "- Item 1" in result
+    assert "- Item 2" in result
+    assert "```" in result
+    assert "code block" in result
+    assert "alert('test')" not in result  # Script should be removed
+
+
+def test_html_to_simple_markdown_empty():
+    """Test HTML to markdown with empty input"""
+    assert _html_to_simple_markdown("") == ""
+    assert _html_to_simple_markdown(None) == ""
+
+
+def test_fetch_pr_html_mocked(tmp_path):
+    """Test HTML fetching with mock"""
+    mock_html = "<html><body><h1>Test PR</h1></body></html>"
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = mock_html
+
+        result = _fetch_pr_html("https://github.com/test/repo/pull/123")
+        assert result == mock_html
+
+
+def test_fetch_pr_html_failure():
+    """Test HTML fetching failure handling"""
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 1
+        mock_run.return_value.stdout = ""
+
+        result = _fetch_pr_html("https://github.com/test/repo/pull/123")
+        assert result is None
+
+
+def test_save_pr_snapshot_with_html(tmp_path):
+    """Test that save_pr_snapshot saves HTML and markdown when curl succeeds"""
+    mock_html = "<html><body><h1>Test PR Page</h1><p>Some content</p></body></html>"
+    current_time = datetime(2024, 1, 2, 3, 4, 5)
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = mock_html
+
+        result = save_pr_snapshot(
+            _sample_pr(),
+            reason="comment_reactions_detected",
+            base_dir=tmp_path,
+            current_time=current_time,
+        )
+
+        # Verify all files were created
+        assert result["snapshot_dir"].is_dir()
+        assert result["raw_path"].exists()
+        assert result["markdown_path"].exists()
+        assert "html_path" in result
+        assert result["html_path"].exists()
+        assert "html_md_path" in result
+        assert result["html_md_path"].exists()
+
+        # Verify HTML content
+        html_content = result["html_path"].read_text(encoding="utf-8")
+        assert html_content == mock_html
+
+        # Verify HTML markdown conversion
+        html_md_content = result["html_md_path"].read_text(encoding="utf-8")
+        assert "# Test PR Page" in html_md_content
+        assert "Some content" in html_md_content
+
+
+def test_save_pr_snapshot_without_html_when_fetch_fails(tmp_path):
+    """Test that save_pr_snapshot works even when HTML fetch fails"""
+    current_time = datetime(2024, 1, 2, 3, 4, 5)
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 1
+        mock_run.return_value.stdout = ""
+
+        result = save_pr_snapshot(
+            _sample_pr(),
+            reason="comment_reactions_detected",
+            base_dir=tmp_path,
+            current_time=current_time,
+        )
+
+        # Verify basic files were created
+        assert result["snapshot_dir"].is_dir()
+        assert result["raw_path"].exists()
+        assert result["markdown_path"].exists()
+
+        # Verify HTML files were not created
+        assert "html_path" not in result
+        assert "html_md_path" not in result
+

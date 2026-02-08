@@ -10,7 +10,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from .phase_detector import PHASE_LLM_WORKING, has_comments_with_reactions, update_comment_reaction_resolution
+from .phase_detector import (
+    PHASE_LLM_WORKING,
+    has_comments_with_reactions,
+    llm_working_from_statuses,
+    update_comment_reaction_resolution,
+)
 
 # Snapshots are stored alongside screenshots (not inside) for easy discovery
 DEFAULT_SNAPSHOT_BASE_DIR = Path("pr_phase_snapshots")
@@ -76,38 +81,6 @@ def _summarize_review_threads(review_threads: Any) -> str:
         1 for thread in review_threads if not thread.get("isResolved", False) and not thread.get("isOutdated", False)
     )
     return f"{unresolved} unresolved"
-
-
-def _llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
-    """Determine LLM working state from ordered LLM statuses.
-
-    Returns True when the most recent state after any 'started work' entry has
-    no subsequent 'finished work' entry, False when a later 'finished work'
-    exists, and None when the statuses do not provide a signal.
-    """
-    if not llm_statuses:
-        return None
-
-    last_started_idx = None
-    last_finished_idx = None
-
-    for idx, status in enumerate(llm_statuses):
-        lowered = status.lower()
-        if "started work" in lowered:
-            last_started_idx = idx
-        if "finished work" in lowered:
-            last_finished_idx = idx
-
-    if last_started_idx is None and last_finished_idx is None:
-        return None
-
-    if last_finished_idx is not None and last_started_idx is not None and last_finished_idx > last_started_idx:
-        return False
-
-    if last_started_idx is not None and (last_finished_idx is None or last_started_idx > last_finished_idx):
-        return True
-
-    return None
 
 
 def _build_markdown(
@@ -847,7 +820,7 @@ def record_reaction_snapshot(
 
     # Update reaction resolution cache based on HTML snapshot content
     if current_html_md:
-        llm_working = _llm_working_from_statuses(captured_status.get("statuses", []))
+        llm_working = llm_working_from_statuses(captured_status.get("statuses", []))
         reactions_finished = llm_working is False
         update_comment_reaction_resolution(pr, comment_nodes, reactions_finished)
 

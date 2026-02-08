@@ -4,7 +4,7 @@ PR phase detection logic based on reviews and PR state
 
 import json
 import re
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 # Phase constants
 PHASE_LLM_WORKING = "LLM working"
@@ -172,6 +172,48 @@ def has_inline_review_comments(review_body: str) -> bool:
     return bool(re.search(pattern, review_body, re.IGNORECASE))
 
 
+def llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
+    """Determine LLM working state from ordered LLM statuses.
+
+    Returns True when the most recent state after any 'started work' entry has
+    no subsequent 'finished work' entry, False when a later 'finished work'
+    exists, and None when the statuses do not provide a signal.
+    """
+    if not llm_statuses:
+        return None
+
+    last_started_idx = None
+    last_finished_idx = None
+    reviewing_chain_finished_idx = None
+    review_idx = None
+    started_after_review_idx = None
+
+    for idx, status in enumerate(llm_statuses):
+        lowered = status.lower()
+        if "reviewing" in lowered:
+            review_idx = idx
+            started_after_review_idx = None
+        if "started work" in lowered:
+            last_started_idx = idx
+            if review_idx is not None and idx > review_idx:
+                started_after_review_idx = idx
+        if "finished work" in lowered:
+            last_finished_idx = idx
+            if started_after_review_idx is not None and idx > started_after_review_idx:
+                reviewing_chain_finished_idx = idx
+
+    if last_finished_idx is not None and last_started_idx is not None and last_finished_idx > last_started_idx:
+        return False
+
+    if reviewing_chain_finished_idx is not None and (last_started_idx is None or reviewing_chain_finished_idx >= last_started_idx):
+        return False
+
+    if last_started_idx is not None and (last_finished_idx is None or last_started_idx > last_finished_idx):
+        return True
+
+    return None
+
+
 def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
     """Determine the phase without considering comment reactions."""
     is_draft = pr.get("isDraft", False)
@@ -298,6 +340,10 @@ def determine_phase(pr: Dict[str, Any]) -> str:
     # may have reactions indicating the bot is processing them
     if has_comments_with_reactions(comment_nodes):
         if not comment_reactions_marked_finished(pr, comment_nodes):
+            llm_statuses = pr.get("llm_statuses") or []
+            llm_working = llm_working_from_statuses(llm_statuses)
+            if llm_working is False:
+                return _determine_phase_without_comment_reactions(pr)
             return PHASE_LLM_WORKING
 
     return _determine_phase_without_comment_reactions(pr)

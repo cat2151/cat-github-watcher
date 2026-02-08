@@ -154,7 +154,7 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
     print(f"    URL: {url}")
     if display_pr_author:
         print(f"    Author: {author_login}")
-    if phase == PHASE_LLM_WORKING and progress_label and "completed" in progress_label.lower():
+    if phase == PHASE_LLM_WORKING and "completed" in progress_label.lower():
         print("    LLM status timeline (latest last):")
         if llm_statuses:
             for idx, status in enumerate(llm_statuses, start=1):

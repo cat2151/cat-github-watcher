@@ -419,10 +419,9 @@ class TestDeterminePhase:
 
         assert determine_phase(pr) == "LLM working"
 
-    def test_eyes_reaction_finished_via_html_allows_phase3(self, tmp_path):
+    def test_llm_status_finished_via_html_allows_phase3(self, tmp_path):
         """
-        When eyes reactions remain but HTML snapshot shows 'finished work' after the reaction,
-        the PR should progress to phase3 on subsequent checks.
+        When reactions remain but LLM status shows finished work after starting, phase3 should apply.
         """
         reset_snapshot_cache(clear_content_cache=True)
         reset_comment_reaction_resolution_cache()
@@ -457,8 +456,8 @@ class TestDeterminePhase:
 
         html_content = """
         <div class="prc-PageLayout-Content-xWL-A">
-            <p>copilot reacted with eyes emoji</p>
-            <p>copilot finished work</p>
+            <p>LLM status: started work</p>
+            <p>LLM status: finished work</p>
         </div>
         """
         current_time = datetime(2024, 1, 2, 3, 4, 5)
@@ -470,9 +469,55 @@ class TestDeterminePhase:
         # After snapshot analysis, reactions are considered finished and phase3 logic applies
         assert determine_phase(pr) == PHASE_3
 
+    def test_llm_status_started_without_finish_stays_llm_working(self, tmp_path):
+        """If started work is present without a later finished work, stay in LLM working."""
+        reset_snapshot_cache(clear_content_cache=True)
+        reset_comment_reaction_resolution_cache()
+
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "## Pull request overview\n\nLooks good overall.",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
+            "commentNodes": [
+                {
+                    "body": "Working on it",
+                    "reactionGroups": [
+                        {"content": "EYES", "users": {"totalCount": 1}},
+                    ],
+                }
+            ],
+            "reviewThreads": [],
+            "repository": {"owner": "owner", "name": "repo"},
+            "url": "https://github.com/owner/repo/pull/123",
+            "title": "Test PR",
+            "author": {"login": "octocat"},
+        }
+
+        assert determine_phase(pr) == PHASE_LLM_WORKING
+
+        html_content = """
+        <div class="prc-PageLayout-Content-xWL-A">
+            <p>LLM status: started work</p>
+            <p>LLM status: reviewing changes</p>
+        </div>
+        """
+        current_time = datetime(2024, 1, 2, 3, 4, 5)
+        record_reaction_snapshot(
+            pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=current_time, html_content=html_content
+        )
+
+        # Without a finished work status after starting, remain in LLM working
+        assert determine_phase(pr) == PHASE_LLM_WORKING
+
     def test_finished_reaction_signature_survives_comment_reordering(self, tmp_path):
         """
-        Finished eyes reactions should remain recognized even when comment order changes (new comments added).
+        Finished reactions should remain recognized even when comment order changes (new comments added).
         """
         reset_snapshot_cache(clear_content_cache=True)
         reset_comment_reaction_resolution_cache()
@@ -506,8 +551,8 @@ class TestDeterminePhase:
         assert determine_phase(pr) == PHASE_LLM_WORKING
         html_content = """
         <div class="prc-PageLayout-Content-xWL-A">
-            <p>copilot reacted with eyes emoji</p>
-            <p>copilot finished work</p>
+            <p>LLM status: started work</p>
+            <p>LLM status: finished work</p>
         </div>
         """
         current_time = datetime(2024, 1, 2, 3, 4, 5)
@@ -561,8 +606,8 @@ class TestDeterminePhase:
 
         html_content = """
         <div class="prc-PageLayout-Content-xWL-A">
-            <p>copilot reacted with eyes emoji</p>
-            <p>copilot finished work</p>
+            <p>LLM status: started work</p>
+            <p>LLM status: finished work</p>
         </div>
         """
         current_time = datetime(2024, 1, 2, 3, 4, 5)

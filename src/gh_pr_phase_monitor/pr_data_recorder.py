@@ -78,17 +78,36 @@ def _summarize_review_threads(review_threads: Any) -> str:
     return f"{unresolved} unresolved"
 
 
-def _eyes_reaction_finished(html_markdown: str) -> bool:
-    """Detect whether eyes reactions were followed by a 'finished work' marker in the snapshot."""
-    if not html_markdown:
+def _llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
+    """Determine LLM working state from ordered LLM statuses.
+
+    Returns True when the most recent state after any 'started work' entry has
+    no subsequent 'finished work' entry, False when a later 'finished work'
+    exists, and None when the statuses do not provide a signal.
+    """
+    if not llm_statuses:
+        return None
+
+    last_started_idx = None
+    last_finished_idx = None
+
+    for idx, status in enumerate(llm_statuses):
+        lowered = status.lower()
+        if "started work" in lowered:
+            last_started_idx = idx
+        if "finished work" in lowered:
+            last_finished_idx = idx
+
+    if last_started_idx is None and last_finished_idx is None:
+        return None
+
+    if last_finished_idx is not None and (last_started_idx is None or last_finished_idx > last_started_idx):
         return False
 
-    lowered = html_markdown.lower()
-    eyes_index = lowered.rfind("reacted with eyes emoji")
-    if eyes_index == -1:
-        return False
+    if last_started_idx is not None and (last_finished_idx is None or last_started_idx > last_finished_idx):
+        return True
 
-    return lowered.find("finished work", eyes_index) != -1
+    return None
 
 
 def _build_markdown(
@@ -714,7 +733,7 @@ def record_reaction_snapshot(
     fetched_html = html_content
     pr_url = pr.get("url", "")
 
-    captured_status = {"html_markdown_with_status": ""}
+    captured_status = {"html_markdown_with_status": "", "statuses": []}
     if html_content:
         current_html_md = _html_to_simple_markdown(html_content)
         captured_status = _capture_llm_statuses(html_content, current_html_md)
@@ -760,7 +779,8 @@ def record_reaction_snapshot(
 
     # Update reaction resolution cache based on HTML snapshot content
     if current_html_md:
-        reactions_finished = _eyes_reaction_finished(current_html_md)
+        llm_working = _llm_working_from_statuses(captured_status.get("statuses", []))
+        reactions_finished = llm_working is False
         update_comment_reaction_resolution(pr, comment_nodes, reactions_finished)
 
     # Update previous content cache for next iteration

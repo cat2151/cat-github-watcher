@@ -77,7 +77,7 @@ cat-github-watcher/
 
 ### 前提条件
 
-- Python 3.x がインストールされている
+- Python 3.10 以上がインストールされている
 - GitHub CLI (`gh`) がインストールされ、認証済みである
   ```bash
   gh auth login

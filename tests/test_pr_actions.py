@@ -156,6 +156,28 @@ class TestProcessPR:
         output = capsys.readouterr().out
         assert "Author: llm-author" in output
 
+    def test_llm_working_progress_displayed(self, capsys):
+        """LLM working output should describe completed phases"""
+        pr = {
+            "author": {"login": "llm-author"},
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "LLM PR",
+            "url": "https://github.com/test-owner/test-repo/pull/5",
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "APPROVED",
+                    "body": "Looks good!",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"}],
+        }
+
+        process_pr(pr, {}, phase=PHASE_LLM_WORKING)
+        output = capsys.readouterr().out
+        assert "Phase 2 completed, LLM working" in output
+
     def test_browser_opened_only_once_for_phase3(self):
         """Browser should open only once for phase3, even if called multiple times"""
         pr = {

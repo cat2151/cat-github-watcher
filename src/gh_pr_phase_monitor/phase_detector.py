@@ -172,30 +172,13 @@ def has_inline_review_comments(review_body: str) -> bool:
     return bool(re.search(pattern, review_body, re.IGNORECASE))
 
 
-def determine_phase(pr: Dict[str, Any]) -> str:
-    """Determine which phase the PR is in
-
-    Args:
-        pr: PR data dictionary
-
-    Returns:
-        Phase string: PHASE_1, PHASE_2, PHASE_3, or PHASE_LLM_WORKING
-    """
+def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
+    """Determine the phase without considering comment reactions."""
     is_draft = pr.get("isDraft", False)
     reviews = pr.get("reviews", [])
     latest_reviews = pr.get("latestReviews", [])
     review_requests = pr.get("reviewRequests", [])
-    # Use commentNodes if available (new API), fall back to comments for legacy compatibility
-    comment_nodes = pr.get("commentNodes", pr.get("comments", []))
-    # Get review threads (inline comments)
     review_threads = pr.get("reviewThreads", [])
-
-    # Check if any comments have reactions - this indicates LLM is working
-    # When the coding agent is responding to PR comments, those comments
-    # may have reactions indicating the bot is processing them
-    if has_comments_with_reactions(comment_nodes):
-        if not comment_reactions_marked_finished(pr, comment_nodes):
-            return PHASE_LLM_WORKING
 
     # Phase 1: Draft状態 (ただし、reviewRequestsが空の場合はLLM working)
     if is_draft:
@@ -296,3 +279,41 @@ def determine_phase(pr: Dict[str, Any]) -> str:
         return PHASE_3
 
     return PHASE_LLM_WORKING
+
+
+def determine_phase(pr: Dict[str, Any]) -> str:
+    """Determine which phase the PR is in
+
+    Args:
+        pr: PR data dictionary
+
+    Returns:
+        Phase string: PHASE_1, PHASE_2, PHASE_3, or PHASE_LLM_WORKING
+    """
+    # Use commentNodes if available (new API), fall back to comments for legacy compatibility
+    comment_nodes = pr.get("commentNodes", pr.get("comments", []))
+
+    # Check if any comments have reactions - this indicates LLM is working
+    # When the coding agent is responding to PR comments, those comments
+    # may have reactions indicating the bot is processing them
+    if has_comments_with_reactions(comment_nodes):
+        if not comment_reactions_marked_finished(pr, comment_nodes):
+            return PHASE_LLM_WORKING
+
+    return _determine_phase_without_comment_reactions(pr)
+
+
+def get_llm_working_progress_label(pr: Dict[str, Any]) -> str:
+    """Describe how far the PR has progressed when in LLM working phase."""
+    base_phase = _determine_phase_without_comment_reactions(pr)
+
+    if pr.get("isDraft", False):
+        return "Phase 1 in progress"
+
+    if base_phase == PHASE_3:
+        return "Phase 2 completed"
+
+    if base_phase == PHASE_2:
+        return "Phase 1 completed"
+
+    return "Phase 1 completed"

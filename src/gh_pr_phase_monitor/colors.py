@@ -16,11 +16,12 @@ class Colors:
     BLUE = "\033[94m"
 
 
-def colorize_phase(phase: str) -> str:
+def colorize_phase(phase: str, llm_progress: str | None = None) -> str:
     """Add color to phase string
 
     Args:
         phase: Phase string (phase1, phase2, phase3, or LLM working)
+        llm_progress: Progress label to prepend for LLM working (optional)
 
     Returns:
         Colorized phase string with ANSI codes
@@ -32,4 +33,7 @@ def colorize_phase(phase: str) -> str:
     elif phase == "phase3":
         return f"{Colors.BOLD}{Colors.GREEN}[{phase}]{Colors.RESET}"
     else:  # LLM working
-        return f"{Colors.BOLD}{Colors.MAGENTA}[{phase}]{Colors.RESET}"
+        label = phase
+        if llm_progress:
+            label = f"{llm_progress}, {phase}"
+        return f"{Colors.BOLD}{Colors.MAGENTA}[{label}]{Colors.RESET}"

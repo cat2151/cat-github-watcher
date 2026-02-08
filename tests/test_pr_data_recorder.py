@@ -42,9 +42,9 @@ def _sample_pr():
 
 @pytest.fixture(autouse=True)
 def reset_snapshot_cache_fixture():
-    reset_snapshot_cache()
+    reset_snapshot_cache(clear_content_cache=True)
     yield
-    reset_snapshot_cache()
+    reset_snapshot_cache(clear_content_cache=True)
 
 
 def test_save_pr_snapshot_writes_json_and_markdown(tmp_path):
@@ -688,3 +688,55 @@ def test_record_reaction_snapshot_across_iterations(tmp_path):
         # Only 2 snapshots should have been created (not 3)
         snapshot_files = [f for f in result1["snapshot_dir"].iterdir() if f.name.endswith("_summary.md")]
         assert len(snapshot_files) == 2
+
+
+def test_record_reaction_snapshot_html_tag_changes_ignored(tmp_path):
+    """Test that HTML tag changes without content changes don't create duplicate snapshots"""
+    pr = _sample_pr()
+    time1 = datetime(2024, 1, 2, 3, 4, 5)
+    time2 = datetime(2024, 1, 2, 3, 5, 10)
+
+    # Mock HTML with identical content but different HTML tags (e.g., session IDs, timestamps)
+    mock_html_1 = """
+    <html data-session="abc123" data-timestamp="1234567890">
+    <body>
+        <div class="prc-PageLayout-Content-xWL-A">
+            <h1>Test PR</h1>
+            <p>This is the PR content that matters</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    mock_html_2 = """
+    <html data-session="xyz789" data-timestamp="9876543210">
+    <body>
+        <div class="prc-PageLayout-Content-xWL-A">
+            <h1>Test PR</h1>
+            <p>This is the PR content that matters</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    with patch("src.gh_pr_phase_monitor.pr_data_recorder.subprocess.run") as mock_run:
+        # First iteration - should record snapshot
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = mock_html_1
+
+        result1 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time1)
+        assert result1 is not None
+        assert result1["markdown_path"].exists()
+
+        # Simulate new iteration by resetting cache
+        reset_snapshot_cache()
+
+        # Second iteration with different HTML tags but SAME content - should NOT record
+        mock_run.return_value.stdout = mock_html_2
+
+        result2 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time2)
+        assert result2 is None
+
+        # Only 1 snapshot should have been created
+        snapshot_files = [f for f in result1["snapshot_dir"].iterdir() if f.name.endswith("_summary.md")]
+        assert len(snapshot_files) == 1

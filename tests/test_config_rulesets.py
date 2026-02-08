@@ -20,6 +20,7 @@ class TestResolveExecutionConfigForRepo:
         assert result["enable_execution_phase2_to_phase3"] is False
         assert result["enable_execution_phase3_send_ntfy"] is False
         assert result["enable_execution_phase3_to_merge"] is False
+        assert result["enable_execution_pr_title_fix_comment"] is False
 
     def test_empty_rulesets_defaults_to_false(self):
         """When rulesets array is empty, all flags default to false"""
@@ -33,6 +34,7 @@ class TestResolveExecutionConfigForRepo:
         assert result["enable_execution_phase2_to_phase3"] is False
         assert result["enable_execution_phase3_send_ntfy"] is False
         assert result["enable_execution_phase3_to_merge"] is False
+        assert result["enable_execution_pr_title_fix_comment"] is False
 
     def test_global_flags_are_ignored(self):
         """Global execution flags are ignored (deprecated)"""
@@ -397,3 +399,89 @@ class TestBooleanValidation:
         # Should not raise error because first ruleset doesn't match
         result = resolve_execution_config_for_repo(config, "owner", "test-repo")
         assert result["enable_execution_phase1_to_phase2"] is True
+
+
+class TestPRTitleFixCommentFlag:
+    """Test enable_execution_pr_title_fix_comment flag in rulesets"""
+
+    def test_pr_title_fix_comment_enabled_in_ruleset(self):
+        """Should enable PR title fix comment when set in ruleset"""
+        config = {
+            "rulesets": [
+                {
+                    "name": "Enable PR title fix for all repos",
+                    "repositories": ["all"],
+                    "enable_execution_pr_title_fix_comment": True,
+                }
+            ],
+        }
+
+        result = resolve_execution_config_for_repo(config, "owner", "test-repo")
+        assert result["enable_execution_pr_title_fix_comment"] is True
+
+    def test_pr_title_fix_comment_disabled_in_ruleset(self):
+        """Should disable PR title fix comment when explicitly set to false"""
+        config = {
+            "rulesets": [
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_pr_title_fix_comment": False,
+                }
+            ],
+        }
+
+        result = resolve_execution_config_for_repo(config, "owner", "test-repo")
+        assert result["enable_execution_pr_title_fix_comment"] is False
+
+    def test_pr_title_fix_comment_with_other_flags(self):
+        """Should work alongside other execution flags"""
+        config = {
+            "rulesets": [
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_phase1_to_phase2": True,
+                    "enable_execution_phase2_to_phase3": True,
+                    "enable_execution_pr_title_fix_comment": True,
+                }
+            ],
+        }
+
+        result = resolve_execution_config_for_repo(config, "owner", "test-repo")
+        assert result["enable_execution_phase1_to_phase2"] is True
+        assert result["enable_execution_phase2_to_phase3"] is True
+        assert result["enable_execution_pr_title_fix_comment"] is True
+
+    def test_pr_title_fix_comment_ruleset_override(self):
+        """Later rulesets should override earlier ones for PR title fix flag"""
+        config = {
+            "rulesets": [
+                {
+                    "repositories": ["all"],
+                    "enable_execution_pr_title_fix_comment": False,
+                },
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_pr_title_fix_comment": True,
+                },
+            ],
+        }
+
+        result = resolve_execution_config_for_repo(config, "owner", "test-repo")
+        assert result["enable_execution_pr_title_fix_comment"] is True
+
+    def test_pr_title_fix_comment_validates_boolean(self):
+        """Should validate that PR title fix comment flag is boolean"""
+        config = {
+            "rulesets": [
+                {
+                    "repositories": ["test-repo"],
+                    "enable_execution_pr_title_fix_comment": "yes",  # String instead of boolean
+                }
+            ],
+        }
+
+        with pytest.raises(ValueError) as exc_info:
+            resolve_execution_config_for_repo(config, "owner", "test-repo")
+
+        assert "must be a boolean" in str(exc_info.value)
+        assert "enable_execution_pr_title_fix_comment" in str(exc_info.value)

@@ -10,6 +10,7 @@ from src.gh_pr_phase_monitor.pr_data_recorder import (
     DEFAULT_SNAPSHOT_BASE_DIR,
     _fetch_pr_html,
     _html_to_simple_markdown,
+    _json_to_markdown,
     _reset_snapshot_cache,
     record_reaction_snapshot,
     save_pr_snapshot,
@@ -69,7 +70,7 @@ def test_save_pr_snapshot_writes_json_and_markdown(tmp_path):
     markdown_content = markdown_path.read_text(encoding="utf-8")
     assert "comment_reactions_detected" in markdown_content
     assert "Comment 1: EYES x1" in markdown_content
-    assert "commentNodes" in markdown_content
+    assert "- **commentNodes**:" in markdown_content
 
 
 def test_record_reaction_snapshot_respects_phase_and_reactions(tmp_path):
@@ -126,7 +127,7 @@ def test_markdown_filters_zero_reaction_comments_and_renders_body(tmp_path):
     markdown_content = result["markdown_path"].read_text(encoding="utf-8")
     assert "THUMBS_UP" not in markdown_content
     assert "Line1\nLine2" in markdown_content
-    assert "commentNodes" in markdown_content
+    assert "- **commentNodes**:" in markdown_content
 
 
 def test_snapshot_not_rewritten_when_unchanged(tmp_path):
@@ -299,3 +300,104 @@ def test_save_pr_snapshot_with_fetch_html_disabled(tmp_path):
         assert "html_md_path" not in result
 
 
+def test_json_to_markdown_simple_dict():
+    """Test JSON to markdown conversion for simple dictionary"""
+    data = {"name": "test", "value": 42, "enabled": True, "empty": None}
+    result = _json_to_markdown(data)
+
+    assert "- **name**: test" in result
+    assert "- **value**: 42" in result
+    assert "- **enabled**: True" in result
+    assert "- **empty**: null" in result
+
+
+def test_json_to_markdown_nested_dict():
+    """Test JSON to markdown conversion for nested dictionary"""
+    data = {"user": {"login": "octocat", "id": 123}, "settings": {}}
+    result = _json_to_markdown(data)
+
+    assert "- **user**:" in result
+    assert "  - **login**: octocat" in result
+    assert "  - **id**: 123" in result
+    assert "- **settings**: {}" in result
+
+
+def test_json_to_markdown_list():
+    """Test JSON to markdown conversion for lists"""
+    data = {"items": [1, 2, 3], "empty_list": []}
+    result = _json_to_markdown(data)
+
+    assert "- **items**: (3 items)" in result
+    assert "  - [1]: 1" in result
+    assert "  - [2]: 2" in result
+    assert "  - [3]: 3" in result
+    assert "- **empty_list**: []" in result
+
+
+def test_json_to_markdown_list_of_dicts():
+    """Test JSON to markdown conversion for list of dictionaries"""
+    data = {"comments": [{"body": "First comment", "author": "user1"}, {"body": "Second comment", "author": "user2"}]}
+    result = _json_to_markdown(data)
+
+    assert "- **comments**: (2 items)" in result
+    assert "  - [1]:" in result
+    assert "    - **body**: First comment" in result
+    assert "    - **author**: user1" in result
+    assert "  - [2]:" in result
+    assert "    - **body**: Second comment" in result
+    assert "    - **author**: user2" in result
+
+
+def test_json_to_markdown_escapes_newlines():
+    """Test that JSON to markdown properly escapes newlines in strings"""
+    data = {"text": "Line 1\nLine 2\r\nLine 3", "number": 42}
+    result = _json_to_markdown(data)
+
+    assert "- **text**: Line 1\\nLine 2\\r\\nLine 3" in result
+    assert "- **number**: 42" in result
+
+
+def test_json_to_markdown_complex_structure():
+    """Test JSON to markdown with complex nested structure"""
+    data = {
+        "title": "Test PR",
+        "author": {"login": "octocat"},
+        "reviews": [{"state": "APPROVED", "author": {"login": "reviewer1"}}],
+        "commentNodes": [],
+    }
+    result = _json_to_markdown(data)
+
+    assert "- **title**: Test PR" in result
+    assert "- **author**:" in result
+    assert "  - **login**: octocat" in result
+    assert "- **reviews**: (1 items)" in result
+    assert "  - [1]:" in result
+    assert "    - **state**: APPROVED" in result
+    assert "    - **author**:" in result
+    assert "      - **login**: reviewer1" in result
+    assert "- **commentNodes**: []" in result
+
+
+def test_save_pr_snapshot_markdown_contains_formatted_data(tmp_path):
+    """Test that markdown snapshot contains formatted markdown instead of raw JSON"""
+    current_time = datetime(2024, 1, 2, 3, 4, 5)
+    result = save_pr_snapshot(
+        _sample_pr(),
+        reason="comment_reactions_detected",
+        base_dir=tmp_path,
+        current_time=current_time,
+        fetch_html=False,
+    )
+
+    markdown_content = result["markdown_path"].read_text(encoding="utf-8")
+
+    # Should contain markdown-formatted data, not JSON syntax
+    assert "- **title**: Test PR" in markdown_content
+    assert "- **url**: https://github.com/octocat/hello-world/pull/123" in markdown_content
+    assert "- **author**:" in markdown_content
+    assert "  - **login**: octocat" in markdown_content
+
+    # Should NOT contain JSON syntax markers
+    assert '"title":' not in markdown_content
+    assert '"author": {' not in markdown_content
+    assert "```json" not in markdown_content

@@ -131,9 +131,7 @@ def _build_markdown(
     lines.append("## Raw snapshot")
     lines.append(f"- Saved at: {timestamp_str}")
     lines.append("")
-    lines.append("```json")
     lines.append(markdown_raw_snapshot)
-    lines.append("```")
 
     return "\n".join(lines)
 
@@ -159,13 +157,83 @@ def _filter_reactions(comment_nodes: Any) -> List[Dict[str, Any]]:
     return filtered_comments
 
 
+def _json_to_markdown(data: Any, indent_level: int = 0) -> str:
+    """Convert JSON data to markdown format with headers and bullet lists.
+
+    Args:
+        data: JSON data to convert (dict, list, or primitive)
+        indent_level: Current indentation level for nested structures
+
+    Returns:
+        Markdown-formatted string representation
+    """
+    indent = "  " * indent_level
+    lines = []
+
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if value is None:
+                lines.append(f"{indent}- **{key}**: null")
+            elif isinstance(value, (str, int, float, bool)):
+                # Escape newlines in string values for readability
+                if isinstance(value, str):
+                    value_str = value.replace("\n", "\\n").replace("\r", "\\r")
+                else:
+                    value_str = str(value)
+                lines.append(f"{indent}- **{key}**: {value_str}")
+            elif isinstance(value, dict):
+                if not value:
+                    lines.append(f"{indent}- **{key}**: {{}}")
+                else:
+                    lines.append(f"{indent}- **{key}**:")
+                    lines.append(_json_to_markdown(value, indent_level + 1))
+            elif isinstance(value, list):
+                if not value:
+                    lines.append(f"{indent}- **{key}**: []")
+                else:
+                    lines.append(f"{indent}- **{key}**: ({len(value)} items)")
+                    lines.append(_json_to_markdown(value, indent_level + 1))
+            else:
+                lines.append(f"{indent}- **{key}**: {value}")
+    elif isinstance(data, list):
+        for idx, item in enumerate(data, start=1):
+            if isinstance(item, (str, int, float, bool)):
+                if isinstance(item, str):
+                    item_str = item.replace("\n", "\\n").replace("\r", "\\r")
+                else:
+                    item_str = str(item)
+                lines.append(f"{indent}- [{idx}]: {item_str}")
+            elif isinstance(item, dict):
+                if not item:
+                    lines.append(f"{indent}- [{idx}]: {{}}")
+                else:
+                    lines.append(f"{indent}- [{idx}]:")
+                    lines.append(_json_to_markdown(item, indent_level + 1))
+            elif isinstance(item, list):
+                if not item:
+                    lines.append(f"{indent}- [{idx}]: []")
+                else:
+                    lines.append(f"{indent}- [{idx}]: ({len(item)} items)")
+                    lines.append(_json_to_markdown(item, indent_level + 1))
+            else:
+                lines.append(f"{indent}- [{idx}]: {item}")
+    else:
+        # Primitive value at root level
+        if isinstance(data, str):
+            lines.append(data.replace("\n", "\\n").replace("\r", "\\r"))
+        else:
+            lines.append(str(data))
+
+    return "\n".join(lines)
+
+
 def _prepare_markdown_raw(pr: Dict[str, Any]) -> str:
-    """Prepare a markdown-friendly JSON representation of the PR with filters applied."""
+    """Prepare a markdown-friendly representation of the PR with filters applied."""
     pr_copy = json.loads(json.dumps(pr, ensure_ascii=False))
     pr_copy["commentNodes"] = _filter_reactions(pr_copy.get("commentNodes", []))
     pr_copy["comments"] = _filter_reactions(pr_copy.get("comments", []))
 
-    return json.dumps(pr_copy, ensure_ascii=False, indent=2)
+    return _json_to_markdown(pr_copy)
 
 
 def _write_if_changed(path: Path, content: str) -> None:

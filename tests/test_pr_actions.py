@@ -191,6 +191,20 @@ class TestProcessPR:
         output = capsys.readouterr().out
         assert "Phase 2 completed, LLM working" in output
 
+    def test_llm_working_shows_latest_status(self, capsys):
+        """LLM working output should include the latest LLM status"""
+        pr = {
+            "author": {"login": "llm-author"},
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "LLM PR",
+            "url": "https://github.com/test-owner/test-repo/pull/6",
+            "llm_statuses": ["started work on files", "finished work on feedback"],
+        }
+
+        process_pr(pr, {}, phase=PHASE_LLM_WORKING)
+        output = capsys.readouterr().out
+        assert "Latest LLM status: finished work on feedback" in output
+
     def test_browser_opened_only_once_for_phase3(self):
         """Browser should open only once for phase3, even if called multiple times"""
         pr = {

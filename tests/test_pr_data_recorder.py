@@ -92,6 +92,24 @@ def test_record_reaction_snapshot_respects_phase_and_reactions(tmp_path):
     assert result["markdown_path"].exists()
 
 
+def test_record_reaction_snapshot_sets_llm_statuses_on_pr(tmp_path):
+    pr = _sample_pr()
+    current_time = datetime(2024, 1, 2, 3, 4, 5)
+
+    html_content = '<div data-llm-status="finished work items"></div>'
+
+    result = record_reaction_snapshot(
+        pr,
+        phase=PHASE_LLM_WORKING,
+        base_dir=tmp_path,
+        current_time=current_time,
+        html_content=html_content,
+    )
+
+    assert result is not None
+    assert pr.get("llm_statuses") == ["finished work items"]
+
+
 def test_record_reaction_snapshot_skips_when_no_reactions(tmp_path):
     pr = _sample_pr()
     pr["commentNodes"] = []

@@ -18,7 +18,7 @@ DEFAULT_SNAPSHOT_BASE_DIR = Path("pr_phase_snapshots")
 # Once flag to prevent duplicate snapshots within the same iteration
 _recorded_in_current_iteration: Set[str] = set()
 
-# Store previous iteration's content for comparison (PR key -> {json, html_md})
+# Store previous iteration's content for comparison (PR key -> {json, html_md, llm_statuses})
 _previous_pr_content: Dict[str, Dict[str, str]] = {}
 
 
@@ -489,7 +489,15 @@ def _add_status(statuses: List[str], seen: Set[str], text: str) -> None:
         return
     if normalized.startswith(("](", "[")):
         return
-    actionable_markers = ("started", "finished", "comment", "reviewed", "review request", "requested a review", "ready for review")
+    actionable_markers = (
+        "started",
+        "finished",
+        "comment",
+        "reviewed",
+        "review request",
+        "requested a review",
+        "ready for review",
+    )
     if not any(marker in lower for marker in actionable_markers):
         return
     if "commented" in lower:
@@ -764,6 +772,7 @@ def record_reaction_snapshot(
     previous_content = _previous_pr_content.get(pr_key, {})
     previous_json = previous_content.get("json", "")
     previous_html_md = previous_content.get("html_md", "")
+    latest_llm_statuses: List[str] = previous_content.get("llm_statuses", []) or []
 
     # Short-circuit: if JSON changed, we know content changed (no need to fetch HTML for comparison)
     json_changed = current_json != previous_json
@@ -779,6 +788,9 @@ def record_reaction_snapshot(
         current_html_md = _html_to_simple_markdown(html_content)
         captured_status = _capture_llm_statuses(html_content, current_html_md)
         current_html_md = captured_status["html_markdown_with_status"]
+        if captured_status["statuses"]:
+            latest_llm_statuses = captured_status["statuses"]
+            pr["llm_statuses"] = latest_llm_statuses
 
     if fetched_html is None and not json_changed and pr_url:
         # JSON unchanged, check HTML for changes
@@ -788,6 +800,9 @@ def record_reaction_snapshot(
             current_html_md = _html_to_simple_markdown(fetched_html)
             captured_status = _capture_llm_statuses(fetched_html, current_html_md)
             current_html_md = captured_status["html_markdown_with_status"]
+            if captured_status["statuses"]:
+                latest_llm_statuses = captured_status["statuses"]
+                pr["llm_statuses"] = latest_llm_statuses
 
     # Check if content has changed (compare markdown instead of raw HTML)
     html_changed = current_html_md != previous_html_md
@@ -795,6 +810,10 @@ def record_reaction_snapshot(
 
     if not content_changed and previous_json:
         # Content unchanged, mark as recorded and skip saving
+        if latest_llm_statuses:
+            pr["llm_statuses"] = latest_llm_statuses
+            if pr_key in _previous_pr_content:
+                _previous_pr_content[pr_key]["llm_statuses"] = latest_llm_statuses
         _recorded_in_current_iteration.add(pr_key)
         return None
 
@@ -808,6 +827,10 @@ def record_reaction_snapshot(
         html_content=fetched_html,  # Pass pre-fetched HTML if available
     )
 
+    latest_llm_statuses = snapshot_paths.get("llm_statuses", latest_llm_statuses)
+    if latest_llm_statuses:
+        pr["llm_statuses"] = latest_llm_statuses
+
     # If HTML wasn't fetched during comparison (because JSON changed), fetch it now for caching
     # This ensures we have HTML for the next iteration's comparison
     if fetched_html is None and pr_url:
@@ -817,6 +840,9 @@ def record_reaction_snapshot(
             current_html_md = _html_to_simple_markdown(saved_html)
             captured_status = _capture_llm_statuses(saved_html, current_html_md)
             current_html_md = captured_status["html_markdown_with_status"]
+            if captured_status["statuses"]:
+                latest_llm_statuses = captured_status["statuses"]
+                pr["llm_statuses"] = latest_llm_statuses
 
     # Update reaction resolution cache based on HTML snapshot content
     if current_html_md:
@@ -829,6 +855,7 @@ def record_reaction_snapshot(
     _previous_pr_content[pr_key] = {
         "json": snapshot_paths.get("saved_json", current_json),
         "html_md": current_html_md,
+        "llm_statuses": latest_llm_statuses,
     }
 
     # Mark as recorded in current iteration

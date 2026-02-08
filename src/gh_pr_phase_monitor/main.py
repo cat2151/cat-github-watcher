@@ -137,7 +137,7 @@ def main():
                             record_reaction_snapshot(pr, phase, enable_snapshots=snapshots_enabled)
                             phase = determine_phase(pr)
                         except Exception as snapshot_error:
-                            print(f"    Failed to save PR snapshot: {snapshot_error}")
+                            print(f"    Failed to capture PR reaction/LLM status data: {snapshot_error}")
 
                         pr_phases.append(phase)
                         process_pr(pr, config, phase)

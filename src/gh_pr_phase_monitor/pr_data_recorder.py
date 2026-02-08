@@ -713,8 +713,9 @@ def record_reaction_snapshot(
     the PR JSON or HTML content (converted to markdown) has changed since the previous iteration.
     HTML is converted to markdown before comparison to avoid false changes from HTML tag variations.
 
-    Optimization: HTML is only fetched when JSON hasn't changed, avoiding unnecessary network
-    calls when JSON changes already indicate content updates.
+    Optimization: When snapshots are enabled, HTML is only fetched when JSON hasn't changed to
+    avoid unnecessary network calls. When snapshots are disabled, HTML may still be fetched to
+    capture LLM statuses and reaction resolution even if JSON changed.
 
     Args:
         pr: PR data dictionary.
@@ -771,7 +772,7 @@ def record_reaction_snapshot(
             pr["llm_statuses"] = latest_llm_statuses
 
     if fetched_html is None and pr_url and should_fetch_html:
-        # JSON unchanged, check HTML for changes
+        # Fetch HTML when needed for deduplication or status capture
         fetched_html = _fetch_pr_html(pr_url)
         if fetched_html:
             # Convert HTML to markdown for comparison to avoid HTML tag noise

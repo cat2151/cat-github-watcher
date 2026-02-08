@@ -485,6 +485,8 @@ def print_repo_execution_config(repo_owner: str, repo_name: str, exec_config: Di
     print(f"      enable_execution_phase2_to_phase3: {exec_config.get('enable_execution_phase2_to_phase3', False)}")
     print(f"      enable_execution_phase3_send_ntfy: {exec_config.get('enable_execution_phase3_send_ntfy', False)}")
     print(f"      enable_execution_phase3_to_merge: {exec_config.get('enable_execution_phase3_to_merge', False)}")
-    print(f"      enable_execution_pr_title_fix_comment: {exec_config.get('enable_execution_pr_title_fix_comment', False)}")
+    print(
+        f"      enable_execution_pr_title_fix_comment: {exec_config.get('enable_execution_pr_title_fix_comment', False)}"
+    )
     print(f"      assign_good_first_old: {exec_config.get('assign_good_first_old', False)}")
     print(f"      assign_old: {exec_config.get('assign_old', False)}")

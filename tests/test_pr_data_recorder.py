@@ -12,8 +12,8 @@ from src.gh_pr_phase_monitor.pr_data_recorder import (
     _fetch_pr_html,
     _html_to_simple_markdown,
     _json_to_markdown,
-    _reset_snapshot_cache,
     record_reaction_snapshot,
+    reset_snapshot_cache,
     save_pr_snapshot,
 )
 
@@ -41,10 +41,10 @@ def _sample_pr():
 
 
 @pytest.fixture(autouse=True)
-def reset_snapshot_cache():
-    _reset_snapshot_cache()
+def reset_snapshot_cache_fixture():
+    reset_snapshot_cache()
     yield
-    _reset_snapshot_cache()
+    reset_snapshot_cache()
 
 
 def test_save_pr_snapshot_writes_json_and_markdown(tmp_path):
@@ -633,3 +633,36 @@ def test_multiple_snapshots_same_directory(tmp_path):
         result2["markdown_path"],
     }
     assert expected_files.issubset(files_in_dir)
+
+
+def test_record_reaction_snapshot_across_iterations(tmp_path):
+    """Test that snapshots are recorded in each iteration after cache reset"""
+    pr = _sample_pr()
+    time1 = datetime(2024, 1, 2, 3, 4, 5)
+    time2 = datetime(2024, 1, 2, 3, 5, 10)
+
+    # First iteration - should record snapshot
+    result1 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time1)
+    assert result1 is not None
+    assert result1["markdown_path"].exists()
+
+    # Same iteration - should NOT record (deduplication)
+    result2 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time1)
+    assert result2 is None
+
+    # Simulate new iteration by resetting cache
+    reset_snapshot_cache()
+
+    # New iteration - should record snapshot again
+    result3 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time2)
+    assert result3 is not None
+    assert result3["markdown_path"].exists()
+
+    # Verify both snapshots are in the same directory but have different timestamps
+    assert result1["snapshot_dir"] == result3["snapshot_dir"]
+    assert result1["markdown_path"].name == "20240102_030405_summary.md"
+    assert result3["markdown_path"].name == "20240102_030510_summary.md"
+
+    # Both files should exist
+    assert result1["markdown_path"].exists()
+    assert result3["markdown_path"].exists()

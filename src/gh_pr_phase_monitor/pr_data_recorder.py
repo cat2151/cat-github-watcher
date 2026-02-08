@@ -518,6 +518,10 @@ def record_reaction_snapshot(
     return snapshot_paths
 
 
-def _reset_snapshot_cache() -> None:
-    """Test helper to clear recorded snapshot cache."""
+def reset_snapshot_cache() -> None:
+    """Clear recorded snapshot cache.
+
+    This should be called at the start of each monitoring iteration
+    to allow recording new snapshots with updated timestamps.
+    """
     _recorded_snapshots.clear()

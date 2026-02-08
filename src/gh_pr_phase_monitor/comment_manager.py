@@ -9,16 +9,11 @@ from typing import Any, Dict, List, Optional
 from .github_client import get_existing_comments
 
 CLAUDE_AGENT_LOGINS = {
-    "claude",
-    "claude-ai",
-    "claude-dev",
-    "claude-coding-agent",
+    "anthropic-code-agent",
 }
 
 CODEX_AGENT_LOGINS = {
-    "codex",
-    "codex-ai",
-    "codex-coding-agent",
+    "openai-code-agent",
 }
 
 

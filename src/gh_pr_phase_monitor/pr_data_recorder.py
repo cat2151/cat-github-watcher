@@ -293,6 +293,11 @@ def _html_to_simple_markdown(html: Optional[str]) -> str:
     This is a basic conversion without external dependencies.
     It extracts text content and attempts to preserve structure.
 
+    Improvements:
+    - Removes header content before prc-PageLayout-Content div
+    - Removes footer content and everything after
+    - Consolidates consecutive blank lines (including space-only lines)
+
     Args:
         html: HTML content as string, or None
 
@@ -302,8 +307,23 @@ def _html_to_simple_markdown(html: Optional[str]) -> str:
     if not html:
         return ""
 
+    text = html
+
+    # Remove header content: keep only content from prc-PageLayout-Content onwards
+    # Look for the div with class containing "prc-PageLayout-Content"
+    content_match = re.search(r'<div[^>]*class="[^"]*prc-PageLayout-Content[^"]*"[^>]*>', text, flags=re.IGNORECASE)
+    if content_match:
+        # Keep everything from this div onwards
+        text = text[content_match.start() :]
+
+    # Remove footer content: remove everything from <footer> tag onwards
+    footer_match = re.search(r"<footer[^>]*>", text, flags=re.IGNORECASE)
+    if footer_match:
+        # Keep everything before the footer
+        text = text[: footer_match.start()]
+
     # Remove script and style tags with their content
-    text = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
 
     # Convert common HTML elements to markdown
@@ -344,8 +364,22 @@ def _html_to_simple_markdown(html: Optional[str]) -> str:
     text = text.replace("&#39;", "'")
 
     # Clean up excessive whitespace
-    text = re.sub(r"\n\n\n+", "\n\n", text)
+    # First, consolidate spaces and tabs on each line
     text = re.sub(r"[ \t]+", " ", text)
+    # Then, treat lines with only spaces as blank lines and consolidate consecutive blank lines
+    lines = text.split("\n")
+    cleaned_lines = []
+    prev_blank = False
+    for line in lines:
+        is_blank = line.strip() == ""
+        if is_blank:
+            if not prev_blank:
+                cleaned_lines.append("")
+            prev_blank = True
+        else:
+            cleaned_lines.append(line)
+            prev_blank = False
+    text = "\n".join(cleaned_lines)
 
     return text.strip()
 

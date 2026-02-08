@@ -55,6 +55,10 @@ verbose = false
 # Default: false
 display_pr_author = false
 
+# Save PR phase snapshots for debugging (HTML/JSON/markdown) under pr_phase_snapshots/
+# Default: false (disabled). Enable only when you need detailed snapshots for troubleshooting.
+enable_pr_phase_snapshots = false
+
 # Coding agent mention override (optional)
 # Set to override the default @copilot mention when posting apply comments
 [coding_agent]

@@ -39,6 +39,9 @@ DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE = True
 # Default setting for displaying PR authors in CLI output
 DEFAULT_DISPLAY_PR_AUTHOR = False
 
+# Default setting for saving pr_phase_snapshots (disabled by default for safety/privacy)
+DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS = False
+
 
 def parse_interval(interval_str: str) -> int:
     """Parse interval string like '1m', '30s', '2h' to seconds
@@ -298,6 +301,16 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
             config["display_pr_author"] = DEFAULT_DISPLAY_PR_AUTHOR
     else:
         config["display_pr_author"] = DEFAULT_DISPLAY_PR_AUTHOR
+    if "enable_pr_phase_snapshots" in config:
+        try:
+            config["enable_pr_phase_snapshots"] = _validate_boolean_flag(
+                config["enable_pr_phase_snapshots"], "enable_pr_phase_snapshots"
+            )
+        except ValueError as e:
+            print(f"Warning: {e}. Using default value: {DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS}")
+            config["enable_pr_phase_snapshots"] = DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS
+    else:
+        config["enable_pr_phase_snapshots"] = DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS
 
     return config
 
@@ -324,6 +337,7 @@ def print_config(config: Dict[str, Any]) -> None:
         f"  check_process_before_autoraise: {config.get('check_process_before_autoraise', DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE)}"
     )
     print(f"  display_pr_author: {config.get('display_pr_author', DEFAULT_DISPLAY_PR_AUTHOR)}")
+    print(f"  enable_pr_phase_snapshots: {config.get('enable_pr_phase_snapshots', DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS)}")
 
     coding_agent = config.get("coding_agent")
     if coding_agent and isinstance(coding_agent, dict):

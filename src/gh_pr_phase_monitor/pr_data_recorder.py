@@ -19,7 +19,7 @@ DEFAULT_SNAPSHOT_BASE_DIR = Path("pr_phase_snapshots")
 _recorded_in_current_iteration: Set[str] = set()
 
 # Store previous iteration's content for comparison (PR key -> {json, html_md, llm_statuses})
-_previous_pr_content: Dict[str, Dict[str, str]] = {}
+_previous_pr_content: Dict[str, Dict[str, Any]] = {}
 
 
 def _sanitize_component(value: Any) -> str:
@@ -827,8 +827,9 @@ def record_reaction_snapshot(
         html_content=fetched_html,  # Pass pre-fetched HTML if available
     )
 
-    latest_llm_statuses = snapshot_paths.get("llm_statuses", latest_llm_statuses)
-    if latest_llm_statuses:
+    snapshot_llm_statuses = snapshot_paths.get("llm_statuses")
+    if snapshot_llm_statuses:
+        latest_llm_statuses = snapshot_llm_statuses
         pr["llm_statuses"] = latest_llm_statuses
 
     # If HTML wasn't fetched during comparison (because JSON changed), fetch it now for caching

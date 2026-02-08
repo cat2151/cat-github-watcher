@@ -202,18 +202,19 @@ def _fetch_pr_html(pr_url: str) -> Optional[str]:
         if result.returncode == 0 and result.stdout:
             return result.stdout
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
+        # Silently fail on network/timeout errors - HTML fetch is optional
         pass
     return None
 
 
-def _html_to_simple_markdown(html: str) -> str:
+def _html_to_simple_markdown(html: Optional[str]) -> str:
     """Convert HTML to simple markdown for better readability.
 
     This is a basic conversion without external dependencies.
     It extracts text content and attempts to preserve structure.
 
     Args:
-        html: HTML content as string
+        html: HTML content as string, or None
 
     Returns:
         Simplified markdown representation
@@ -274,6 +275,7 @@ def save_pr_snapshot(
     reason: str,
     base_dir: Optional[Path] = None,
     current_time: Optional[datetime] = None,
+    fetch_html: bool = True,
 ) -> Dict[str, Path]:
     """Save raw PR data, HTML, and markdown summary to disk.
 
@@ -282,6 +284,7 @@ def save_pr_snapshot(
         reason: Reason for capturing the snapshot.
         base_dir: Optional base directory for storing snapshots.
         current_time: Optional timestamp for deterministic testing.
+        fetch_html: Whether to fetch HTML page (default: True). Set to False to avoid blocking network calls.
 
     Returns:
         Paths for the saved snapshot directory and files.
@@ -327,7 +330,7 @@ def save_pr_snapshot(
         "markdown_path": markdown_path,
     }
 
-    if pr_url:
+    if fetch_html and pr_url:
         html_content = _fetch_pr_html(pr_url)
         if html_content:
             _write_if_changed(html_path, html_content)

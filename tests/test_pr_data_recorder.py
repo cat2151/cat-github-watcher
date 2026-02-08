@@ -191,11 +191,11 @@ def test_html_to_simple_markdown_empty():
     assert _html_to_simple_markdown(None) == ""
 
 
-def test_fetch_pr_html_mocked(tmp_path):
+def test_fetch_pr_html_mocked():
     """Test HTML fetching with mock"""
     mock_html = "<html><body><h1>Test PR</h1></body></html>"
 
-    with patch("subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.pr_data_recorder.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = mock_html
 
@@ -205,7 +205,7 @@ def test_fetch_pr_html_mocked(tmp_path):
 
 def test_fetch_pr_html_failure():
     """Test HTML fetching failure handling"""
-    with patch("subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.pr_data_recorder.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 1
         mock_run.return_value.stdout = ""
 
@@ -218,7 +218,7 @@ def test_save_pr_snapshot_with_html(tmp_path):
     mock_html = "<html><body><h1>Test PR Page</h1><p>Some content</p></body></html>"
     current_time = datetime(2024, 1, 2, 3, 4, 5)
 
-    with patch("subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.pr_data_recorder.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = mock_html
 
@@ -252,7 +252,7 @@ def test_save_pr_snapshot_without_html_when_fetch_fails(tmp_path):
     """Test that save_pr_snapshot works even when HTML fetch fails"""
     current_time = datetime(2024, 1, 2, 3, 4, 5)
 
-    with patch("subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.pr_data_recorder.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 1
         mock_run.return_value.stdout = ""
 
@@ -271,4 +271,31 @@ def test_save_pr_snapshot_without_html_when_fetch_fails(tmp_path):
         # Verify HTML files were not created
         assert "html_path" not in result
         assert "html_md_path" not in result
+
+
+def test_save_pr_snapshot_with_fetch_html_disabled(tmp_path):
+    """Test that save_pr_snapshot skips HTML fetch when fetch_html=False"""
+    current_time = datetime(2024, 1, 2, 3, 4, 5)
+
+    with patch("src.gh_pr_phase_monitor.pr_data_recorder.subprocess.run") as mock_run:
+        result = save_pr_snapshot(
+            _sample_pr(),
+            reason="comment_reactions_detected",
+            base_dir=tmp_path,
+            current_time=current_time,
+            fetch_html=False,
+        )
+
+        # Verify subprocess.run was never called
+        mock_run.assert_not_called()
+
+        # Verify basic files were created
+        assert result["snapshot_dir"].is_dir()
+        assert result["raw_path"].exists()
+        assert result["markdown_path"].exists()
+
+        # Verify HTML files were not created
+        assert "html_path" not in result
+        assert "html_md_path" not in result
+
 

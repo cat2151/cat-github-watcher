@@ -128,13 +128,14 @@ def main():
                     # Track phases to detect if all PRs are in "LLM working"
                     for pr in all_prs:
                         phase = determine_phase(pr)
-                        pr_phases.append(phase)
 
                         try:
                             record_reaction_snapshot(pr, phase)
+                            phase = determine_phase(pr)
                         except Exception as snapshot_error:
                             print(f"    Failed to save PR snapshot: {snapshot_error}")
 
+                        pr_phases.append(phase)
                         process_pr(pr, config, phase)
 
                     # Count how many PRs are in "LLM working" phase

@@ -137,7 +137,9 @@ def test_snapshot_not_rewritten_when_unchanged(tmp_path):
     raw_mtime = raw_path.stat().st_mtime_ns
     markdown_mtime = markdown_path.stat().st_mtime_ns
 
-    result_second = save_pr_snapshot(pr, reason="comment_reactions_detected", base_dir=tmp_path, current_time=current_time)
+    result_second = save_pr_snapshot(
+        pr, reason="comment_reactions_detected", base_dir=tmp_path, current_time=current_time
+    )
 
     assert result_second["raw_path"] == raw_path
     assert result_second["markdown_path"] == markdown_path

@@ -7,7 +7,9 @@ Monitors PR phases and opens browser for actionable phases
 from .colors import Colors, colorize_phase
 from .comment_manager import (
     has_copilot_apply_comment,
+    has_problematic_pr_title,
     post_phase2_comment,
+    post_pr_title_fix_comment,
 )
 from .config import get_assign_to_copilot_config, get_config_mtime, get_phase3_merge_config, load_config, parse_interval
 from .display import display_issues_from_repos_without_prs, display_status_summary
@@ -61,7 +63,9 @@ __all__ = [
     "has_unresolved_review_threads",
     # Comment Manager
     "has_copilot_apply_comment",
+    "has_problematic_pr_title",
     "post_phase2_comment",
+    "post_pr_title_fix_comment",
     # PR Actions
     "mark_pr_ready",
     "open_browser",

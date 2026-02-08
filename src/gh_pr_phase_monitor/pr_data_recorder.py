@@ -109,7 +109,7 @@ def _build_markdown(
         f"- Latest review state: {latest_review.get('state', 'unknown') or 'unknown'}",
         "",
         "## Review threads",
-        f"- { _summarize_review_threads(review_threads) }",
+        f"- {_summarize_review_threads(review_threads)}",
         "",
         "## Comment reactions",
     ]

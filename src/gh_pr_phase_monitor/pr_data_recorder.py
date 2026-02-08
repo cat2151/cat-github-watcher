@@ -419,6 +419,122 @@ def _html_to_simple_markdown(html: Optional[str]) -> str:
     return text.strip()
 
 
+def _split_status_tokens(text: str, seen: Set[str]) -> List[str]:
+    """Split potential status text into unique, lowercased tokens."""
+    statuses: List[str] = []
+    for token in re.findall(r"[A-Za-z][A-Za-z0-9_-]*", text or ""):
+        token_lower = token.lower()
+        if token_lower in seen:
+            continue
+        if token_lower in {"llm", "status"}:
+            continue
+        seen.add(token_lower)
+        statuses.append(token_lower)
+    return statuses
+
+
+def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> List[str]:
+    """Extract LLM statuses from simplified markdown content."""
+    statuses: List[str] = []
+    if not html_markdown:
+        return statuses
+
+    lines = html_markdown.split("\n")
+    for idx, line in enumerate(lines):
+        lowered = line.lower()
+        if "llm status" not in lowered:
+            continue
+
+        # Inline statuses on the same line after a colon
+        if ":" in line:
+            _, inline = line.split(":", 1)
+            statuses.extend(_split_status_tokens(inline, seen))
+
+        # Collect bullet lines immediately following the heading/label
+        collected = False
+        for follow in lines[idx + 1 :]:
+            stripped = follow.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("#"):
+                break
+            if stripped.startswith(("-", "*")):
+                statuses.extend(_split_status_tokens(stripped.lstrip("-* ").strip(), seen))
+                collected = True
+                continue
+            # Stop at the first non-bullet content
+            if collected:
+                break
+            break
+
+    return statuses
+
+
+def _extract_llm_statuses_from_html(html: str, seen: Set[str]) -> List[str]:
+    """Extract LLM statuses from raw HTML attributes and nearby text."""
+    statuses: List[str] = []
+    if not html:
+        return statuses
+
+    attribute_patterns = [
+        r'data-llm-status=["\']([^"\']+)["\']',
+        r'aria-label=["\'][^"\']*LLM status[^"\']*[:：]\s*([^"\']+)["\']',
+        r'title=["\'][^"\']*LLM status[^"\']*[:：]\s*([^"\']+)["\']',
+    ]
+    for pattern in attribute_patterns:
+        for match in re.finditer(pattern, html, flags=re.IGNORECASE):
+            statuses.extend(_split_status_tokens(match.group(1), seen))
+
+    for match in re.finditer(r"LLM status[^<]{0,80}", html, flags=re.IGNORECASE):
+        statuses.extend(_split_status_tokens(match.group(0), seen))
+
+    return statuses
+
+
+def _extract_llm_statuses(html: Optional[str], html_markdown: str) -> List[str]:
+    """Extract unique LLM statuses from HTML and its markdown representation."""
+    seen: Set[str] = set()
+    statuses: List[str] = []
+    statuses.extend(_extract_llm_statuses_from_markdown(html_markdown, seen))
+    if html:
+        statuses.extend(_extract_llm_statuses_from_html(html, seen))
+    return statuses
+
+
+def _capture_llm_statuses(
+    html: Optional[str],
+    html_markdown: str,
+    llm_status_path: Optional[Path] = None,
+    result_dict: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Extract LLM statuses, persist to JSON if path provided, and return metadata."""
+    statuses = _extract_llm_statuses(html, html_markdown)
+    augmented_markdown = html_markdown
+
+    if statuses:
+        status_line = f"LLM status: {', '.join(statuses)}"
+        augmented_markdown = f"{html_markdown}\n\n{status_line}" if html_markdown else status_line
+
+        if llm_status_path:
+            status_payload = json.dumps({"llm_statuses": statuses}, ensure_ascii=False, indent=2)
+            _write_if_changed(llm_status_path, status_payload)
+            if result_dict is not None:
+                result_dict["llm_status_path"] = llm_status_path
+                result_dict["llm_statuses"] = statuses
+    else:
+        if llm_status_path:
+            status_payload = json.dumps({"llm_statuses": []}, ensure_ascii=False, indent=2)
+            _write_if_changed(llm_status_path, status_payload)
+            if result_dict is not None:
+                result_dict["llm_status_path"] = llm_status_path
+                result_dict["llm_statuses"] = []
+
+    return {
+        "statuses": statuses,
+        "html_markdown_with_status": augmented_markdown,
+    }
+
+
 def save_pr_snapshot(
     pr: Dict[str, Any],
     reason: str,
@@ -440,8 +556,9 @@ def save_pr_snapshot(
     Returns:
         Dictionary containing:
         - snapshot_dir, raw_path, markdown_path (Path objects)
-        - html_path, html_md_path (Path objects, if HTML was fetched)
+        - html_path, html_md_path, llm_status_path (Path objects, if HTML was fetched)
         - saved_json, saved_html (str, the actual content that was saved)
+        - llm_statuses (list[str], extracted LLM statuses when HTML is available)
     """
     effective_time = current_time if current_time is not None else datetime.now()
 
@@ -461,6 +578,7 @@ def save_pr_snapshot(
     markdown_path = snapshot_dir / f"{file_prefix}_summary.md"
     html_path = snapshot_dir / f"{file_prefix}_page.html"
     html_md_path = snapshot_dir / f"{file_prefix}_page.md"
+    llm_status_path = snapshot_dir / f"{file_prefix}_llm_statuses.json"
 
     reactions_summary = _summarize_reactions(pr.get("commentNodes", pr.get("comments", [])))
     markdown_raw_snapshot = _prepare_markdown_raw(pr)
@@ -499,8 +617,9 @@ def save_pr_snapshot(
 
         # Convert HTML to markdown for better readability
         html_as_markdown = _html_to_simple_markdown(html_content)
-        if html_as_markdown:
-            _write_if_changed(html_md_path, html_as_markdown)
+        captured = _capture_llm_statuses(html_content, html_as_markdown, llm_status_path, result_dict)
+        if captured["html_markdown_with_status"]:
+            _write_if_changed(html_md_path, captured["html_markdown_with_status"])
             result_dict["html_md_path"] = html_md_path
     elif fetch_html and pr_url:
         # Fetch HTML if not provided
@@ -512,8 +631,9 @@ def save_pr_snapshot(
 
             # Convert HTML to markdown for better readability
             html_as_markdown = _html_to_simple_markdown(fetched_html)
-            if html_as_markdown:
-                _write_if_changed(html_md_path, html_as_markdown)
+            captured = _capture_llm_statuses(fetched_html, html_as_markdown, llm_status_path, result_dict)
+            if captured["html_markdown_with_status"]:
+                _write_if_changed(html_md_path, captured["html_markdown_with_status"])
                 result_dict["html_md_path"] = html_md_path
 
     return result_dict
@@ -575,8 +695,11 @@ def record_reaction_snapshot(
     fetched_html = html_content
     pr_url = pr.get("url", "")
 
+    captured_status = {"html_markdown_with_status": ""}
     if html_content:
         current_html_md = _html_to_simple_markdown(html_content)
+        captured_status = _capture_llm_statuses(html_content, current_html_md)
+        current_html_md = captured_status["html_markdown_with_status"]
 
     if fetched_html is None and not json_changed and pr_url:
         # JSON unchanged, check HTML for changes
@@ -584,6 +707,8 @@ def record_reaction_snapshot(
         if fetched_html:
             # Convert HTML to markdown for comparison to avoid HTML tag noise
             current_html_md = _html_to_simple_markdown(fetched_html)
+            captured_status = _capture_llm_statuses(fetched_html, current_html_md)
+            current_html_md = captured_status["html_markdown_with_status"]
 
     # Check if content has changed (compare markdown instead of raw HTML)
     html_changed = current_html_md != previous_html_md
@@ -611,6 +736,8 @@ def record_reaction_snapshot(
         saved_html = snapshot_paths.get("saved_html", "")
         if saved_html:
             current_html_md = _html_to_simple_markdown(saved_html)
+            captured_status = _capture_llm_statuses(saved_html, current_html_md)
+            current_html_md = captured_status["html_markdown_with_status"]
 
     # Update reaction resolution cache based on HTML snapshot content
     if current_html_md:

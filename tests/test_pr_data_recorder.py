@@ -509,6 +509,49 @@ def test_save_pr_snapshot_extracts_llm_statuses_from_attributes(tmp_path):
     assert result["llm_statuses"] == ["finished", "comment"]
 
 
+def test_save_pr_snapshot_extracts_llm_statuses_from_timeline_events(tmp_path):
+    """LLM statuses should be parsed from Copilot session timeline entries"""
+    html = """
+    <html>
+    <body>
+        <div class="prc-PageLayout-Content-xWL-A">
+            <div class="TimelineItem-body">
+                <strong>Codex</strong>
+                <a title="View session" class="Link--secondary" href="https://github.com/example/agents/pull/22?session_id=aaa">started work</a>
+                on behalf of <a href="/cat2151">cat2151</a>
+                <a href="https://github.com/example/agents/pull/22?session_id=aaa">View session</a>
+            </div>
+            <div class="TimelineItem-body">
+                <strong>Codex</strong>
+                <a title="View session" class="Link--secondary" href="https://github.com/example/tasks/pull/PR_123?session_id=bbb">finished work</a>
+                on behalf of <a href="/cat2151">cat2151</a>
+            </div>
+            <div class="TimelineItem-body">
+                <strong>Copilot</strong>
+                <a title="View session" class="Link--secondary" href="https://github.com/example/agents/pull/22?session_id=ccc">started reviewing</a>
+                on behalf of <a href="/cat2151">cat2151</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    current_time = datetime(2024, 1, 2, 3, 4, 5)
+
+    result = save_pr_snapshot(
+        _sample_pr(),
+        reason="comment_reactions_detected",
+        base_dir=tmp_path,
+        current_time=current_time,
+        html_content=html,
+    )
+
+    status_path = result["llm_status_path"]
+    assert status_path.exists()
+    status_data = json.loads(status_path.read_text(encoding="utf-8"))
+    assert status_data["llm_statuses"] == ["started", "finished", "reviewing"]
+    assert result["llm_statuses"] == ["started", "finished", "reviewing"]
+
+
 def test_save_pr_snapshot_without_html_when_fetch_fails(tmp_path):
     """Test that save_pr_snapshot works even when HTML fetch fails"""
     current_time = datetime(2024, 1, 2, 3, 4, 5)

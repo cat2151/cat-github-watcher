@@ -35,17 +35,22 @@ def _comment_reaction_signature(comment_nodes: Any) -> str:
         return ""
 
     signatures: List[Dict[str, Any]] = []
-    for idx, comment in enumerate(comment_nodes, start=1):
+    for comment in comment_nodes:
         groups = []
         for group in comment.get("reactionGroups") or []:
             count = (group.get("users") or {}).get("totalCount", 0)
             if count:
                 groups.append({"content": group.get("content"), "count": count})
         if groups:
-            signatures.append({"index": idx, "reactions": groups})
+            # Sort reactions within a comment so signature is order-insensitive
+            groups.sort(key=lambda g: (g.get("content") or "", g.get("count", 0)))
+            signatures.append({"reactions": groups})
 
     if not signatures:
         return ""
+
+    # Sort comments by their reaction signature to avoid dependence on comment order
+    signatures.sort(key=lambda item: json.dumps(item["reactions"], sort_keys=True))
 
     # Sort keys for deterministic output
     return json.dumps(signatures, sort_keys=True)

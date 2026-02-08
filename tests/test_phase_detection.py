@@ -7,6 +7,7 @@ Tests cover the following scenarios:
 - Phase 3: Copilot reviewer approved or no comments, copilot-swe-agent modifications
 - LLM working: No reviews, unknown reviewers, or comments with reactions
 """
+import copy
 from datetime import datetime
 from unittest.mock import patch
 
@@ -467,6 +468,61 @@ class TestDeterminePhase:
 
         # After snapshot analysis, reactions are considered finished and phase3 logic applies
         assert determine_phase(pr) == PHASE_3
+
+    def test_finished_reaction_signature_survives_comment_reordering(self, tmp_path):
+        """
+        Finished eyes reactions should remain recognized even when comment order changes (new comments added).
+        """
+        reset_snapshot_cache(clear_content_cache=True)
+        reset_comment_reaction_resolution_cache()
+
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "## Pull request overview\n\nLooks good overall.",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
+            "commentNodes": [
+                {
+                    "body": "Working on it",
+                    "reactionGroups": [
+                        {"content": "EYES", "users": {"totalCount": 1}},
+                    ],
+                }
+            ],
+            "reviewThreads": [],
+            "repository": {"owner": "owner", "name": "repo"},
+            "url": "https://github.com/owner/repo/pull/123",
+            "title": "Test PR",
+            "author": {"login": "octocat"},
+        }
+
+        # First pass: detected as LLM working, then snapshot marks finished
+        assert determine_phase(pr) == PHASE_LLM_WORKING
+        html_content = """
+        <div class="prc-PageLayout-Content-xWL-A">
+            <p>copilot reacted with eyes emoji</p>
+            <p>copilot finished work</p>
+        </div>
+        """
+        current_time = datetime(2024, 1, 2, 3, 4, 5)
+        record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=current_time, html_content=html_content)
+        assert determine_phase(pr) == PHASE_3
+
+        # Next iteration: a new comment is inserted before the reaction comment.
+        # Signature should remain recognized and phase stay at phase3.
+        reset_snapshot_cache()
+        pr_with_new_comment = copy.deepcopy(pr)
+        pr_with_new_comment["commentNodes"] = [
+            {"body": "New note", "reactionGroups": []},
+            *pr["commentNodes"],
+        ]
+
+        assert determine_phase(pr_with_new_comment) == PHASE_3
 
     def test_reaction_cache_not_cleared_when_html_missing(self, tmp_path):
         """

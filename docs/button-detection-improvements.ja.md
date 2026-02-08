@@ -208,4 +208,3 @@ confidence = 0.7  # より低い信頼度で画像認識を試行
 ## 関連ドキュメント
 
 - [README.ja.md](../README.ja.md) - メインドキュメント
-- [browser-automation-approaches.md](browser-automation-approaches.md) - ブラウザ自動化の実装方法

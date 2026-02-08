@@ -36,6 +36,9 @@ DEFAULT_MAX_LLM_WORKING_PARALLEL = 3
 # When true, check if cat-window-watcher process is running and don't raise browser window if it is
 DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE = True
 
+# Default setting for displaying PR authors in CLI output
+DEFAULT_DISPLAY_PR_AUTHOR = False
+
 
 def parse_interval(interval_str: str) -> int:
     """Parse interval string like '1m', '30s', '2h' to seconds
@@ -287,6 +290,14 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
                 f"Using default value: {DEFAULT_MAX_LLM_WORKING_PARALLEL}"
             )
             config["max_llm_working_parallel"] = DEFAULT_MAX_LLM_WORKING_PARALLEL
+    if "display_pr_author" in config:
+        try:
+            config["display_pr_author"] = _validate_boolean_flag(config["display_pr_author"], "display_pr_author")
+        except ValueError as e:
+            print(f"Warning: {e}. Using default value: {DEFAULT_DISPLAY_PR_AUTHOR}")
+            config["display_pr_author"] = DEFAULT_DISPLAY_PR_AUTHOR
+    else:
+        config["display_pr_author"] = DEFAULT_DISPLAY_PR_AUTHOR
 
     return config
 
@@ -312,6 +323,7 @@ def print_config(config: Dict[str, Any]) -> None:
     print(
         f"  check_process_before_autoraise: {config.get('check_process_before_autoraise', DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE)}"
     )
+    print(f"  display_pr_author: {config.get('display_pr_author', DEFAULT_DISPLAY_PR_AUTHOR)}")
 
     coding_agent = config.get("coding_agent")
     if coding_agent and isinstance(coding_agent, dict):

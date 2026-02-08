@@ -23,7 +23,10 @@ from .time_utils import format_elapsed_time
 
 
 def display_status_summary(
-    all_prs: List[Dict[str, Any]], pr_phases: List[str], repos_with_prs: List[Dict[str, Any]]
+    all_prs: List[Dict[str, Any]],
+    pr_phases: List[str],
+    repos_with_prs: List[Dict[str, Any]],
+    config: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Display a concise summary of current PR status
 
@@ -35,6 +38,7 @@ def display_status_summary(
         all_prs: List of all PRs
         pr_phases: List of phase strings corresponding to all_prs
         repos_with_prs: List of repositories with open PRs
+        config: Optional configuration dict (uses display_pr_author when true)
     """
     print(f"\n{'=' * 50}")
     print("Status Summary:")
@@ -49,6 +53,7 @@ def display_status_summary(
     current_states = []
 
     # Display each PR using the same format as process_pr()
+    display_pr_author = bool((config or {}).get("display_pr_author", False))
     for pr, phase in zip(all_prs, pr_phases):
         repo_info = pr.get("repository", {})
         repo_name = repo_info.get("name", "Unknown")
@@ -68,7 +73,8 @@ def display_status_summary(
         # Display phase with colors using the same format
         progress_label = get_llm_working_progress_label(pr) if phase == PHASE_LLM_WORKING else None
         phase_display = colorize_phase(phase, progress_label)
-        base_line = f"  [{repo_name}] {phase_display} {title} (Author: {author_login})"
+        author_suffix = f" (Author: {author_login})" if display_pr_author else ""
+        base_line = f"  [{repo_name}] {phase_display} {title}{author_suffix}"
 
         # Show elapsed time if state has persisted for more than 60 seconds
         if elapsed >= 60:

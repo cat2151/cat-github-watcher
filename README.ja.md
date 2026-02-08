@@ -131,6 +131,11 @@ cat-github-watcher/
    # デフォルト: false
    verbose = false
    
+   # PR作者の表示切り替え
+   # CLI出力で "Author: <login>" を表示するかどうかを制御します
+   # デフォルト: false
+   display_pr_author = false
+   
    # 実行制御フラグ - [[rulesets]]セクション内でのみ指定可能
    # グローバルフラグはサポートされなくなりました
    # 全リポジトリに設定を適用するには 'repositories = ["all"]' を使用してください

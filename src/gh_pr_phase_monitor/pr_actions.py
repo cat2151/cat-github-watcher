@@ -136,6 +136,7 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
     title = pr.get("title", "Unknown")
     url = pr.get("url", "")
     author_login = (pr.get("author") or {}).get("login", "") or "Unknown"
+    display_pr_author = bool((config or {}).get("display_pr_author", False))
 
     # Use pre-computed phase if provided, otherwise compute it
     if phase is None:
@@ -146,7 +147,8 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
     phase_display = colorize_phase(phase, progress_label)
     print(f"  [{repo_name}] {phase_display} {title}")
     print(f"    URL: {url}")
-    print(f"    Author: {author_login}")
+    if display_pr_author:
+        print(f"    Author: {author_login}")
 
     # Resolve execution config for this repository
     if config:

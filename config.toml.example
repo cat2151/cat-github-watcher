@@ -50,6 +50,11 @@ check_process_before_autoraise = true
 # Default: false
 verbose = false
 
+# Display PR author in output
+# When enabled, shows "Author: <login>" in CLI output for each PR
+# Default: false
+display_pr_author = false
+
 # Coding agent mention override (optional)
 # Set to override the default @copilot mention when posting apply comments
 [coding_agent]

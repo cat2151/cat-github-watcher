@@ -419,6 +419,88 @@ def _html_to_simple_markdown(html: Optional[str]) -> str:
     return text.strip()
 
 
+def _split_status_tokens(text: str, seen: Set[str]) -> List[str]:
+    """Split potential status text into unique, lowercased tokens."""
+    statuses: List[str] = []
+    for token in re.findall(r"[A-Za-z][A-Za-z0-9_-]*", text or ""):
+        token_lower = token.lower()
+        if token_lower in seen:
+            continue
+        if token_lower in {"llm", "status"}:
+            continue
+        seen.add(token_lower)
+        statuses.append(token_lower)
+    return statuses
+
+
+def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> List[str]:
+    """Extract LLM statuses from simplified markdown content."""
+    statuses: List[str] = []
+    if not html_markdown:
+        return statuses
+
+    lines = html_markdown.split("\n")
+    for idx, line in enumerate(lines):
+        lowered = line.lower()
+        if "llm status" not in lowered:
+            continue
+
+        # Inline statuses on the same line after a colon
+        if ":" in line:
+            _, inline = line.split(":", 1)
+            statuses.extend(_split_status_tokens(inline, seen))
+
+        # Collect bullet lines immediately following the heading/label
+        collected = False
+        for follow in lines[idx + 1 :]:
+            stripped = follow.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("#"):
+                break
+            if stripped.startswith(("-", "*")):
+                statuses.extend(_split_status_tokens(stripped.lstrip("-* ").strip(), seen))
+                collected = True
+                continue
+            # Stop at the first non-bullet content
+            if collected:
+                break
+            break
+
+    return statuses
+
+
+def _extract_llm_statuses_from_html(html: str, seen: Set[str]) -> List[str]:
+    """Extract LLM statuses from raw HTML attributes and nearby text."""
+    statuses: List[str] = []
+    if not html:
+        return statuses
+
+    attribute_patterns = [
+        r'data-llm-status=["\']([^"\']+)["\']',
+        r'aria-label=["\'][^"\']*LLM status[^"\']*[:：]\s*([^"\']+)["\']',
+        r'title=["\'][^"\']*LLM status[^"\']*[:：]\s*([^"\']+)["\']',
+    ]
+    for pattern in attribute_patterns:
+        for match in re.finditer(pattern, html, flags=re.IGNORECASE):
+            statuses.extend(_split_status_tokens(match.group(1), seen))
+
+    for match in re.finditer(r"LLM status[^<]{0,80}", html, flags=re.IGNORECASE):
+        statuses.extend(_split_status_tokens(match.group(0), seen))
+
+    return statuses
+
+
+def _extract_llm_statuses(html: Optional[str], html_markdown: str) -> List[str]:
+    """Extract unique LLM statuses from HTML and its markdown representation."""
+    seen: Set[str] = set()
+    statuses: List[str] = []
+    statuses.extend(_extract_llm_statuses_from_markdown(html_markdown, seen))
+    if html:
+        statuses.extend(_extract_llm_statuses_from_html(html, seen))
+    return statuses
+
+
 def save_pr_snapshot(
     pr: Dict[str, Any],
     reason: str,
@@ -461,6 +543,7 @@ def save_pr_snapshot(
     markdown_path = snapshot_dir / f"{file_prefix}_summary.md"
     html_path = snapshot_dir / f"{file_prefix}_page.html"
     html_md_path = snapshot_dir / f"{file_prefix}_page.md"
+    llm_status_path = snapshot_dir / f"{file_prefix}_llm_statuses.json"
 
     reactions_summary = _summarize_reactions(pr.get("commentNodes", pr.get("comments", [])))
     markdown_raw_snapshot = _prepare_markdown_raw(pr)
@@ -502,6 +585,12 @@ def save_pr_snapshot(
         if html_as_markdown:
             _write_if_changed(html_md_path, html_as_markdown)
             result_dict["html_md_path"] = html_md_path
+
+        llm_statuses = _extract_llm_statuses(html_content, html_as_markdown)
+        status_payload = json.dumps({"llm_statuses": llm_statuses}, ensure_ascii=False, indent=2)
+        _write_if_changed(llm_status_path, status_payload)
+        result_dict["llm_status_path"] = llm_status_path
+        result_dict["llm_statuses"] = llm_statuses
     elif fetch_html and pr_url:
         # Fetch HTML if not provided
         fetched_html = _fetch_pr_html(pr_url)
@@ -515,6 +604,12 @@ def save_pr_snapshot(
             if html_as_markdown:
                 _write_if_changed(html_md_path, html_as_markdown)
                 result_dict["html_md_path"] = html_md_path
+
+            llm_statuses = _extract_llm_statuses(fetched_html, html_as_markdown)
+            status_payload = json.dumps({"llm_statuses": llm_statuses}, ensure_ascii=False, indent=2)
+            _write_if_changed(llm_status_path, status_payload)
+            result_dict["llm_status_path"] = llm_status_path
+            result_dict["llm_statuses"] = llm_statuses
 
     return result_dict
 

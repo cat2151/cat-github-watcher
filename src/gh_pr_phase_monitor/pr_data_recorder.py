@@ -4,6 +4,7 @@ Utilities for capturing PR snapshots to aid debugging of phase detection.
 
 import json
 import re
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
@@ -179,19 +180,111 @@ def _write_if_changed(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def _fetch_pr_html(pr_url: str) -> Optional[str]:
+    """Fetch PR HTML page using curl.
+
+    Args:
+        pr_url: The PR URL to fetch
+
+    Returns:
+        HTML content as string, or None if fetch fails
+    """
+    try:
+        result = subprocess.run(
+            ["curl", "-L", "-s", pr_url],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+            check=False,
+        )
+        if result.returncode == 0 and result.stdout:
+            return result.stdout
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
+        # Silently fail on network/timeout errors - HTML fetch is optional
+        pass
+    return None
+
+
+def _html_to_simple_markdown(html: Optional[str]) -> str:
+    """Convert HTML to simple markdown for better readability.
+
+    This is a basic conversion without external dependencies.
+    It extracts text content and attempts to preserve structure.
+
+    Args:
+        html: HTML content as string, or None
+
+    Returns:
+        Simplified markdown representation
+    """
+    if not html:
+        return ""
+
+    # Remove script and style tags with their content
+    text = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Convert common HTML elements to markdown
+    # Headers
+    text = re.sub(r"<h1[^>]*>(.*?)</h1>", r"\n# \1\n", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<h2[^>]*>(.*?)</h2>", r"\n## \1\n", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<h3[^>]*>(.*?)</h3>", r"\n### \1\n", text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Links
+    text = re.sub(r'<a[^>]*href=["\']([^"\']*)["\'][^>]*>(.*?)</a>', r"[\2](\1)", text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Bold and italic
+    text = re.sub(r"<strong[^>]*>(.*?)</strong>", r"**\1**", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<b[^>]*>(.*?)</b>", r"**\1**", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<em[^>]*>(.*?)</em>", r"*\1*", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<i[^>]*>(.*?)</i>", r"*\1*", text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Code blocks
+    text = re.sub(r"<pre[^>]*>(.*?)</pre>", r"```\n\1\n```", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<code[^>]*>(.*?)</code>", r"`\1`", text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Lists
+    text = re.sub(r"<li[^>]*>(.*?)</li>", r"- \1\n", text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Paragraphs and line breaks
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<p[^>]*>(.*?)</p>", r"\1\n\n", text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Remove remaining HTML tags
+    text = re.sub(r"<[^>]+>", "", text)
+
+    # Clean up HTML entities
+    text = text.replace("&nbsp;", " ")
+    text = text.replace("&lt;", "<")
+    text = text.replace("&gt;", ">")
+    text = text.replace("&amp;", "&")
+    text = text.replace("&quot;", '"')
+    text = text.replace("&#39;", "'")
+
+    # Clean up excessive whitespace
+    text = re.sub(r"\n\n\n+", "\n\n", text)
+    text = re.sub(r"[ \t]+", " ", text)
+
+    return text.strip()
+
+
 def save_pr_snapshot(
     pr: Dict[str, Any],
     reason: str,
     base_dir: Optional[Path] = None,
     current_time: Optional[datetime] = None,
+    fetch_html: bool = True,
 ) -> Dict[str, Path]:
-    """Save raw PR data and markdown summary to disk.
+    """Save raw PR data, HTML, and markdown summary to disk.
 
     Args:
         pr: PR data dictionary.
         reason: Reason for capturing the snapshot.
         base_dir: Optional base directory for storing snapshots.
         current_time: Optional timestamp for deterministic testing.
+        fetch_html: Whether to fetch HTML page (default: True). Set to False to avoid blocking network calls.
 
     Returns:
         Paths for the saved snapshot directory and files.
@@ -207,13 +300,18 @@ def save_pr_snapshot(
 
     raw_path = snapshot_dir / f"{snapshot_prefix}_raw.json"
     markdown_path = snapshot_dir / f"{snapshot_prefix}_summary.md"
+    html_path = snapshot_dir / f"{snapshot_prefix}_page.html"
+    html_md_path = snapshot_dir / f"{snapshot_prefix}_page.md"
+
     timestamp_str = _format_timestamp(effective_time)
     reactions_summary = _summarize_reactions(pr.get("commentNodes", pr.get("comments", [])))
     markdown_raw_snapshot = _prepare_markdown_raw(pr)
 
+    # Save raw JSON
     raw_json = json.dumps(pr, ensure_ascii=False, indent=2)
     _write_if_changed(raw_path, raw_json)
 
+    # Save markdown summary
     markdown_content = _build_markdown(
         pr,
         reason,
@@ -224,11 +322,27 @@ def save_pr_snapshot(
     )
     _write_if_changed(markdown_path, markdown_content)
 
-    return {
+    # Fetch and save HTML page
+    pr_url = pr.get("url", "")
+    result_dict = {
         "snapshot_dir": snapshot_dir,
         "raw_path": raw_path,
         "markdown_path": markdown_path,
     }
+
+    if fetch_html and pr_url:
+        html_content = _fetch_pr_html(pr_url)
+        if html_content:
+            _write_if_changed(html_path, html_content)
+            result_dict["html_path"] = html_path
+
+            # Convert HTML to markdown for better readability
+            html_as_markdown = _html_to_simple_markdown(html_content)
+            if html_as_markdown:
+                _write_if_changed(html_md_path, html_as_markdown)
+                result_dict["html_md_path"] = html_md_path
+
+    return result_dict
 
 
 def record_reaction_snapshot(

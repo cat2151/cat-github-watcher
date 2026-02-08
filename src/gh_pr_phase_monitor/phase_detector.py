@@ -2,6 +2,7 @@
 PR phase detection logic based on reviews and PR state
 """
 
+import json
 import re
 from typing import Any, Dict, List, Union
 
@@ -10,6 +11,74 @@ PHASE_LLM_WORKING = "LLM working"
 PHASE_1 = "phase1"
 PHASE_2 = "phase2"
 PHASE_3 = "phase3"
+
+# Tracks comment reaction signatures that were confirmed as "finished" via HTML snapshot analysis.
+_finished_reaction_signatures: Dict[str, str] = {}
+
+
+def _build_pr_key(pr: Dict[str, Any]) -> str:
+    """Build a stable key for tracking reaction resolution state."""
+    url = pr.get("url")
+    if url:
+        return url
+
+    repo_info = pr.get("repository") or {}
+    owner = repo_info.get("owner") or "unknown"
+    name = repo_info.get("name") or "unknown"
+    number = pr.get("number") or "unknown"
+    return f"{owner}/{name}#{number}"
+
+
+def _comment_reaction_signature(comment_nodes: Any) -> str:
+    """Build a deterministic signature of comment reactions for change detection."""
+    if not isinstance(comment_nodes, list):
+        return ""
+
+    signatures: List[Dict[str, Any]] = []
+    for idx, comment in enumerate(comment_nodes, start=1):
+        groups = []
+        for group in comment.get("reactionGroups") or []:
+            count = (group.get("users") or {}).get("totalCount", 0)
+            if count:
+                groups.append({"content": group.get("content"), "count": count})
+        if groups:
+            signatures.append({"index": idx, "reactions": groups})
+
+    if not signatures:
+        return ""
+
+    # Sort keys for deterministic output
+    return json.dumps(signatures, sort_keys=True)
+
+
+def update_comment_reaction_resolution(pr: Dict[str, Any], comment_nodes: Any, finished: bool) -> None:
+    """Update resolution cache based on HTML analysis results."""
+    pr_key = _build_pr_key(pr)
+    signature = _comment_reaction_signature(comment_nodes)
+
+    if not signature:
+        _finished_reaction_signatures.pop(pr_key, None)
+        return
+
+    if finished:
+        _finished_reaction_signatures[pr_key] = signature
+    else:
+        _finished_reaction_signatures.pop(pr_key, None)
+
+
+def comment_reactions_marked_finished(pr: Dict[str, Any], comment_nodes: Any) -> bool:
+    """Return True when reactions match a signature previously marked finished."""
+    signature = _comment_reaction_signature(comment_nodes)
+    if not signature:
+        return False
+
+    pr_key = _build_pr_key(pr)
+    return _finished_reaction_signatures.get(pr_key) == signature
+
+
+def reset_comment_reaction_resolution_cache() -> None:
+    """Clear cached reaction resolution state (useful for tests)."""
+    _finished_reaction_signatures.clear()
 
 
 def has_comments_with_reactions(comments: Union[List[Dict[str, Any]], int, None]) -> bool:
@@ -120,7 +189,8 @@ def determine_phase(pr: Dict[str, Any]) -> str:
     # When the coding agent is responding to PR comments, those comments
     # may have reactions indicating the bot is processing them
     if has_comments_with_reactions(comment_nodes):
-        return PHASE_LLM_WORKING
+        if not comment_reactions_marked_finished(pr, comment_nodes):
+            return PHASE_LLM_WORKING
 
     # Phase 1: Draft状態 (ただし、reviewRequestsが空の場合はLLM working)
     if is_draft:

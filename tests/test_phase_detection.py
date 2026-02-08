@@ -7,8 +7,16 @@ Tests cover the following scenarios:
 - Phase 3: Copilot reviewer approved or no comments, copilot-swe-agent modifications
 - LLM working: No reviews, unknown reviewers, or comments with reactions
 """
+from datetime import datetime
+from unittest.mock import patch
 
 from src.gh_pr_phase_monitor import determine_phase, has_comments_with_reactions, has_unresolved_review_threads
+from src.gh_pr_phase_monitor.phase_detector import (
+    PHASE_3,
+    PHASE_LLM_WORKING,
+    reset_comment_reaction_resolution_cache,
+)
+from src.gh_pr_phase_monitor.pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
 
 
 class TestHasUnresolvedReviewThreads:
@@ -408,6 +416,109 @@ class TestDeterminePhase:
         }
 
         assert determine_phase(pr) == "LLM working"
+
+    def test_eyes_reaction_finished_via_html_allows_phase3(self, tmp_path):
+        """
+        When eyes reactions remain but HTML snapshot shows 'finished work' after the reaction,
+        the PR should progress to phase3 on subsequent checks.
+        """
+        reset_snapshot_cache(clear_content_cache=True)
+        reset_comment_reaction_resolution_cache()
+
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "## Pull request overview\n\nLooks good overall.",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
+            "commentNodes": [
+                {
+                    "body": "Working on it",
+                    "reactionGroups": [
+                        {"content": "EYES", "users": {"totalCount": 1}},
+                    ],
+                }
+            ],
+            "reviewThreads": [],
+            "repository": {"owner": "owner", "name": "repo"},
+            "url": "https://github.com/owner/repo/pull/123",
+            "title": "Test PR",
+            "author": {"login": "octocat"},
+        }
+
+        # Initial detection still marks LLM working because reactions are present
+        assert determine_phase(pr) == PHASE_LLM_WORKING
+
+        html_content = """
+        <div class="prc-PageLayout-Content-xWL-A">
+            <p>copilot reacted with eyes emoji</p>
+            <p>copilot finished work</p>
+        </div>
+        """
+        current_time = datetime(2024, 1, 2, 3, 4, 5)
+        snapshot_paths = record_reaction_snapshot(
+            pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=current_time, html_content=html_content
+        )
+        assert snapshot_paths is not None
+
+        # After snapshot analysis, reactions are considered finished and phase3 logic applies
+        assert determine_phase(pr) == PHASE_3
+
+    def test_reaction_cache_not_cleared_when_html_missing(self, tmp_path):
+        """
+        If HTML fetch/markdown is unavailable, the finished-reaction cache should remain untouched.
+        """
+        reset_snapshot_cache(clear_content_cache=True)
+        reset_comment_reaction_resolution_cache()
+
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "## Pull request overview\n\nLooks good overall.",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
+            "commentNodes": [
+                {
+                    "body": "Working on it",
+                    "reactionGroups": [
+                        {"content": "EYES", "users": {"totalCount": 1}},
+                    ],
+                }
+            ],
+            "reviewThreads": [],
+            "repository": {"owner": "owner", "name": "repo"},
+            "url": "https://github.com/owner/repo/pull/123",
+            "title": "Test PR",
+            "author": {"login": "octocat"},
+        }
+
+        html_content = """
+        <div class="prc-PageLayout-Content-xWL-A">
+            <p>copilot reacted with eyes emoji</p>
+            <p>copilot finished work</p>
+        </div>
+        """
+        current_time = datetime(2024, 1, 2, 3, 4, 5)
+        first_snapshot = record_reaction_snapshot(
+            pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=current_time, html_content=html_content
+        )
+        assert first_snapshot is not None
+        assert determine_phase(pr) == PHASE_3
+
+        # Next iteration: HTML fetch fails (no markdown). Cache should stay marked finished.
+        reset_snapshot_cache()
+        with patch("src.gh_pr_phase_monitor.pr_data_recorder._fetch_pr_html", return_value=None):
+            record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=current_time)
+
+        assert determine_phase(pr) == PHASE_3
 
     def test_backward_compatibility_with_integer_comments(self):
         """PR with integer comments (legacy API) should work correctly"""

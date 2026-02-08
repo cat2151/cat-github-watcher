@@ -489,19 +489,10 @@ def _add_status(statuses: List[str], seen: Set[str], text: str) -> None:
         return
     if normalized.startswith(("](", "[")):
         return
-    actionable_markers = (
-        "started",
-        "finished",
-        "comment",
-        "commented",
-        "reviewed",
-        "review request",
-        "requested a review",
-        "ready for review",
-    )
+    actionable_markers = ("started", "finished", "comment", "reviewed", "review request", "requested a review", "ready for review")
     if not any(marker in lower for marker in actionable_markers):
         return
-    if "commented" in lower and len(normalized) > 400:
+    if "commented" in lower:
         return
     if normalized.endswith("on behalf of"):
         return
@@ -525,17 +516,13 @@ def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> L
         lowered = segment.lower()
         combined = segment
 
-        should_collect_trailing = "llm status" in lowered or re.search(r"\bcommented\b", lowered)
+        should_collect_trailing = "llm status" in lowered
         if should_collect_trailing:
             next_idx = idx + 1
             while next_idx < len(segments):
                 next_segment = segments[next_idx]
                 next_lower = next_segment.lower()
-                if (
-                    "llm status" in next_lower
-                    or "session_id=" in next_segment
-                    or re.search(r"\bcommented\b", next_lower)
-                ):
+                if "llm status" in next_lower or "session_id=" in next_segment:
                     break
                 if "llm status" in lowered:
                     _add_status(statuses, seen, next_segment)
@@ -548,7 +535,7 @@ def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> L
             payload = re.sub(r"^llm status[:\s-]+", "", segment, flags=re.IGNORECASE).strip()
             if payload:
                 _add_status(statuses, seen, payload)
-        elif "session_id=" in segment or re.search(r"\bcommented\b", lowered):
+        elif "session_id=" in segment:
             _add_status(statuses, seen, combined)
 
         idx += 1

@@ -563,13 +563,11 @@ def test_save_pr_snapshot_extracts_llm_statuses_from_timeline_events(tmp_path):
         "Codex started work on behalf of cat2151 9 minutes ago",
         "Codex finished work on behalf of cat2151 5 minutes ago",
         "Copilot started reviewing on behalf of cat2151",
-        "cat2151 commented 10 minutes ago @codex[agent] apply changes based on the comments in this pull request",
     ]
     assert result["llm_statuses"] == [
         "Codex started work on behalf of cat2151 9 minutes ago",
         "Codex finished work on behalf of cat2151 5 minutes ago",
         "Copilot started reviewing on behalf of cat2151",
-        "cat2151 commented 10 minutes ago @codex[agent] apply changes based on the comments in this pull request",
     ]
 
 

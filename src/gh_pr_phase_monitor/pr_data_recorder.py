@@ -705,6 +705,7 @@ def record_reaction_snapshot(
     base_dir: Optional[Path] = None,
     current_time: Optional[datetime] = None,
     html_content: Optional[str] = None,
+    enable_snapshots: bool = True,
 ) -> Optional[Dict[str, Any]]:
     """Record a snapshot when comment reactions force LLM working detection.
 
@@ -721,6 +722,8 @@ def record_reaction_snapshot(
         base_dir: Optional base directory for storing snapshots.
         current_time: Optional timestamp for deterministic testing.
         html_content: Optional pre-fetched HTML content to avoid network calls.
+        enable_snapshots: When False, only fetches data needed for LLM working detection
+            without writing files to pr_phase_snapshots/.
 
     Returns:
         Paths for created snapshot files, or None when no snapshot is recorded.
@@ -757,6 +760,8 @@ def record_reaction_snapshot(
     pr_url = pr.get("url", "")
 
     captured_status = {"html_markdown_with_status": "", "statuses": []}
+    should_fetch_html = not json_changed or not enable_snapshots
+
     if html_content:
         current_html_md = _html_to_simple_markdown(html_content)
         captured_status = _capture_llm_statuses(html_content, current_html_md)
@@ -765,7 +770,7 @@ def record_reaction_snapshot(
             latest_llm_statuses = captured_status["statuses"]
             pr["llm_statuses"] = latest_llm_statuses
 
-    if fetched_html is None and not json_changed and pr_url:
+    if fetched_html is None and pr_url and should_fetch_html:
         # JSON unchanged, check HTML for changes
         fetched_html = _fetch_pr_html(pr_url)
         if fetched_html:
@@ -787,6 +792,25 @@ def record_reaction_snapshot(
             pr["llm_statuses"] = latest_llm_statuses
             if pr_key in _previous_pr_content:
                 _previous_pr_content[pr_key]["llm_statuses"] = latest_llm_statuses
+        _recorded_in_current_iteration.add(pr_key)
+        return None
+
+    # When snapshot saving is disabled, still fetch and store metadata for LLM working detection
+    if not enable_snapshots:
+        if captured_status.get("statuses"):
+            latest_llm_statuses = captured_status["statuses"]
+            pr["llm_statuses"] = latest_llm_statuses
+
+        if current_html_md:
+            llm_working = llm_working_from_statuses(captured_status.get("statuses", []))
+            reactions_finished = llm_working is False
+            update_comment_reaction_resolution(pr, comment_nodes, reactions_finished)
+
+        _previous_pr_content[pr_key] = {
+            "json": current_json,
+            "html_md": current_html_md,
+            "llm_statuses": latest_llm_statuses,
+        }
         _recorded_in_current_iteration.add(pr_key)
         return None
 

@@ -5,7 +5,11 @@ from unittest.mock import patch
 
 import pytest
 
-from src.gh_pr_phase_monitor.phase_detector import PHASE_LLM_WORKING
+from src.gh_pr_phase_monitor.phase_detector import (
+    PHASE_LLM_WORKING,
+    comment_reactions_marked_finished,
+    reset_comment_reaction_resolution_cache,
+)
 from src.gh_pr_phase_monitor.pr_data_recorder import (
     DEFAULT_SNAPSHOT_BASE_DIR,
     _escape_newlines,
@@ -108,6 +112,32 @@ def test_record_reaction_snapshot_sets_llm_statuses_on_pr(tmp_path):
 
     assert result is not None
     assert pr.get("llm_statuses") == ["finished work items"]
+
+
+def test_record_reaction_snapshot_can_skip_disk_writes(tmp_path):
+    pr = _sample_pr()
+    current_time = datetime(2024, 1, 2, 3, 4, 5)
+    html_content = (
+        '<div data-llm-status="started work on updates"></div>'
+        '<div data-llm-status="finished work items"></div>'
+    )
+
+    reset_comment_reaction_resolution_cache()
+    try:
+        result = record_reaction_snapshot(
+            pr,
+            phase=PHASE_LLM_WORKING,
+            base_dir=tmp_path,
+            current_time=current_time,
+            html_content=html_content,
+            enable_snapshots=False,
+        )
+        assert result is None
+        assert pr.get("llm_statuses") == ["started work on updates", "finished work items"]
+        assert not any(tmp_path.iterdir())
+        assert comment_reactions_marked_finished(pr, pr["commentNodes"]) is True
+    finally:
+        reset_comment_reaction_resolution_cache()
 
 
 def test_record_reaction_snapshot_skips_when_no_reactions(tmp_path):

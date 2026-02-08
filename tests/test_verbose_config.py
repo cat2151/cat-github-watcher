@@ -28,6 +28,7 @@ def test_print_config_basic():
     assert "[Main Settings]" in output
     assert "interval: 1m" in output
     assert "verbose: True" in output
+    assert "enable_pr_phase_snapshots: False" in output
 
 
 def test_print_config_with_rulesets():

@@ -8,6 +8,7 @@ import time
 import traceback
 
 from .config import (
+    DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
     get_config_mtime,
     load_config,
     parse_interval,
@@ -125,12 +126,15 @@ def main():
                     print("Processing PRs:")
                     print(f"{'=' * 50}")
 
+                    snapshots_enabled = config.get(
+                        "enable_pr_phase_snapshots", DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS
+                    )
                     # Track phases to detect if all PRs are in "LLM working"
                     for pr in all_prs:
                         phase = determine_phase(pr)
 
                         try:
-                            record_reaction_snapshot(pr, phase)
+                            record_reaction_snapshot(pr, phase, enable_snapshots=snapshots_enabled)
                             phase = determine_phase(pr)
                         except Exception as snapshot_error:
                             print(f"    Failed to save PR snapshot: {snapshot_error}")

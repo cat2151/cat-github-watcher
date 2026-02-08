@@ -69,14 +69,14 @@ class TestHasPRTitleFixComment:
             {"body": "Some other comment"},
             {"body": "@claude[agent]\n- PR titleとPR冒頭を、以下の方針で修正してください：\n    - これまでの課題："},
         ]
-        assert has_pr_title_fix_comment(comments, "@claude[agent]") is True
+        assert has_pr_title_fix_comment(comments) is True
 
     def test_comment_exists_for_codex(self):
         """Should detect existing fix comment for Codex agent"""
         comments = [
             {"body": "@codex[agent]\n- PR titleとPR冒頭を、以下の方針で修正してください：\n    - これまでの課題："}
         ]
-        assert has_pr_title_fix_comment(comments, "@codex[agent]") is True
+        assert has_pr_title_fix_comment(comments) is True
 
     def test_comment_does_not_exist(self):
         """Should not detect when comment doesn't exist"""
@@ -84,19 +84,19 @@ class TestHasPRTitleFixComment:
             {"body": "Some comment"},
             {"body": "@claude[agent] apply changes"},
         ]
-        assert has_pr_title_fix_comment(comments, "@claude[agent]") is False
+        assert has_pr_title_fix_comment(comments) is False
 
-    def test_wrong_agent_mention(self):
-        """Should not detect comment for different agent"""
+    def test_different_agent_mention_still_detected(self):
+        """Should detect comment regardless of which agent mention is used"""
         comments = [
             {"body": "@claude[agent]\n- PR titleとPR冒頭を、以下の方針で修正してください：\n    - これまでの課題："}
         ]
-        # Looking for codex but comment is for claude
-        assert has_pr_title_fix_comment(comments, "@codex[agent]") is False
+        # Should be detected even with different agent mention - we only check marker text
+        assert has_pr_title_fix_comment(comments) is True
 
     def test_empty_comments(self):
         """Should handle empty comment list"""
-        assert has_pr_title_fix_comment([], "@claude[agent]") is False
+        assert has_pr_title_fix_comment([]) is False
 
 
 class TestPostPRTitleFixComment:

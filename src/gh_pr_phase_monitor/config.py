@@ -395,6 +395,7 @@ def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, r
         - enable_execution_phase2_to_phase3
         - enable_execution_phase3_send_ntfy
         - enable_execution_phase3_to_merge
+        - enable_execution_pr_title_fix_comment
         - assign_good_first_old: Assign one old "good first issue"
         - assign_old: Assign one old issue (any issue)
     """
@@ -404,6 +405,7 @@ def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, r
         "enable_execution_phase2_to_phase3": False,
         "enable_execution_phase3_send_ntfy": False,
         "enable_execution_phase3_to_merge": False,
+        "enable_execution_pr_title_fix_comment": False,  # Post comment when problematic PR title detected
         "assign_good_first_old": False,  # Assign one old "good first issue"
         "assign_old": False,  # Assign one old issue (any issue)
     }

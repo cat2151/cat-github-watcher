@@ -157,22 +157,23 @@ def has_problematic_pr_title(title: str) -> bool:
     return any(pattern in title_lower for pattern in problematic_patterns)
 
 
-def has_pr_title_fix_comment(comments: List[Dict[str, Any]], agent_mention: str) -> bool:
-    """Check if a PR title fix comment already exists for the agent
+def has_pr_title_fix_comment(comments: List[Dict[str, Any]]) -> bool:
+    """Check if a PR title fix comment already exists
 
     Args:
         comments: List of comment dictionaries
-        agent_mention: Agent mention to search for (e.g., "@claude[agent]", "@codex[agent]")
 
     Returns:
         True if comment exists, False otherwise
     """
     # Look for the unique marker text in the comment
+    # We only check the marker text (not agent mention) to prevent duplicates
+    # even if the mention changes (e.g., via config override or detection logic changes)
     marker_text = "PR titleとPR冒頭を、以下の方針で修正してください："
 
     for comment in comments:
         body = comment.get("body", "")
-        if agent_mention in body and marker_text in body:
+        if marker_text in body:
             return True
     return False
 
@@ -198,9 +199,10 @@ def post_pr_title_fix_comment(
 
     agent_mention = _get_agent_mention(pr, config)
 
-    # Check if we already posted a comment for this agent
+    # Check if we already posted a comment (check marker text only to prevent
+    # duplicates even if mention changes via config or detection logic)
     existing_comments = get_existing_comments(pr_url, repo_dir)
-    if has_pr_title_fix_comment(existing_comments, agent_mention):
+    if has_pr_title_fix_comment(existing_comments):
         print("    PR title fix comment already exists, skipping")
         return None
 

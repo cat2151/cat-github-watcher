@@ -140,17 +140,6 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
     print(f"    URL: {url}")
     print(f"    Author: {author_login}")
 
-    # Check for problematic PR titles and post fix comment if needed
-    if has_problematic_pr_title(title):
-        print("    ⚠️  Detected problematic PR title (e.g., 'Addressing PR comments' or contains 'PR review')")
-        print("    Posting comment to request title fix...")
-        result = post_pr_title_fix_comment(pr, None, config)
-        if result is True:
-            print("    PR title fix comment posted successfully")
-        elif result is False:
-            print("    Failed to post PR title fix comment")
-        # If result is None, post_pr_title_fix_comment already printed "Comment already exists, skipping"
-
     # Resolve execution config for this repository
     if config:
         exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
@@ -164,7 +153,24 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
             "enable_execution_phase2_to_phase3": False,
             "enable_execution_phase3_send_ntfy": False,
             "enable_execution_phase3_to_merge": False,
+            "enable_execution_pr_title_fix_comment": False,
         }
+
+    # Check for problematic PR titles and post fix comment if needed
+    if has_problematic_pr_title(title):
+        print("    ⚠️  Detected problematic PR title (e.g., 'Addressing PR comments' or contains 'PR review')")
+        # Check if execution is enabled
+        execution_enabled = exec_config["enable_execution_pr_title_fix_comment"]
+        if execution_enabled:
+            print("    Posting comment to request title fix...")
+            result = post_pr_title_fix_comment(pr, None, config)
+            if result is True:
+                print("    PR title fix comment posted successfully")
+            elif result is False:
+                print("    Failed to post PR title fix comment")
+            # If result is None, post_pr_title_fix_comment already printed "Comment already exists, skipping"
+        else:
+            print("    [DRY-RUN] Would post PR title fix comment (enable_execution_pr_title_fix_comment=false)")
 
     # Mark PR as ready for review when in phase 1
     if phase == PHASE_1:

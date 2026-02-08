@@ -397,8 +397,22 @@ def test_fetch_pr_html_failure():
 
 
 def test_save_pr_snapshot_with_html(tmp_path):
-    """Test that save_pr_snapshot saves HTML and markdown when curl succeeds"""
-    mock_html = "<html><body><h1>Test PR Page</h1><p>Some content</p></body></html>"
+    """Test that save_pr_snapshot saves HTML, markdown, and LLM statuses when curl succeeds"""
+    mock_html = """
+    <html>
+    <body>
+        <div class="prc-PageLayout-Content-xWL-A">
+            <h1>Test PR Page</h1>
+            <p>Some content</p>
+            <h2>LLM status</h2>
+            <ul>
+                <li>comment</li>
+                <li>finished</li>
+            </ul>
+        </div>
+    </body>
+    </html>
+    """
     current_time = datetime(2024, 1, 2, 3, 4, 5)
 
     with patch("src.gh_pr_phase_monitor.pr_data_recorder.subprocess.run") as mock_run:
@@ -420,6 +434,9 @@ def test_save_pr_snapshot_with_html(tmp_path):
         assert result["html_path"].exists()
         assert "html_md_path" in result
         assert result["html_md_path"].exists()
+        assert "llm_status_path" in result
+        assert result["llm_status_path"].exists()
+        assert result["llm_statuses"] == ["comment", "finished"]
 
         # Verify HTML content
         html_content = result["html_path"].read_text(encoding="utf-8")
@@ -429,6 +446,7 @@ def test_save_pr_snapshot_with_html(tmp_path):
         html_md_content = result["html_md_path"].read_text(encoding="utf-8")
         assert "# Test PR Page" in html_md_content
         assert "Some content" in html_md_content
+        assert "LLM status: comment, finished" in html_md_content
 
 
 def test_save_pr_snapshot_extracts_llm_statuses_from_html(tmp_path):

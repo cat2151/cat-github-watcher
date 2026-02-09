@@ -9,6 +9,8 @@ from typing import Any, Dict
 
 import tomli
 
+from .colors import DEFAULT_COLOR_SCHEME, get_supported_color_schemes, set_color_scheme
+
 # Default configuration for phase3_merge feature (batteries included)
 DEFAULT_PHASE3_MERGE_CONFIG: Dict[str, Any] = {
     "comment": "agentによって、レビュー指摘対応が完了したと判断します。userの責任のもと、userレビューは省略します。PRをMergeします。",
@@ -159,6 +161,21 @@ def _validate_boolean_flag(value: Any, flag_name: str) -> bool:
             f"Configuration flag '{flag_name}' must be a boolean (true/false), got {type(value).__name__}: {value}"
         )
     return value
+
+
+def _validate_color_scheme(value: Any) -> str:
+    """Validate that the color scheme is supported."""
+    supported_schemes = get_supported_color_schemes()
+    if not isinstance(value, str):
+        raise ValueError(
+            f"Configuration value 'color_scheme' must be a string ({', '.join(supported_schemes)}), "
+            f"got {type(value).__name__}: {value}"
+        )
+
+    normalized = value.strip().lower()
+    if normalized not in supported_schemes:
+        raise ValueError(f"Unsupported color_scheme '{value}'. Supported schemes: {', '.join(supported_schemes)}")
+    return normalized
 
 
 def get_phase3_merge_config(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -324,6 +341,17 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
             config["enable_pr_phase_snapshots"] = DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS
     else:
         config["enable_pr_phase_snapshots"] = DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS
+    if "color_scheme" in config:
+        try:
+            config["color_scheme"] = _validate_color_scheme(config["color_scheme"])
+        except ValueError as e:
+            print(f"Warning: {e}. Using default value: {DEFAULT_COLOR_SCHEME}")
+            config["color_scheme"] = DEFAULT_COLOR_SCHEME
+    else:
+        config["color_scheme"] = DEFAULT_COLOR_SCHEME
+
+    # Apply color scheme immediately so downstream output uses it
+    config["color_scheme"] = set_color_scheme(config["color_scheme"])
 
     return config
 
@@ -346,6 +374,7 @@ def print_config(config: Dict[str, Any]) -> None:
     print(f"  reduced_frequency_interval: {config.get('reduced_frequency_interval', '1h')}")
     print(f"  max_llm_working_parallel: {config.get('max_llm_working_parallel', DEFAULT_MAX_LLM_WORKING_PARALLEL)}")
     print(f"  verbose: {config.get('verbose', False)}")
+    print(f"  color_scheme: {config.get('color_scheme', DEFAULT_COLOR_SCHEME)}")
     print(
         f"  check_process_before_autoraise: {config.get('check_process_before_autoraise', DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE)}"
     )

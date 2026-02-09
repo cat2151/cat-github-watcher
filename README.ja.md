@@ -132,6 +132,10 @@ cat-github-watcher/
    # デフォルト: false
    verbose = false
    
+   # ターミナル出力のカラースキーム
+   # monokai（デフォルト）または classic を指定可能
+   color_scheme = "monokai"
+   
    # PR作者の表示切り替え
    # CLI出力で "Author: <login>" を表示するかどうかを制御します
    # デフォルト: false

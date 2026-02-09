@@ -988,6 +988,28 @@ class TestDeterminePhase:
 
         assert determine_phase(pr) == PHASE_LLM_WORKING
 
+    def test_llm_working_when_reviewing_after_finished_work(self):
+        """
+        If reviewing occurs after the last finished work (e.g., finished → reviewing),
+        this should NOT be detected as phase3 — still actively reviewing.
+        """
+        reset_comment_reaction_resolution_cache()
+
+        pr = {
+            "isDraft": False,
+            "reviews": [],
+            "latestReviews": [],
+            "commentNodes": [],
+            "reviewThreads": [],
+            "llm_statuses": [
+                "Codex started work on behalf of cat2151",
+                "Codex finished work on behalf of cat2151",
+                "Copilot started reviewing on behalf of cat2151",
+            ],
+        }
+
+        assert determine_phase(pr) == PHASE_LLM_WORKING
+
     def test_llm_working_when_statuses_have_no_reviewing(self):
         """
         Without a reviewing event, finished work alone should not produce phase3.

@@ -226,22 +226,30 @@ def _phase_from_llm_statuses(llm_statuses: List[str]) -> Optional[str]:
     if not llm_statuses:
         return None
 
-    has_reviewing = False
-    last_started_idx = None
-    last_finished_idx = None
+    review_idx: Optional[int] = None
+    last_started_idx: Optional[int] = None
+    last_finished_idx: Optional[int] = None
 
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
         if "reviewing" in lowered:
-            has_reviewing = True
+            review_idx = idx
         if "started work" in lowered:
             last_started_idx = idx
         if "finished work" in lowered:
             last_finished_idx = idx
 
-    if has_reviewing and last_finished_idx is not None:
-        if last_started_idx is None or last_finished_idx >= last_started_idx:
-            return PHASE_3
+    # Require a reviewing event and a finished-work event that happens *after* reviewing.
+    if review_idx is None or last_finished_idx is None:
+        return None
+    if last_finished_idx <= review_idx:
+        return None
+
+    # Ensure there is no started-work event after the last finished-work event.
+    if last_started_idx is not None and last_started_idx > last_finished_idx:
+        return None
+
+    return PHASE_3
 
     return None
 

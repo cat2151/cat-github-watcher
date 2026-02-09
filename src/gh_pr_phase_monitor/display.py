@@ -154,7 +154,7 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
             # - Rulesets can specify "assign_ci_failure_old" to assign one old "ci-failure" issue (oldest by issue number)
             # - Rulesets can specify "assign_deploy_pages_failure_old" to assign one old "deploy-pages-failure" issue (oldest by issue number)
             # - Rulesets can specify "assign_old" to assign one old issue (oldest by issue number, any issue)
-            # - Both default to false
+            # - All default to false
             # - Priority: ci-failure > deploy-pages-failure > good first issue > old issue
 
             # Check if any repository has auto-assign enabled
@@ -210,135 +210,52 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                 # Always try to check for issues to assign (batteries-included)
                 # Individual repositories must explicitly enable via rulesets for actual assignment
                 # Priority: ci-failure > deploy-pages-failure > good first issue > old issue (all sorted by issue number ascending)
-                assignment_completed = False
-
-                if any_ci_failure:
-                    print(f"\n{'=' * 50}")
-                    print("Checking for the oldest 'ci-failure' issue to auto-assign to Copilot...")
-                    print(f"{'=' * 50}")
-
-                    ci_failure_issues = get_issues_from_repositories(
-                        repos_with_ci_failure_enabled, limit=1, labels=["ci-failure"], sort_by_number=True
-                    )
-
-                    if ci_failure_issues:
-                        issue = ci_failure_issues[0]
-                        print("\n  Found oldest 'ci-failure' issue (sorted by issue number, ascending):")
-                        print(f"  #{issue['number']}: {issue['title']}")
-                        print(f"     URL: {issue['url']}")
-                        labels = issue.get("labels", [])
-                        label_str = ", ".join(str(label) for label in labels)
-                        print(f"     Labels: {label_str}")
-                        print("\n  Attempting to assign to Copilot...")
-
-                        # Get repository-specific configuration
-                        temp_config = _resolve_assign_to_copilot_config(issue, config)
-
-                        # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, temp_config)
-                        if not success:
-                            print("  Assignment failed - will retry on next iteration")
-                        else:
-                            assignment_completed = True
-                    else:
-                        print("  No 'ci-failure' issues found in repositories without open PRs")
-
-                if not assignment_completed and any_deploy_pages_failure:
-                    print(f"\n{'=' * 50}")
-                    print("Checking for the oldest 'deploy-pages-failure' issue to auto-assign to Copilot...")
-                    print(f"{'=' * 50}")
-
-                    deploy_failure_issues = get_issues_from_repositories(
+                assignment_modes = [
+                    ("ci-failure", repos_with_ci_failure_enabled, ["ci-failure"], any_ci_failure),
+                    (
+                        "deploy-pages-failure",
                         repos_with_deploy_pages_failure_enabled,
-                        limit=1,
-                        labels=["deploy-pages-failure"],
-                        sort_by_number=True,
-                    )
+                        ["deploy-pages-failure"],
+                        any_deploy_pages_failure,
+                    ),
+                    ("good first issue", repos_with_good_first_enabled, ["good first issue"], any_good_first),
+                    ("issue", repos_with_old_enabled, None, any_old),
+                ]
 
-                    if deploy_failure_issues:
-                        issue = deploy_failure_issues[0]
-                        print("\n  Found oldest 'deploy-pages-failure' issue (sorted by issue number, ascending):")
-                        print(f"  #{issue['number']}: {issue['title']}")
-                        print(f"     URL: {issue['url']}")
-                        labels = issue.get("labels", [])
-                        label_str = ", ".join(str(label) for label in labels)
-                        print(f"     Labels: {label_str}")
-                        print("\n  Attempting to assign to Copilot...")
+                for label_name, repos_list, label_filter, is_enabled in assignment_modes:
+                    if not is_enabled:
+                        continue
 
-                        # Get repository-specific configuration
-                        temp_config = _resolve_assign_to_copilot_config(issue, config)
-
-                        # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, temp_config)
-                        if not success:
-                            print("  Assignment failed - will retry on next iteration")
-                        else:
-                            assignment_completed = True
-                    else:
-                        print("  No 'deploy-pages-failure' issues found in repositories without open PRs")
-
-                if not assignment_completed and any_good_first:
-                    # Fetch and auto-assign the oldest "good first issue" (oldest by issue number)
-                    # Only from repos with assign_good_first_old enabled
                     print(f"\n{'=' * 50}")
-                    print("Checking for the oldest 'good first issue' to auto-assign to Copilot...")
+                    print(f"Checking for the oldest '{label_name}' to auto-assign to Copilot...")
                     print(f"{'=' * 50}")
 
-                    good_first_issues = get_issues_from_repositories(
-                        repos_with_good_first_enabled, limit=1, labels=["good first issue"], sort_by_number=True
-                    )
+                    query_kwargs = {"limit": 1, "sort_by_number": True}
+                    if label_filter:
+                        query_kwargs["labels"] = label_filter
 
-                    if good_first_issues:
-                        issue = good_first_issues[0]
-                        print("\n  Found oldest 'good first issue' (sorted by issue number, ascending):")
+                    candidate_issues = get_issues_from_repositories(repos_list, **query_kwargs)
+
+                    if candidate_issues:
+                        issue = candidate_issues[0]
+                        print(f"\n  Found oldest '{label_name}' (sorted by issue number, ascending):")
                         print(f"  #{issue['number']}: {issue['title']}")
                         print(f"     URL: {issue['url']}")
-                        # Safely join labels, ensuring they are all strings
                         labels = issue.get("labels", [])
                         label_str = ", ".join(str(label) for label in labels)
                         print(f"     Labels: {label_str}")
                         print("\n  Attempting to assign to Copilot...")
 
-                        # Get repository-specific configuration
                         temp_config = _resolve_assign_to_copilot_config(issue, config)
-
-                        # Assign the issue to Copilot and check the result
                         success = assign_issue_to_copilot(issue, temp_config)
                         if not success:
                             print("  Assignment failed - will retry on next iteration")
+                        break
+                    else:
+                        if label_name == "issue":
+                            print("  No issues found in repositories without open PRs")
                         else:
-                            assignment_completed = True
-                    else:
-                        print("  No 'good first issue' issues found in repositories without open PRs")
-                if not assignment_completed and any_old:
-                    # Fetch and auto-assign the oldest issue (any issue)
-                    # Only from repos with assign_old enabled
-                    print(f"\n{'=' * 50}")
-                    print("Checking for the oldest issue to auto-assign to Copilot...")
-                    print(f"{'=' * 50}")
-
-                    oldest_issues = get_issues_from_repositories(repos_with_old_enabled, limit=1, sort_by_number=True)
-
-                    if oldest_issues:
-                        issue = oldest_issues[0]
-                        print("\n  Found oldest issue (sorted by issue number, ascending):")
-                        print(f"  #{issue['number']}: {issue['title']}")
-                        print(f"     URL: {issue['url']}")
-                        # Safely join labels, ensuring they are all strings
-                        labels = issue.get("labels", [])
-                        label_str = ", ".join(str(label) for label in labels)
-                        print(f"     Labels: {label_str}")
-                        print("\n  Attempting to assign to Copilot...")
-
-                        # Get repository-specific configuration
-                        temp_config = _resolve_assign_to_copilot_config(issue, config)
-
-                        # Assign the issue to Copilot and check the result
-                        success = assign_issue_to_copilot(issue, temp_config)
-                        if not success:
-                            print("  Assignment failed - will retry on next iteration")
-                    else:
-                        print("  No issues found in repositories without open PRs")
+                            print(f"  No '{label_name}' issues found in repositories without open PRs")
 
             # Get the issue display limit from config (default: 10)
             issue_limit = config.get("issue_display_limit", 10) if config else 10

@@ -224,11 +224,34 @@ class TestProcessPR:
             "llm_statuses": ["started work on files", "finished work items"],
         }
 
-        process_pr(pr, {}, phase=PHASE_LLM_WORKING)
+        process_pr(pr, {"display_llm_status_timeline": True}, phase=PHASE_LLM_WORKING)
         output = capsys.readouterr().out
         assert "LLM status timeline" in output
         assert "1. started work on files" in output
         assert "2. finished work items" in output
+
+    def test_llm_working_timeline_hidden_by_default(self, capsys):
+        """LLM status timeline should not render unless enabled in config"""
+        pr = {
+            "author": {"login": "llm-author"},
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "LLM PR",
+            "url": "https://github.com/test-owner/test-repo/pull/6",
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "CHANGES_REQUESTED",
+                    "body": "needs work",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "CHANGES_REQUESTED"}],
+            "llm_statuses": ["started work on files", "finished work items"],
+        }
+
+        process_pr(pr, {}, phase=PHASE_LLM_WORKING)
+        output = capsys.readouterr().out
+        assert "LLM status timeline" not in output
 
     def test_browser_opened_only_once_for_phase3(self):
         """Browser should open only once for phase3, even if called multiple times"""

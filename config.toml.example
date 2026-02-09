@@ -139,6 +139,8 @@ agent_name = "@copilot"
 # [[rulesets]]
 # name = "Enable auto-assign for another repo - SIMPLE EXAMPLE"
 # repositories = ["another-repo"]
+# assign_ci_failure_old = true      # Assign one old "ci-failure" issue (oldest by issue number)
+# assign_deploy_pages_failure_old = true  # Assign one old "deploy-pages-failure" issue (oldest by issue number)
 # assign_good_first_old = true     # Assign one old "good first issue" (oldest by issue number, default: false)
 #                                  # This is all you need! The [assign_to_copilot] section below is optional.
 #                                  # Default behavior: Opens issue in browser for manual assignment
@@ -148,7 +150,7 @@ agent_name = "@copilot"
 # repositories = ["yet-another-repo"]
 # assign_good_first_old = true     # Assign one old "good first issue" (oldest by issue number)
 # assign_old = false               # Assign one old issue (oldest by issue number, any label)
-#                                  # When both are true, prioritize "good first issue"
+#                                  # Priority: ci-failure > deploy-pages-failure > good first issue > old issue
 
 
 # ntfy.sh notification settings (optional)
@@ -180,9 +182,11 @@ window_title = "GitHub"  # Optional: Window title to activate before clicking bu
 # This section only needs to be defined if you want to customize the default behavior.
 # 
 # Assignment behavior is controlled by ruleset flags:
+# - assign_ci_failure_old: Assign one old "ci-failure" issue (oldest by issue number, default: false)
+# - assign_deploy_pages_failure_old: Assign one old "deploy-pages-failure" issue (oldest by issue number, default: false)
 # - assign_good_first_old: Assign one old "good first issue" (oldest by issue number, default: false)
 # - assign_old: Assign one old issue (oldest by issue number, any label, default: false)
-# When both are true, prioritize "good first issue"
+# Priority: ci-failure > deploy-pages-failure > good first issue > old issue
 # 
 # Default behavior (when this section is not defined):
 # - Uses PyAutoGUI to automatically click buttons
@@ -192,7 +196,8 @@ window_title = "GitHub"  # Optional: Window title to activate before clicking bu
 #   Install: pip install pyautogui pillow
 # 
 # IMPORTANT: Feature is DISABLED by default for safety.
-# Must be explicitly enabled per repository using assign_good_first_old or assign_old in rulesets.
+# Must be explicitly enabled per repository using assign_ci_failure_old, assign_deploy_pages_failure_old,
+# assign_good_first_old, or assign_old in rulesets.
 [assign_to_copilot]
 wait_seconds = 10  # How long to wait after opening the browser before clicking
 window_title = "GitHub"  # Optional: Window title to activate before clicking buttons (for PyAutoGUI automation)

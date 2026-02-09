@@ -165,17 +165,16 @@ def _validate_boolean_flag(value: Any, flag_name: str) -> bool:
 
 def _validate_color_scheme(value: Any) -> str:
     """Validate that the color scheme is supported."""
+    supported_schemes = get_supported_color_schemes()
     if not isinstance(value, str):
         raise ValueError(
-            f"Configuration value 'color_scheme' must be a string ({', '.join(get_supported_color_schemes())}), "
+            f"Configuration value 'color_scheme' must be a string ({', '.join(supported_schemes)}), "
             f"got {type(value).__name__}: {value}"
         )
 
     normalized = value.strip().lower()
-    if normalized not in get_supported_color_schemes():
-        raise ValueError(
-            f"Unsupported color_scheme '{value}'. Supported schemes: {', '.join(get_supported_color_schemes())}"
-        )
+    if normalized not in supported_schemes:
+        raise ValueError(f"Unsupported color_scheme '{value}'. Supported schemes: {', '.join(supported_schemes)}")
     return normalized
 
 

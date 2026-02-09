@@ -5,6 +5,7 @@ Tests for PR actions including browser opening behavior
 from unittest.mock import patch
 
 from src.gh_pr_phase_monitor import pr_actions
+from src.gh_pr_phase_monitor.colors import colorize_url
 from src.gh_pr_phase_monitor.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
 from src.gh_pr_phase_monitor.pr_actions import process_pr
 
@@ -168,6 +169,20 @@ class TestProcessPR:
         process_pr(pr, {"display_pr_author": True}, phase=PHASE_LLM_WORKING)
         output = capsys.readouterr().out
         assert "Author: llm-author" in output
+
+    def test_process_pr_colors_url(self, capsys):
+        """PR URL should be colorized for better visibility"""
+        url = "https://github.com/test-owner/test-repo/pull/2"
+        pr = {
+            "repository": {"name": "test-repo", "owner": "test-owner"},
+            "title": "Colored URL PR",
+            "url": url,
+        }
+
+        process_pr(pr, {}, phase=PHASE_1)
+        output = capsys.readouterr().out
+        colored_url = colorize_url(url)
+        assert f"URL: {colored_url}" in output
 
     def test_llm_working_progress_displayed(self, capsys):
         """LLM working output should describe completed phases"""

@@ -7,7 +7,35 @@ This test ensures the new behavior requested in the issue:
 
 from unittest.mock import patch
 
+from src.gh_pr_phase_monitor.colors import colorize_url
 from src.gh_pr_phase_monitor.display import display_issues_from_repos_without_prs
+
+
+def test_issue_url_is_colorized(capsys):
+    """Issue URLs should be colorized for easier clicking"""
+    url = "https://github.com/testuser/test-repo/issues/1"
+    with patch("src.gh_pr_phase_monitor.display.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
+            mock_get_repos.return_value = [
+                {
+                    "name": "test-repo",
+                    "owner": "testuser",
+                    "openIssueCount": 1,
+                }
+            ]
+            mock_get_issues.return_value = [
+                {
+                    "title": "Issue 1",
+                    "url": url,
+                    "number": 1,
+                }
+            ]
+
+            display_issues_from_repos_without_prs(None)
+
+    colored_url = colorize_url(url)
+    output = capsys.readouterr().out
+    assert colored_url in output
 
 
 def test_display_issues_when_no_repos_with_prs():

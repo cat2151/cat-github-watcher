@@ -205,11 +205,51 @@ def llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
     if last_finished_idx is not None and last_started_idx is not None and last_finished_idx > last_started_idx:
         return False
 
-    if reviewing_chain_finished_idx is not None and (last_started_idx is None or reviewing_chain_finished_idx >= last_started_idx):
+    if reviewing_chain_finished_idx is not None and (
+        last_started_idx is None or reviewing_chain_finished_idx >= last_started_idx
+    ):
         return False
 
     if last_started_idx is not None and (last_finished_idx is None or last_started_idx > last_finished_idx):
         return True
+
+    return None
+
+
+def _phase_from_llm_statuses(llm_statuses: List[str]) -> Optional[str]:
+    """Infer phase from LLM statuses when review data is unavailable.
+
+    When the LLM statuses contain a reviewing event and all subsequent work
+    has finished (no started work without matching finished work),
+    this indicates phase 3.
+    """
+    if not llm_statuses:
+        return None
+
+    review_idx: Optional[int] = None
+    last_started_idx: Optional[int] = None
+    last_finished_idx: Optional[int] = None
+
+    for idx, status in enumerate(llm_statuses):
+        lowered = status.lower()
+        if "reviewing" in lowered:
+            review_idx = idx
+        if "started work" in lowered:
+            last_started_idx = idx
+        if "finished work" in lowered:
+            last_finished_idx = idx
+
+    # Require a reviewing event and a finished-work event that happens *after* reviewing.
+    if review_idx is None or last_finished_idx is None:
+        return None
+    if last_finished_idx <= review_idx:
+        return None
+
+    # Ensure there is no started-work event after the last finished-work event.
+    if last_started_idx is not None and last_started_idx > last_finished_idx:
+        return None
+
+    return PHASE_3
 
     return None
 
@@ -231,6 +271,10 @@ def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
 
     # Phase 2 と Phase 3 の判定には reviews が必要
     if not reviews or not latest_reviews:
+        # LLMステータスからreviewingと作業完了を検出できればphase3
+        status_phase = _phase_from_llm_statuses(pr.get("llm_statuses") or [])
+        if status_phase is not None:
+            return status_phase
         return PHASE_LLM_WORKING
 
     # 最新のレビューを取得
@@ -319,6 +363,11 @@ def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
 
         # 未解決のレビューコメントがない場合、または最新のレビューアーが満足している場合はphase3
         return PHASE_3
+
+    # LLMステータスからreviewingと作業完了を検出できればphase3
+    status_phase = _phase_from_llm_statuses(pr.get("llm_statuses") or [])
+    if status_phase is not None:
+        return status_phase
 
     return PHASE_LLM_WORKING
 

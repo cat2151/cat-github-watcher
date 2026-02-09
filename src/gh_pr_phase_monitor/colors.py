@@ -37,3 +37,10 @@ def colorize_phase(phase: str, llm_progress: str | None = None) -> str:
         if llm_progress:
             label = f"{llm_progress}, {phase}"
         return f"{Colors.BOLD}{Colors.MAGENTA}[{label}]{Colors.RESET}"
+
+
+def colorize_url(url: str) -> str:
+    """Add color to URLs to improve visibility/clickability in terminals."""
+    if not url:
+        return url
+    return f"{Colors.BLUE}{url}{Colors.RESET}"

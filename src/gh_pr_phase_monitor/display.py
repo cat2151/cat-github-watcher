@@ -6,7 +6,7 @@ import time
 import traceback
 from typing import Any, Dict, List, Optional
 
-from .colors import colorize_phase
+from .colors import colorize_phase, colorize_url
 from .config import (
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
     get_assign_to_copilot_config,
@@ -240,7 +240,7 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         issue = candidate_issues[0]
                         print(f"\n  Found oldest '{label_name}' (sorted by issue number, ascending):")
                         print(f"  #{issue['number']}: {issue['title']}")
-                        print(f"     URL: {issue['url']}")
+                        print(f"     URL: {colorize_url(issue['url'])}")
                         labels = issue.get("labels", [])
                         label_str = ", ".join(str(label) for label in labels)
                         print(f"     Labels: {label_str}")
@@ -273,7 +273,7 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                 print(f"\n  Top {len(top_issues)} issues (sorted by last update, descending):\n")
                 for idx, issue in enumerate(top_issues, 1):
                     print(f"  {idx}. #{issue['number']}: {issue['title']}")
-                    print(f"     URL: {issue['url']}")
+                    print(f"     URL: {colorize_url(issue['url'])}")
                     print()
     except Exception as e:
         print(f"  Error fetching issues: {e}")

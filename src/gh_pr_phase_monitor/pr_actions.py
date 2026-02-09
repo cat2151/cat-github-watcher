@@ -14,7 +14,7 @@ from .browser_automation import (
     _should_autoraise_window,
     merge_pr_automated,
 )
-from .colors import colorize_phase
+from .colors import colorize_phase, colorize_url
 from .comment_manager import (
     has_problematic_pr_title,
     post_phase2_comment,
@@ -152,7 +152,7 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         if llm_statuses:
             latest_llm_status = f" (Latest LLM status: {llm_statuses[-1]})"
     print(f"  [{repo_name}] {phase_display}{latest_llm_status} {title}")
-    print(f"    URL: {url}")
+    print(f"    URL: {colorize_url(url)}")
     if display_pr_author:
         print(f"    Author: {author_login}")
     if display_llm_status_timeline and phase == PHASE_LLM_WORKING and "completed" in progress_label.lower():

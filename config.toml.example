@@ -50,6 +50,10 @@ check_process_before_autoraise = true
 # Default: false
 verbose = false
 
+# Color scheme for terminal output
+# Supported schemes: "monokai" (default), "classic" (legacy colors)
+color_scheme = "monokai"
+
 # Display PR author in output
 # When enabled, shows "Author: <login>" in CLI output for each PR
 # Default: false

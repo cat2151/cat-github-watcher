@@ -28,6 +28,7 @@ def test_print_config_basic():
     assert "[Main Settings]" in output
     assert "interval: 1m" in output
     assert "verbose: True" in output
+    assert "color_scheme: monokai" in output
     assert "display_llm_status_timeline: False" in output
     assert "enable_pr_phase_snapshots: False" in output
 
@@ -187,6 +188,7 @@ def test_print_config_defaults():
     assert "interval: 1m" in output
     assert "issue_display_limit: 10" in output
     assert "verbose: False" in output
+    assert "color_scheme: monokai" in output
     assert "display_llm_status_timeline: False" in output
 
 

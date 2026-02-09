@@ -55,6 +55,11 @@ verbose = false
 # Default: false
 display_pr_author = false
 
+# Display LLM status timeline in output
+# When enabled, prints the captured LLM status timeline when progress is marked completed
+# Default: false
+display_llm_status_timeline = false
+
 # Save PR phase snapshots for debugging (HTML/JSON/markdown) under pr_phase_snapshots/
 # Default: false (disabled). Enable only when you need detailed snapshots for troubleshooting.
 enable_pr_phase_snapshots = false

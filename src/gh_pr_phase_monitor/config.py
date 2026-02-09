@@ -39,6 +39,9 @@ DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE = True
 # Default setting for displaying PR authors in CLI output
 DEFAULT_DISPLAY_PR_AUTHOR = False
 
+# Default setting for displaying LLM status timelines in CLI output
+DEFAULT_DISPLAY_LLM_STATUS_TIMELINE = False
+
 # Default setting for saving pr_phase_snapshots (disabled by default for safety/privacy)
 DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS = False
 
@@ -301,6 +304,16 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
             config["display_pr_author"] = DEFAULT_DISPLAY_PR_AUTHOR
     else:
         config["display_pr_author"] = DEFAULT_DISPLAY_PR_AUTHOR
+    if "display_llm_status_timeline" in config:
+        try:
+            config["display_llm_status_timeline"] = _validate_boolean_flag(
+                config["display_llm_status_timeline"], "display_llm_status_timeline"
+            )
+        except ValueError as e:
+            print(f"Warning: {e}. Using default value: {DEFAULT_DISPLAY_LLM_STATUS_TIMELINE}")
+            config["display_llm_status_timeline"] = DEFAULT_DISPLAY_LLM_STATUS_TIMELINE
+    else:
+        config["display_llm_status_timeline"] = DEFAULT_DISPLAY_LLM_STATUS_TIMELINE
     if "enable_pr_phase_snapshots" in config:
         try:
             config["enable_pr_phase_snapshots"] = _validate_boolean_flag(
@@ -337,6 +350,9 @@ def print_config(config: Dict[str, Any]) -> None:
         f"  check_process_before_autoraise: {config.get('check_process_before_autoraise', DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE)}"
     )
     print(f"  display_pr_author: {config.get('display_pr_author', DEFAULT_DISPLAY_PR_AUTHOR)}")
+    print(
+        f"  display_llm_status_timeline: {config.get('display_llm_status_timeline', DEFAULT_DISPLAY_LLM_STATUS_TIMELINE)}"
+    )
     print(f"  enable_pr_phase_snapshots: {config.get('enable_pr_phase_snapshots', DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS)}")
 
     coding_agent = config.get("coding_agent")

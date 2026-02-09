@@ -5,7 +5,7 @@ Tests for PR actions including browser opening behavior
 from unittest.mock import patch
 
 from src.gh_pr_phase_monitor import pr_actions
-from src.gh_pr_phase_monitor.colors import Colors
+from src.gh_pr_phase_monitor.colors import colorize_url
 from src.gh_pr_phase_monitor.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
 from src.gh_pr_phase_monitor.pr_actions import process_pr
 
@@ -181,7 +181,7 @@ class TestProcessPR:
 
         process_pr(pr, {}, phase=PHASE_1)
         output = capsys.readouterr().out
-        colored_url = f"{Colors.BLUE}{url}{Colors.RESET}"
+        colored_url = colorize_url(url)
         assert f"URL: {colored_url}" in output
 
     def test_llm_working_progress_displayed(self, capsys):

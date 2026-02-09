@@ -439,6 +439,8 @@ def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, r
         - enable_execution_phase3_to_merge
         - enable_execution_pr_title_fix_comment
         - assign_good_first_old: Assign one old "good first issue"
+        - assign_ci_failure_old: Assign one old "ci-failure" issue
+        - assign_deploy_pages_failure_old: Assign one old "deploy-pages-failure" issue
         - assign_old: Assign one old issue (any issue)
     """
     # Start with all flags disabled (no global defaults)
@@ -449,6 +451,8 @@ def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, r
         "enable_execution_phase3_to_merge": False,
         "enable_execution_pr_title_fix_comment": False,  # Post comment when problematic PR title detected
         "assign_good_first_old": False,  # Assign one old "good first issue"
+        "assign_ci_failure_old": False,  # Assign one old "ci-failure" issue
+        "assign_deploy_pages_failure_old": False,  # Assign one old "deploy-pages-failure" issue
         "assign_old": False,  # Assign one old issue (any issue)
     }
 
@@ -508,6 +512,14 @@ def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, r
                 result["assign_good_first_old"] = _validate_boolean_flag(
                     ruleset["assign_good_first_old"], "assign_good_first_old"
                 )
+            if "assign_ci_failure_old" in ruleset:
+                result["assign_ci_failure_old"] = _validate_boolean_flag(
+                    ruleset["assign_ci_failure_old"], "assign_ci_failure_old"
+                )
+            if "assign_deploy_pages_failure_old" in ruleset:
+                result["assign_deploy_pages_failure_old"] = _validate_boolean_flag(
+                    ruleset["assign_deploy_pages_failure_old"], "assign_deploy_pages_failure_old"
+                )
             if "assign_old" in ruleset:
                 result["assign_old"] = _validate_boolean_flag(ruleset["assign_old"], "assign_old")
 
@@ -531,4 +543,6 @@ def print_repo_execution_config(repo_owner: str, repo_name: str, exec_config: Di
         f"      enable_execution_pr_title_fix_comment: {exec_config.get('enable_execution_pr_title_fix_comment', False)}"
     )
     print(f"      assign_good_first_old: {exec_config.get('assign_good_first_old', False)}")
+    print(f"      assign_ci_failure_old: {exec_config.get('assign_ci_failure_old', False)}")
+    print(f"      assign_deploy_pages_failure_old: {exec_config.get('assign_deploy_pages_failure_old', False)}")
     print(f"      assign_old: {exec_config.get('assign_old', False)}")

@@ -423,6 +423,103 @@ def test_assign_only_fetches_from_enabled_repos():
                 mock_assign.assert_called_once()
 
 
+def test_priority_prefers_ci_failure_then_deploy_then_good_first():
+    """
+    Verify assignment priority: ci-failure > deploy-pages-failure > good first issue
+    """
+    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
+            with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
+                mock_get_repos.return_value = [{"name": "test-repo", "owner": "testuser", "openIssueCount": 1}]
+
+                mock_get_issues.side_effect = [
+                    [
+                        {
+                            "title": "CI failure",
+                            "url": "https://github.com/testuser/test-repo/issues/10",
+                            "number": 10,
+                            "updatedAt": "2024-01-10T00:00:00Z",
+                            "author": {"login": "bot"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                            "labels": ["ci-failure"],
+                        }
+                    ],
+                    [],
+                ]
+
+                mock_assign.return_value = True
+
+                config = {
+                    "assign_to_copilot": {},
+                    "rulesets": [
+                        {
+                            "repositories": ["test-repo"],
+                            "assign_ci_failure_old": True,
+                            "assign_deploy_pages_failure_old": True,
+                            "assign_good_first_old": True,
+                        }
+                    ],
+                }
+
+                display_issues_from_repos_without_prs(config)
+
+                assert mock_get_issues.call_count == 2
+                first_call = mock_get_issues.call_args_list[0]
+                assert first_call[1]["labels"] == ["ci-failure"]
+                assert first_call[1]["sort_by_number"] is True
+                mock_assign.assert_called_once()
+
+
+def test_fallback_to_deploy_pages_failure_when_no_ci_failure():
+    """
+    When ci-failure issues are unavailable, fall back to deploy-pages-failure before good first issues.
+    """
+    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
+            with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
+                mock_get_repos.return_value = [{"name": "test-repo", "owner": "testuser", "openIssueCount": 1}]
+
+                mock_get_issues.side_effect = [
+                    [],  # No ci-failure issues
+                    [
+                        {
+                            "title": "Pages deploy failure",
+                            "url": "https://github.com/testuser/test-repo/issues/20",
+                            "number": 20,
+                            "updatedAt": "2024-02-01T00:00:00Z",
+                            "author": {"login": "bot"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                            "labels": ["deploy-pages-failure"],
+                        }
+                    ],
+                    [],
+                ]
+
+                mock_assign.return_value = True
+
+                config = {
+                    "assign_to_copilot": {},
+                    "rulesets": [
+                        {
+                            "repositories": ["test-repo"],
+                            "assign_ci_failure_old": True,
+                            "assign_deploy_pages_failure_old": True,
+                            "assign_good_first_old": True,
+                        }
+                    ],
+                }
+
+                display_issues_from_repos_without_prs(config)
+
+                assert mock_get_issues.call_count == 3
+                first_call = mock_get_issues.call_args_list[0]
+                assert first_call[1]["labels"] == ["ci-failure"]
+                second_call = mock_get_issues.call_args_list[1]
+                assert second_call[1]["labels"] == ["deploy-pages-failure"]
+                assert second_call[1]["sort_by_number"] is True
+                mock_assign.assert_called_once()
+
+
 if __name__ == "__main__":
     test_display_issues_when_no_repos_with_prs()
     print("✓ Test 1 passed: display_issues_when_no_repos_with_prs")

@@ -114,7 +114,12 @@ def _resolve_assign_to_copilot_config(issue: Dict[str, Any], config: Dict[str, A
     if repo_owner and repo_name:
         exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
         # Check if any assignment flag is enabled for this repo
-        if exec_config.get("assign_good_first_old", False) or exec_config.get("assign_old", False):
+        if (
+            exec_config.get("assign_good_first_old", False)
+            or exec_config.get("assign_old", False)
+            or exec_config.get("assign_ci_failure_old", False)
+            or exec_config.get("assign_deploy_pages_failure_old", False)
+        ):
             # Assignment enabled for this repo, use global assign_to_copilot settings with defaults
             return {"assign_to_copilot": get_assign_to_copilot_config(config)}
         else:
@@ -146,15 +151,21 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
             # Check if auto-assign feature is enabled in config
             # With the new design:
             # - Rulesets can specify "assign_good_first_old" to assign one old "good first issue" (oldest by issue number)
+            # - Rulesets can specify "assign_ci_failure_old" to assign one old "ci-failure" issue (oldest by issue number)
+            # - Rulesets can specify "assign_deploy_pages_failure_old" to assign one old "deploy-pages-failure" issue (oldest by issue number)
             # - Rulesets can specify "assign_old" to assign one old issue (oldest by issue number, any issue)
             # - Both default to false
-            # - When both are true, prioritize "good first issue"
+            # - Priority: ci-failure > deploy-pages-failure > good first issue > old issue
 
             # Check if any repository has auto-assign enabled
             # We need to check all repos to determine which mode to use
             # Also filter repos to only those with assignment properly enabled
+            any_ci_failure = False
+            any_deploy_pages_failure = False
             any_good_first = False
             any_old = False
+            repos_with_ci_failure_enabled = []
+            repos_with_deploy_pages_failure_enabled = []
             repos_with_good_first_enabled = []
             repos_with_old_enabled = []
 
@@ -166,6 +177,12 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                     if repo_owner and repo_name:
                         exec_config = resolve_execution_config_for_repo(config, repo_owner, repo_name)
                         # Check if any assignment flag is enabled
+                        if exec_config.get("assign_ci_failure_old", False):
+                            any_ci_failure = True
+                            repos_with_ci_failure_enabled.append(repo)
+                        if exec_config.get("assign_deploy_pages_failure_old", False):
+                            any_deploy_pages_failure = True
+                            repos_with_deploy_pages_failure_enabled.append(repo)
                         if exec_config.get("assign_good_first_old", False):
                             any_good_first = True
                             repos_with_good_first_enabled.append(repo)
@@ -192,8 +209,75 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
             else:
                 # Always try to check for issues to assign (batteries-included)
                 # Individual repositories must explicitly enable via rulesets for actual assignment
-                # Priority: good first issue > old issue (both sorted by issue number ascending)
-                if any_good_first:
+                # Priority: ci-failure > deploy-pages-failure > good first issue > old issue (all sorted by issue number ascending)
+                assignment_completed = False
+
+                if any_ci_failure:
+                    print(f"\n{'=' * 50}")
+                    print("Checking for the oldest 'ci-failure' issue to auto-assign to Copilot...")
+                    print(f"{'=' * 50}")
+
+                    ci_failure_issues = get_issues_from_repositories(
+                        repos_with_ci_failure_enabled, limit=1, labels=["ci-failure"], sort_by_number=True
+                    )
+
+                    if ci_failure_issues:
+                        issue = ci_failure_issues[0]
+                        print("\n  Found oldest 'ci-failure' issue (sorted by issue number, ascending):")
+                        print(f"  #{issue['number']}: {issue['title']}")
+                        print(f"     URL: {issue['url']}")
+                        labels = issue.get("labels", [])
+                        label_str = ", ".join(str(label) for label in labels)
+                        print(f"     Labels: {label_str}")
+                        print("\n  Attempting to assign to Copilot...")
+
+                        # Get repository-specific configuration
+                        temp_config = _resolve_assign_to_copilot_config(issue, config)
+
+                        # Assign the issue to Copilot and check the result
+                        success = assign_issue_to_copilot(issue, temp_config)
+                        if not success:
+                            print("  Assignment failed - will retry on next iteration")
+                        else:
+                            assignment_completed = True
+                    else:
+                        print("  No 'ci-failure' issues found in repositories without open PRs")
+
+                if not assignment_completed and any_deploy_pages_failure:
+                    print(f"\n{'=' * 50}")
+                    print("Checking for the oldest 'deploy-pages-failure' issue to auto-assign to Copilot...")
+                    print(f"{'=' * 50}")
+
+                    deploy_failure_issues = get_issues_from_repositories(
+                        repos_with_deploy_pages_failure_enabled,
+                        limit=1,
+                        labels=["deploy-pages-failure"],
+                        sort_by_number=True,
+                    )
+
+                    if deploy_failure_issues:
+                        issue = deploy_failure_issues[0]
+                        print("\n  Found oldest 'deploy-pages-failure' issue (sorted by issue number, ascending):")
+                        print(f"  #{issue['number']}: {issue['title']}")
+                        print(f"     URL: {issue['url']}")
+                        labels = issue.get("labels", [])
+                        label_str = ", ".join(str(label) for label in labels)
+                        print(f"     Labels: {label_str}")
+                        print("\n  Attempting to assign to Copilot...")
+
+                        # Get repository-specific configuration
+                        temp_config = _resolve_assign_to_copilot_config(issue, config)
+
+                        # Assign the issue to Copilot and check the result
+                        success = assign_issue_to_copilot(issue, temp_config)
+                        if not success:
+                            print("  Assignment failed - will retry on next iteration")
+                        else:
+                            assignment_completed = True
+                    else:
+                        print("  No 'deploy-pages-failure' issues found in repositories without open PRs")
+
+                if not assignment_completed and any_good_first:
                     # Fetch and auto-assign the oldest "good first issue" (oldest by issue number)
                     # Only from repos with assign_good_first_old enabled
                     print(f"\n{'=' * 50}")
@@ -222,9 +306,11 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         success = assign_issue_to_copilot(issue, temp_config)
                         if not success:
                             print("  Assignment failed - will retry on next iteration")
+                        else:
+                            assignment_completed = True
                     else:
                         print("  No 'good first issue' issues found in repositories without open PRs")
-                elif any_old:
+                if not assignment_completed and any_old:
                     # Fetch and auto-assign the oldest issue (any issue)
                     # Only from repos with assign_old enabled
                     print(f"\n{'=' * 50}")

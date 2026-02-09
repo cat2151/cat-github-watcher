@@ -184,9 +184,11 @@ cat-github-watcher/
    # このセクションは、デフォルト動作をカスタマイズしたい場合のみ定義してください。
    # 
    # 割り当て動作はrulesetのフラグで制御します:
+   # - assign_ci_failure_old: 最も古い"ci-failure" issueを割り当て（issue番号順、デフォルト: false）
+   # - assign_deploy_pages_failure_old: 最も古い"deploy-pages-failure" issueを割り当て（issue番号順、デフォルト: false）
    # - assign_good_first_old: 最も古い"good first issue"を割り当て（issue番号順、デフォルト: false）
    # - assign_old: 最も古いissueを割り当て（issue番号順、ラベル不問、デフォルト: false）
-   # 両方がtrueの場合、"good first issue"を優先
+   # 優先度: ci-failure > deploy-pages-failure > good first issue > old issue
    # 
    # デフォルト動作（このセクションが定義されていない場合）:
    # - ブラウザ自動操縦で自動的にボタンをクリック
@@ -198,7 +200,8 @@ cat-github-watcher/
    # オプション: OCRフォールバックにはpytesseractのインストールが必要
    # 
    # 重要: 安全のため、この機能はデフォルトで無効です
-   # リポジトリごとにrulesetsで assign_good_first_old または assign_old を指定して明示的に有効化する必要があります
+   # リポジトリごとにrulesetsで assign_ci_failure_old / assign_deploy_pages_failure_old /
+   # assign_good_first_old / assign_old を指定して明示的に有効化する必要があります
    [assign_to_copilot]
    wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
    debug_dir = "debug_screenshots"  # 画像認識失敗時のデバッグ情報保存先（デフォルト: "debug_screenshots"）
@@ -312,9 +315,11 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
      - rulesetsで`enable_execution_phase3_to_merge = true`とするとPRを自動マージ（グローバル`[phase3_merge]`設定を使用）
    - **LLM working**: 待機（全PRがこの状態の場合、オープンPRのないリポジトリのissueを表示）
 5. **Issue自動割り当て**: 全PRが「LLM working」かつオープンPRのないリポジトリがある場合：
+   - rulesetsで`assign_ci_failure_old = true`とすると最も古い"ci-failure" issueを自動割り当て（issue番号順）
+   - rulesetsで`assign_deploy_pages_failure_old = true`とすると最も古い"deploy-pages-failure" issueを自動割り当て（issue番号順）
    - rulesetsで`assign_good_first_old = true`とすると最も古い"good first issue"を自動割り当て（issue番号順）
    - rulesetsで`assign_old = true`とすると最も古いissueを自動割り当て（issue番号順、ラベル不問）
-   - 両方がtrueの場合、"good first issue"を優先
+   - 優先度: ci-failure > deploy-pages-failure > good first issue > old issue
    - デフォルト動作: PyAutoGUIで自動的にボタンをクリック（`[assign_to_copilot]`セクションは不要）
    - 必須: PyAutoGUIのインストールとボタンスクリーンショットの準備が必要
 6. **繰り返し**: 設定された間隔で監視を継続
@@ -339,6 +344,8 @@ enable_execution_phase1_to_phase2 = true  # Draft PRをReady化
 enable_execution_phase2_to_phase3 = true  # Phase2コメント投稿
 enable_execution_phase3_send_ntfy = true  # ntfy通知送信
 enable_execution_phase3_to_merge = true   # Phase3 PRをマージ
+assign_ci_failure_old = true              # ci-failure issueを自動割り当て
+assign_deploy_pages_failure_old = true    # deploy-pages-failure issueを自動割り当て
 assign_good_first_old = true              # good first issueを自動割り当て
 ```
 

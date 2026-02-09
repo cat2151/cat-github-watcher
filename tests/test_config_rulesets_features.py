@@ -174,3 +174,43 @@ class TestAssignGoodFirstOldFlag:
         result = resolve_execution_config_for_repo(config, "owner", "test-repo")
         assert result["assign_good_first_old"] is True
         assert result["assign_old"] is True
+
+
+class TestFailureAssignFlags:
+    """Test ci-failure and deploy-pages-failure assign flags"""
+
+    def test_assign_ci_failure_old_flag(self):
+        """Ruleset should enable assign_ci_failure_old for specific repository"""
+        config = {
+            "rulesets": [
+                {
+                    "repositories": ["ci-repo"],
+                    "assign_ci_failure_old": True,
+                }
+            ],
+        }
+
+        result = resolve_execution_config_for_repo(config, "owner", "ci-repo")
+        assert result["assign_ci_failure_old"] is True
+
+        # Other repo should default to False
+        other = resolve_execution_config_for_repo(config, "owner", "other-repo")
+        assert other["assign_ci_failure_old"] is False
+
+    def test_assign_deploy_pages_failure_old_flag(self):
+        """Ruleset should enable assign_deploy_pages_failure_old for specific repository"""
+        config = {
+            "rulesets": [
+                {
+                    "repositories": ["pages-repo"],
+                    "assign_deploy_pages_failure_old": True,
+                }
+            ],
+        }
+
+        result = resolve_execution_config_for_repo(config, "owner", "pages-repo")
+        assert result["assign_deploy_pages_failure_old"] is True
+
+        # Other repo should default to False
+        other = resolve_execution_config_for_repo(config, "owner", "other-repo")
+        assert other["assign_deploy_pages_failure_old"] is False

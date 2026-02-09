@@ -1,4 +1,4 @@
-Last updated: 2026-02-09
+Last updated: 2026-02-10
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -98,6 +98,7 @@ GitHub Copilotが自動実装を行うPRのフェーズを監視し、適切な�
 - **フェーズ検知**: PRの状態（phase1: Draft状態、phase2: レビュー指摘対応中、phase3: レビュー待ち、LLM working: コーディングエージェント作業中）を自動判定
 - **Dry-runモード**: デフォルトでは監視のみ行い、実際のアクション（コメント投稿、PR Ready化、通知送信）は実行しない。明示的に有効化することで安全に運用可能
 - **自動コメント投稿**: フェーズに応じて適切なコメントを自動投稿（要：設定ファイルで有効化）
+- **マルチエージェント対応**: PR作成者が`openai-code-agent`など`*-codex-coding-agent`系なら`@codex[agent]`、`anthropic-code-agent`など`*-claude-coding-agent`系なら`@claude[agent]`を自動メンションし、これらに該当しない場合は`@copilot`にフォールバック（`[coding_agent].agent_name`で上書き可能、未設定時は@copilot）
 - **Draft PR自動Ready化**: phase2でのレビュー指摘対応のため、Draft PRを自動的にReady状態に変更（要：設定ファイルで有効化）
 - **モバイル通知**: ntfy.shを利用してphase3（レビュー待ち）を検知したらモバイル端末に通知（要：設定ファイルで有効化）
   - 個別のPRがphase3になったときに通知
@@ -246,9 +247,11 @@ cat-github-watcher/
    # このセクションは、デフォルト動作をカスタマイズしたい場合のみ定義してください。
    # 
    # 割り当て動作はrulesetのフラグで制御します:
+   # - assign_ci_failure_old: 最も古い"ci-failure" issueを割り当て（issue番号順、デフォルト: false）
+   # - assign_deploy_pages_failure_old: 最も古い"deploy-pages-failure" issueを割り当て（issue番号順、デフォルト: false）
    # - assign_good_first_old: 最も古い"good first issue"を割り当て（issue番号順、デフォルト: false）
    # - assign_old: 最も古いissueを割り当て（issue番号順、ラベル不問、デフォルト: false）
-   # 両方がtrueの場合、"good first issue"を優先
+   # 優先度: ci-failure > deploy-pages-failure > good first issue > old issue
    # 
    # デフォルト動作（このセクションが定義されていない場合）:
    # - ブラウザ自動操縦で自動的にボタンをクリック
@@ -260,7 +263,8 @@ cat-github-watcher/
    # オプション: OCRフォールバックにはpytesseractのインストールが必要
    # 
    # 重要: 安全のため、この機能はデフォルトで無効です
-   # リポジトリごとにrulesetsで assign_good_first_old または assign_old を指定して明示的に有効化する必要があります
+   # リポジトリごとにrulesetsで assign_ci_failure_old / assign_deploy_pages_failure_old /
+   # assign_good_first_old / assign_old を指定して明示的に有効化する必要があります
    [assign_to_copilot]
    wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
    debug_dir = "debug_screenshots"  # 画像認識失敗時のデバッグ情報保存先（デフォルト: "debug_screenshots"）
@@ -374,9 +378,11 @@ python3 -m src.gh_pr_phase_monitor.main [config.toml]
      - rulesetsで`enable_execution_phase3_to_merge = true`とするとPRを自動マージ（グローバル`[phase3_merge]`設定を使用）
    - **LLM working**: 待機（全PRがこの状態の場合、オープンPRのないリポジトリのissueを表示）
 5. **Issue自動割り当て**: 全PRが「LLM working」かつオープンPRのないリポジトリがある場合：
+   - rulesetsで`assign_ci_failure_old = true`とすると最も古い"ci-failure" issueを自動割り当て（issue番号順）
+   - rulesetsで`assign_deploy_pages_failure_old = true`とすると最も古い"deploy-pages-failure" issueを自動割り当て（issue番号順）
    - rulesetsで`assign_good_first_old = true`とすると最も古い"good first issue"を自動割り当て（issue番号順）
    - rulesetsで`assign_old = true`とすると最も古いissueを自動割り当て（issue番号順、ラベル不問）
-   - 両方がtrueの場合、"good first issue"を優先
+   - 優先度: ci-failure > deploy-pages-failure > good first issue > old issue
    - デフォルト動作: PyAutoGUIで自動的にボタンをクリック（`[assign_to_copilot]`セクションは不要）
    - 必須: PyAutoGUIのインストールとボタンスクリーンショットの準備が必要
 6. **繰り返し**: 設定された間隔で監視を継続
@@ -401,6 +407,8 @@ enable_execution_phase1_to_phase2 = true  # Draft PRをReady化
 enable_execution_phase2_to_phase3 = true  # Phase2コメント投稿
 enable_execution_phase3_send_ntfy = true  # ntfy通知送信
 enable_execution_phase3_to_merge = true   # Phase3 PRをマージ
+assign_ci_failure_old = true              # ci-failure issueを自動割り当て
+assign_deploy_pages_failure_old = true    # deploy-pages-failure issueを自動割り当て
 assign_good_first_old = true              # good first issueを自動割り当て
 ```
 
@@ -545,4 +553,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-02-09 07:02:45 JST
+Generated at: 2026-02-10 07:08:38 JST

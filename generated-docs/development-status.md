@@ -1,80 +1,51 @@
-Last updated: 2026-02-09
+Last updated: 2026-02-10
 
 # Development Status
 
 ## 現在のIssues
-- [Issue #220](../issue-notes/220.md) と [Issue #216](../issue-notes/216.md) は、LLMステータス表示とPRフェーズスナップショットの取得機能を、`config.toml`で有効/無効化し、デフォルトを無効にすることを提案しています。
-- [Issue #219](../issue-notes/219.md) は、`README.ja.md`に、特にCodexやClaude対応といった機能の記載漏れがないか調査を求めています。
-- [Issue #218](../issue-notes/218.md) は、プロジェクト内の陳腐化したドキュメントやスクリプトを特定し、削除することでコードベースの健全化を目指しています。
+- [Issue #231](../issue-notes/231.md) と [Issue #230](../issue-notes/230.md) は、GitHub PR Phase MonitorにMonokaiをデフォルトとする設定可能なターミナルカラースキームを追加することを提案しています。
+- この変更は、`color_scheme`設定オプションの導入と、既存の「Classic」オプションの維持を含みます。
+- 関連する最近のコミットでは、表示されるURLのカラライズが既に実装されており、カラースキーム関連の機能強化が進行中です。
 
 ## 次の一手候補
-1. [Issue #220](../issue-notes/220.md): LLM status timeline 表示の on/off 設定の実装
-   - 最初の小さな一歩: `config.toml.example`に`enable_llm_status_timeline = false`を追加し、`src/gh_pr_phase_monitor/config.py`でこの設定を読み込むロジックを実装します。
+1. [Issue #231](../issue-notes/231.md) / [Issue #230](../issue-notes/230.md) カラースキーム実装の完了
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/colors.py` にMonokaiカラースキームの定義を追加し、`src/gh_pr_phase_monitor/config.py` でデフォルトとして設定できるようにする。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `config.toml.example`, `src/gh_pr_phase_monitor/config.py`, `src/gh_pr_phase_monitor/display.py`, `src/gh_pr_phase_monitor/main.py`
+     対象ファイル: src/gh_pr_phase_monitor/colors.py, src/gh_pr_phase_monitor/config.py, config.toml.example
 
-     実行内容:
-     1. `config.toml.example` に `enable_llm_status_timeline = false` を追加します。適切なセクション（例: `[display]` または新設）に配置してください。
-     2. `src/gh_pr_phase_monitor/config.py` にて、追加した `enable_llm_status_timeline` 設定を読み込むロジックを実装します。この設定はブール値として読み込まれ、デフォルトは `false` とします。
-     3. `src/gh_pr_phase_monitor/main.py` または `src/gh_pr_phase_monitor/display.py` にて、`LLM status timeline` の表示ロジックがこの新しい設定値に基づいて制御されるように変更します。`d95b9f8 feat: print llm status timeline for debugging` コミットで追加された部分を中心に修正を検討してください。
+     実行内容: `src/gh_pr_phase_monitor/colors.py` にMonokaiカラースキームのカラーコード定義を追加します。その後、`src/gh_pr_phase_monitor/config.py` で新しい `color_scheme` 設定オプションを導入し、Monokaiをデフォルトとして設定可能にします。また、`config.toml.example` にもこの新しい設定項目を追加します。
 
-     確認事項:
-     - 既存の `config.toml` の読み込みロジックとの整合性を確認してください。
-     - `main.py` または `display.py` での `LLM status timeline` 表示ロジックが、新しい設定が `false` の場合に正しく無効化されることを確認してください。
-     - `config.toml.example` に追記した設定が、既存の設定項目と競合しないこと。
+     確認事項: 既存の`display.py`や`phase_detector.py`など、カラーを使用しているモジュールへの影響がないか、および既存の「Classic」スキームが正常に機能し続けることを確認してください。カラーコードの変更が視認性に問題を引き起こさないことを目視で確認できるテストシナリオを考慮してください。
 
-     期待する出力:
-     - `config.toml.example` の変更内容。
-     - `src/gh_pr_phase_monitor/config.py` で設定を読み込む関数の変更内容。
-     - `src/gh_pr_phase_monitor/display.py` または `src/gh_pr_phase_monitor/main.py` で表示ロジックを制御する変更内容。
+     期待する出力: `colors.py`, `config.py`, `config.toml.example` の変更差分。特に`colors.py`ではMonokaiスキームの正確なカラーコード定義、`config.py`では`color_scheme`のデフォルト値とバリデーションロジックが含まれること。
      ```
 
-2. [Issue #219](../issue-notes/219.md): 「README.ja.mdへの記載が漏れている機能」の調査
-   - 最初の小さな一歩: `README.ja.md` と `src/gh_pr_phase_monitor/config.py` を開き、`config.py`で定義されている設定項目が`README.ja.md`に全て記載されているか、特に`[coding_agent]`セクションや`enable_ocr_detection`など、最近追加された可能性のある機能を中心に確認します。
+2. [Issue #30](../issue-notes/30.md) issue-notes欠損時のエラーハンドリング改善
+   - 最初の小さな一歩: `DevelopmentStatusGenerator.cjs` および `IssueTracker.cjs` 内で、issue-notesファイルが存在しない場合にエラーとするのではなく、空の文字列として処理するように修正する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `README.ja.md`, `src/gh_pr_phase_monitor/config.py`
+     対象ファイル: .github/actions-tmp/.github_automation/project_summary/scripts/development/DevelopmentStatusGenerator.cjs, .github/actions-tmp/.github_automation/project_summary/scripts/development/IssueTracker.cjs
 
-     実行内容:
-     1. `src/gh_pr_phase_monitor/config.py` を分析し、`cat-github-watcher` が提供する全ての機能および設定項目をリストアップしてください。
-     2. リストアップした機能と設定項目について、`README.ja.md` の内容と照らし合わせ、特に `coding_agent` の `agent_name`（codex/claude対応を示唆する）や、ブラウザ自動操作関連の機能（`assign_to_copilot`, `phase3_merge` の詳細設定、OCR検出など）について、記載漏れがないか調査してください。
-     3. 調査結果に基づき、`README.ja.md` に追記が必要な機能や設定項目、または既存の記載が不十分な箇所を具体的に示してください。
+     実行内容: `IssueTracker.cjs` でissue-notesファイルが存在しない場合にエラーを発生させず、空の文字列を返すように処理を変更します。この変更を受けて、`DevelopmentStatusGenerator.cjs` がissue-notesがない場合でも正常に動作し、空のissue-notesコンテンツとして扱うように調整します。
 
-     確認事項:
-     - `config.py` から機能を抽出する際、全ての関連する設定キーやデフォルト値が考慮されていること。
-     - `README.ja.md` の現状の構造や記述スタイルを尊重し、追記提案が行われること。
-     - 「状況」セクションに「codexとclaudeに対応したことは、記載が漏れてそう」とあるため、この点に特に注意して調査すること。
+     確認事項: 修正後、issue-notesが存在しないIssueがある状況で、開発状況生成スクリプトがエラー終了せず、期待通りに実行されることを確認してください。また、既存のissue-notesがある場合でも正しく読み込まれることを確認してください。
 
-     期待する出力: Markdown形式で、以下の内容を含めてください。
-     - `src/gh_pr_phase_monitor/config.py` から抽出された主要機能と設定項目の一覧。
-     - `README.ja.md` の記載漏れや不十分な点に関する詳細な分析結果。
-     - `README.ja.md` の該当箇所に追記すべき内容の具体的な提案（Markdown形式のスニペットを含む）。
+     期待する出力: `DevelopmentStatusGenerator.cjs` と `IssueTracker.cjs` の変更差分。特に、ファイル読み込み部分でのエラーハンドリングが改善され、ファイルが存在しない場合の挙動が変更されていること。
      ```
 
-3. [Issue #218](../issue-notes/218.md): 陳腐化したドキュメントを削除する。あわせて「もう一切使う可能性がなくなったscript」があるかlistしてPRに報告する
-   - 最初の小さな一歩: プロジェクトルート直下および `.github/actions-tmp/` ディレクトリ内のドキュメントファイルやスクリプトファイルを一覧し、ファイル名や内容から現在のプロジェクトで不要と思われるものを仮に特定します。特に`MERGE_CONFIGURATION_EXAMPLES.md`, `PHASE3_MERGE_IMPLEMENTATION.md` や、`.github/actions-tmp/` に含まれるファイル群の古さや関連性を確認します。
+3. [Issue #31](../issue-notes/31.md) 「大きなソースがあるかチェックするyml」の共通ワークフロー化
+   - 最初の小さな一歩: `.github/actions-tmp/.github/workflows/check-large-files.yml` の内容を分析し、共通ワークフローとして再利用可能にするための抽象化ポイントを特定する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: プロジェクト内の全ての `.md` ファイルと、`.github/actions-tmp/` ディレクトリ以下の全てのファイル。
+     対象ファイル: .github/actions-tmp/.github/workflows/check-large-files.yml, .github/actions-tmp/.github_automation/check-large-files/scripts/check_large_files.py
 
-     実行内容:
-     1. 以下の条件に基づいて、陳腐化している可能性のあるドキュメントファイルおよびスクリプトファイルを特定してください。
-         - プロジェクトの現在の機能や目的と一致しない内容。
-         - 他の新しいドキュメントやコードで置き換えられている、または冗長になっている。
-         - テストや一時的な目的で作成されたが、現在は利用されていない（例: `_tmp` や `example` がファイル名に含まれるもの、古い実装の痕跡など）。
-         - 特に、プロジェクトルート直下の `MERGE_CONFIGURATION_EXAMPLES.md`, `PHASE3_MERGE_IMPLEMENTATION.md` や、`.github/actions-tmp/` ディレクトリ以下のファイル群に着目してください。
-     2. 特定した各ファイルについて、削除を推奨する理由を簡潔に説明してください。
-     3. 削除対象のスクリプトについては、それが「もう一切使う可能性がなくなったscript」であるかどうかの判断も示してください。
+     実行内容: `check-large-files.yml` の現在の実装を詳細に分析し、その機能を他のリポジトリやワークフローから容易に呼び出せる共通ワークフロー（reusable workflow）として再構築するために必要なステップを洗い出してください。特に、入力パラメータ（repository, path to config, etc.）、シークレット、出力などを考慮し、`call-` プレフィックスを持つ既存のワークフロー（例: `call-translate-readme.yml`）のパターンを参考にしてください。
 
-     確認事項:
-     - 削除を提案するファイルが、本当に現在および将来のプロジェクトにとって不要であることを慎重に確認してください。他のIssueや未実装の機能との関連性がないか注意深く調査すること。
-     - `.github/actions-tmp/` 内のファイルは、元々はGitHub Actionsの共通ワークフロー集として外部プロジェクトから利用されることを想定している可能性があるため、その文脈も考慮に入れる必要があります。ただし、現在の `cat-github-watcher` プロジェクトの直接的なコードベースではないため、原則として削除対象になりやすい。
+     確認事項: 現在の`check-large-files.yml`が単独で動作する際の機能が損なわれないこと。共通ワークフロー化の際に、設定の柔軟性やセキュリティが確保されることを確認してください。
 
-     期待する出力: Markdown形式で、以下の内容を含めてください。
-     - 削除を推奨するファイルのリスト（ファイルパス）。
-     - 各ファイルに対する削除理由。
-     - 特に「もう一切使う可能性がなくなったscript」として判断されるスクリプトのリスト。
+     期待する出力: 共通ワークフロー化に向けた設計案をmarkdown形式で出力してください。具体的には、新しい共通ワークフローの`inputs`と`secrets`の定義案、およびそれを呼び出すための`call-check-large-files.yml`のようなワークフローの構成案を含めてください。
+     ```
 
 ---
-Generated at: 2026-02-09 07:03:09 JST
+Generated at: 2026-02-10 07:08:55 JST

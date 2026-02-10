@@ -17,9 +17,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .config import (
-    DEFAULT_ASSIGN_TO_COPILOT_CONFIG,
     DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE,
-    DEFAULT_PHASE3_MERGE_CONFIG,
+    get_assign_to_copilot_config,
+    get_phase3_merge_config,
     is_process_running,
 )
 
@@ -102,14 +102,6 @@ def _parse_int_setting(value: Any, default: int) -> int:
         return default
 
 
-def _merge_config_with_defaults(defaults: Dict[str, Any], user_config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Return a copy of defaults merged with user-provided configuration."""
-    merged = defaults.copy()
-    if isinstance(user_config, dict):
-        merged.update(user_config)
-    return merged
-
-
 class NotificationWindow:
     """Lightweight topmost notification window shown during automation."""
 
@@ -139,26 +131,30 @@ class NotificationWindow:
             self.root.geometry(geometry)
             self.root.attributes("-topmost", True)
 
-            label = tk.Label(self.root, text=self.message, font=("Arial", 16), wraplength=self.width - 50)
+            wraplength = max(0, self.width - 50)
+            label = tk.Label(self.root, text=self.message, font=("Arial", 16), wraplength=wraplength)
             label.pack(expand=True, padx=20, pady=20)
 
-            if self._should_close:
-                self.root.destroy()
-                return
+            def _check_close() -> None:
+                """Poll for close requests from other threads and shut down Tk safely."""
+                if self._should_close and self.root is not None:
+                    try:
+                        self.root.quit()
+                        self.root.destroy()
+                    except Exception as e:
+                        print(f"  ⚠ Failed to close notification window cleanly: {e}")
+                    return
+                if self.root is not None:
+                    self.root.after(100, _check_close)
 
+            self.root.after(100, _check_close)
             self.root.mainloop()
         except Exception:
             self.root = None
 
     def close(self) -> None:
-        """Close the notification window if it is open."""
+        """Request the notification window to close."""
         self._should_close = True
-        if self.root:
-            try:
-                self.root.quit()
-                self.root.destroy()
-            except Exception:
-                pass
 
 
 def _start_button_notification(config: Dict[str, Any], default_message: str) -> Optional[NotificationWindow]:
@@ -196,8 +192,8 @@ def _close_notification_window(window: Optional[NotificationWindow]) -> None:
     if window:
         try:
             window.close()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  ⚠ Failed to close notification window: {e}")
 
 
 def _should_maximize_on_first_fail(config: Dict[str, Any]) -> bool:
@@ -240,6 +236,7 @@ def _maximize_window(config: Dict[str, Any]) -> bool:
         try:
             target_window.activate()
         except Exception:
+            # Some platforms/window managers may not support activate; continue without failing
             pass
 
         try:
@@ -863,7 +860,7 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     if config is None:
         config = {}
 
-    assign_config = _merge_config_with_defaults(DEFAULT_ASSIGN_TO_COPILOT_CONFIG, config.get("assign_to_copilot"))
+    assign_config = get_assign_to_copilot_config(config)
 
     # Validate and get configuration values
     wait_seconds = _validate_wait_seconds(assign_config)
@@ -990,7 +987,7 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
     if config is None:
         config = {}
 
-    merge_config = _merge_config_with_defaults(DEFAULT_PHASE3_MERGE_CONFIG, config.get("phase3_merge"))
+    merge_config = get_phase3_merge_config(config)
 
     # Validate and get configuration values
     wait_seconds = _validate_wait_seconds(merge_config)

@@ -352,7 +352,8 @@ class TestClickButtonWithImage:
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
     @patch("src.gh_pr_phase_monitor.browser_automation._maybe_maximize_window")
-    def test_retries_after_maximize_when_not_found_first(self, mock_maximize, mock_get_path):
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_retries_after_maximize_when_not_found_first(self, mock_sleep, mock_maximize, mock_get_path):
         """Test that a maximize retry is attempted before falling back"""
         from src.gh_pr_phase_monitor.browser_automation import _click_button_with_image
 
@@ -373,7 +374,8 @@ class TestClickButtonWithImage:
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
     @patch("src.gh_pr_phase_monitor.browser_automation._maximize_window")
-    def test_skip_maximize_when_config_disabled(self, mock_maximize, mock_get_path):
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_skip_maximize_when_config_disabled(self, mock_sleep, mock_maximize, mock_get_path):
         """Test that maximize retry can be disabled via config"""
         from src.gh_pr_phase_monitor.browser_automation import _click_button_with_image
 

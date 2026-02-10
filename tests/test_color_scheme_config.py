@@ -7,7 +7,7 @@ import tempfile
 
 import pytest
 
-from src.gh_pr_phase_monitor.colors import DEFAULT_COLOR_SCHEME, colorize_phase, set_color_scheme
+from src.gh_pr_phase_monitor.colors import DEFAULT_COLOR_SCHEME, colorize_phase, colorize_url, set_color_scheme
 from src.gh_pr_phase_monitor.config import load_config
 
 
@@ -29,6 +29,7 @@ def test_load_config_uses_default_color_scheme_when_missing():
         assert config["color_scheme"] == DEFAULT_COLOR_SCHEME
         # Default monokai palette embeds the 230;219;116 code for phase1
         assert "38;2;230;219;116" in colorize_phase("phase1")
+        assert config["colors"]["phase1"].endswith("230;219;116m")
     finally:
         os.unlink(config_path)
 
@@ -43,6 +44,7 @@ def test_load_config_applies_valid_color_scheme():
         config = load_config(config_path)
         assert config["color_scheme"] == "classic"
         assert "\033[93m" in colorize_phase("phase1")
+        assert config["colors"]["phase1"] == "\033[93m"
     finally:
         os.unlink(config_path)
 
@@ -57,5 +59,77 @@ def test_load_config_falls_back_on_invalid_color_scheme():
         config = load_config(config_path)
         assert config["color_scheme"] == DEFAULT_COLOR_SCHEME
         assert "38;2;230;219;116" in colorize_phase("phase1")
+        assert config["colors"]["phase1"].endswith("230;219;116m")
+    finally:
+        os.unlink(config_path)
+
+
+def test_load_config_applies_custom_hex_colors():
+    """Custom hex color codes should override scheme values."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write(
+            '\n'.join(
+                [
+                    'color_scheme = "classic"',
+                    "[colors]",
+                    'phase1 = "#123456"',
+                    'url = "abcdef"',
+                ]
+            )
+        )
+        config_path = f.name
+
+    try:
+        config = load_config(config_path)
+        assert config["color_scheme"] == "classic"
+        assert "\x1b[38;2;18;52;86m" == config["colors"]["phase1"]
+        assert "38;2;18;52;86" in colorize_phase("phase1")
+        assert "38;2;171;205;239" in colorize_url("https://example.com")
+        assert config["colors"]["url"].endswith("[38;2;171;205;239m")
+    finally:
+        os.unlink(config_path)
+
+
+def test_load_config_ignores_invalid_custom_colors():
+    """Invalid custom colors should be ignored without breaking defaults."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write(
+            '\n'.join(
+                [
+                    'interval = "1m"',
+                    "[colors]",
+                    'phase1 = "not-a-color"',
+                ]
+            )
+        )
+        config_path = f.name
+
+    try:
+        config = load_config(config_path)
+        assert config["color_scheme"] == DEFAULT_COLOR_SCHEME
+        assert config["colors"]["phase1"].endswith("230;219;116m")
+        assert "38;2;230;219;116" in colorize_phase("phase1")
+    finally:
+        os.unlink(config_path)
+
+
+def test_load_config_accepts_ansi_sequences():
+    """ANSI escape sequences should be accepted when valid SGR codes."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write(
+            '\n'.join(
+                [
+                    'interval = "1m"',
+                    "[colors]",
+                    'url = "\\u001b[93m"',
+                ]
+            )
+        )
+        config_path = f.name
+
+    try:
+        config = load_config(config_path)
+        assert config["colors"]["url"] == "\u001b[93m"
+        assert "93m" in colorize_url("https://example.com")
     finally:
         os.unlink(config_path)

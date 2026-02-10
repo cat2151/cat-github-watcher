@@ -2,7 +2,10 @@
 ANSI color codes and colorization functions for terminal output
 """
 
+import re
+
 DEFAULT_COLOR_SCHEME = "monokai"
+SUPPORTED_COLOR_KEYS = ("phase1", "phase2", "phase3", "llm", "url")
 
 _COLOR_SCHEMES = {
     # Monokai-inspired palette
@@ -22,6 +25,57 @@ _COLOR_SCHEMES = {
         "url": "\033[94m",
     },
 }
+
+
+def _hex_to_ansi(color_hex: str, color_name: str) -> str:
+    match = re.fullmatch(r"#?([0-9a-fA-F]{6})", color_hex.strip())
+    if not match:
+        raise ValueError(
+            f"Invalid color code for '{color_name}': '{color_hex}'. "
+            "Use 6-digit hex like #RRGGBB or an ANSI escape code."
+        )
+
+    hex_value = match.group(1)
+    red = int(hex_value[0:2], 16)
+    green = int(hex_value[2:4], 16)
+    blue = int(hex_value[4:6], 16)
+    return f"\033[38;2;{red};{green};{blue}m"
+
+
+def normalize_color_code(color_code: str, color_name: str) -> str:
+    if not isinstance(color_code, str):
+        raise ValueError(
+            f"Color '{color_name}' must be a string (hex like #RRGGBB or ANSI code), "
+            f"got {type(color_code).__name__}: {color_code}"
+        )
+
+    stripped = color_code.strip()
+
+    if stripped.startswith("\x1b"):
+        if not re.fullmatch(r"\x1b\[[0-9;]*m", stripped):
+            raise ValueError(
+                f"Invalid ANSI escape for '{color_name}': '{color_code}'. "
+                "Expected SGR format like '\\u001b[38;2;230;219;116m'."
+            )
+        return stripped
+
+    return _hex_to_ansi(stripped, color_name)
+
+
+def apply_custom_colors(custom_palette: dict[str, str]) -> dict[str, str]:
+    """Override the active palette with custom color codes."""
+    if not isinstance(custom_palette, dict):
+        raise ValueError("Custom colors must be provided as a table/dictionary.")
+
+    if not custom_palette:
+        return {}
+
+    Colors.YELLOW = custom_palette.get("phase1", Colors.YELLOW)
+    Colors.CYAN = custom_palette.get("phase2", Colors.CYAN)
+    Colors.GREEN = custom_palette.get("phase3", Colors.GREEN)
+    Colors.MAGENTA = custom_palette.get("llm", Colors.MAGENTA)
+    Colors.BLUE = custom_palette.get("url", Colors.BLUE)
+    return custom_palette
 
 
 class Colors:

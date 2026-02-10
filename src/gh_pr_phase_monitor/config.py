@@ -9,7 +9,15 @@ from typing import Any, Dict
 
 import tomli
 
-from .colors import DEFAULT_COLOR_SCHEME, get_supported_color_schemes, set_color_scheme
+from .colors import (
+    DEFAULT_COLOR_SCHEME,
+    SUPPORTED_COLOR_KEYS,
+    Colors,
+    apply_custom_colors,
+    get_supported_color_schemes,
+    normalize_color_code,
+    set_color_scheme,
+)
 
 # Default configuration for phase3_merge feature (batteries included)
 DEFAULT_PHASE3_MERGE_CONFIG: Dict[str, Any] = {
@@ -192,6 +200,27 @@ def _validate_color_scheme(value: Any) -> str:
     return normalized
 
 
+def _load_custom_colors(config: Dict[str, Any]) -> Dict[str, str]:
+    """Validate and normalize custom color overrides from config."""
+    custom_colors = config.get("colors")
+    if custom_colors is None:
+        return {}
+
+    if not isinstance(custom_colors, dict):
+        print("Warning: [colors] section must be a table. Ignoring custom colors.")
+        return {}
+
+    validated_colors: Dict[str, str] = {}
+    for key in SUPPORTED_COLOR_KEYS:
+        if key not in custom_colors:
+            continue
+        try:
+            validated_colors[key] = normalize_color_code(custom_colors[key], key)
+        except ValueError as e:
+            print(f"Warning: {e} Skipping '{key}'.")
+    return validated_colors
+
+
 def get_phase3_merge_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """Get phase3_merge configuration with defaults applied
 
@@ -366,6 +395,18 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
 
     # Apply color scheme immediately so downstream output uses it
     config["color_scheme"] = set_color_scheme(config["color_scheme"])
+
+    # Apply optional custom color overrides
+    custom_colors = _load_custom_colors(config)
+    if custom_colors:
+        apply_custom_colors(custom_colors)
+    config["colors"] = {
+        "phase1": Colors.YELLOW,
+        "phase2": Colors.CYAN,
+        "phase3": Colors.GREEN,
+        "llm": Colors.MAGENTA,
+        "url": Colors.BLUE,
+    }
 
     return config
 

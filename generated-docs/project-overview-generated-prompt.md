@@ -1,4 +1,4 @@
-Last updated: 2026-02-10
+Last updated: 2026-02-11
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -195,6 +195,20 @@ cat-github-watcher/
    # デフォルト: false
    verbose = false
    
+   # ターミナル出力のカラースキーム
+   # monokai（デフォルト）または classic を指定可能
+   color_scheme = "monokai"
+
+   # [colors] セクションで個別にカラーコードを上書き可能（#RRGGBB形式/ANSI可）
+   # 省略時は上記color_schemeのパレットを使用
+   [colors]
+   # phase1 = "#E6DB74"
+   # phase2 = "#66D9EF"
+   # phase3 = "#A6E22E"
+   # llm = "#F92672"
+   # url = "#79C1FF"
+   # url = "\u001b[94m"  # TOMLで書けるANSI例（ESC=[94m）
+   
    # PR作者の表示切り替え
    # CLI出力で "Author: <login>" を表示するかどうかを制御します
    # デフォルト: false
@@ -240,7 +254,14 @@ cat-github-watcher/
    automated = false  # trueにするとブラウザ自動操縦でマージボタンをクリック
    wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
    debug_dir = "debug_screenshots"  # 画像認識失敗時のデバッグ情報保存先（デフォルト: "debug_screenshots"）
-   
+   notification_enabled = true  # ボタン自動操作中に指定座標で小さな通知ウィンドウを表示
+   notification_message = "ブラウザを開いてMergeボタンを探索中..."  # 通知ウィンドウのメッセージ
+   notification_width = 400
+   notification_height = 150
+   notification_position_x = 100
+   notification_position_y = 100
+   maximize_on_first_fail = true  # 1回目にボタンが見つからない場合にウィンドウを最大化して再探索する
+
    # issueをCopilotに自動割り当て（完全にオプション！このセクション全体がオプションです）
    # 
    # シンプルな使い方: rulesetsで assign_good_first_old = true とするだけ（上記の例を参照）
@@ -270,6 +291,13 @@ cat-github-watcher/
    debug_dir = "debug_screenshots"  # 画像認識失敗時のデバッグ情報保存先（デフォルト: "debug_screenshots"）
    confidence = 0.8  # 画像マッチングの信頼度 0.0-1.0（デフォルト: 0.8）
    enable_ocr_detection = true  # OCRフォールバックを有効化（デフォルト: true）
+   notification_enabled = true  # ボタン自動操作中に指定座標で小さな通知ウィンドウを表示
+   notification_message = "ブラウザを開いてCopilot割り当てボタンを探索中..."  # 通知ウィンドウのメッセージ
+   notification_width = 400
+   notification_height = 150
+   notification_position_x = 100
+   notification_position_y = 100
+   maximize_on_first_fail = true  # 1回目にボタンが見つからない場合にウィンドウを最大化して再探索する
    # enable_html_detection = false  # HTML検出フォールバック（実験的、デフォルト: false）
    ```
 
@@ -499,6 +527,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_batteries_included_defaults.py
   📄 test_browser_automation.py
   📄 test_check_process_before_autoraise.py
+  📄 test_color_scheme_config.py
   📄 test_config_rulesets.py
   📄 test_config_rulesets_features.py
   📄 test_elapsed_time_display.py
@@ -553,4 +582,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-02-10 07:08:38 JST
+Generated at: 2026-02-11 07:11:10 JST

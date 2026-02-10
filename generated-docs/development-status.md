@@ -1,51 +1,50 @@
-Last updated: 2026-02-10
+Last updated: 2026-02-11
 
 # Development Status
 
 ## 現在のIssues
-- [Issue #231](../issue-notes/231.md) と [Issue #230](../issue-notes/230.md) は、GitHub PR Phase MonitorにMonokaiをデフォルトとする設定可能なターミナルカラースキームを追加することを提案しています。
-- この変更は、`color_scheme`設定オプションの導入と、既存の「Classic」オプションの維持を含みます。
-- 関連する最近のコミットでは、表示されるURLのカラライズが既に実装されており、カラースキーム関連の機能強化が進行中です。
+- 現在、唯一のオープンIssue [Issue #236](../issue-notes/236.md) は、スプラッシュウィンドウがOSのダークモードに対応していない問題に焦点を当てています。
+- この課題は、アプリケーションのUIがシステム設定に自動的に適応できるよう、色設定の動的な切り替えを必要とします。
+- 解決には、OSのダークモード検出、既存のカラースキーム設定の拡張、そしてスプラッシュウィンドウの特定部分の色変更ロジックの実装が求められます。
 
 ## 次の一手候補
-1. [Issue #231](../issue-notes/231.md) / [Issue #230](../issue-notes/230.md) カラースキーム実装の完了
-   - 最初の小さな一歩: `src/gh_pr_phase_monitor/colors.py` にMonokaiカラースキームの定義を追加し、`src/gh_pr_phase_monitor/config.py` でデフォルトとして設定できるようにする。
+1. [Issue #236](../issue-notes/236.md): PythonでOSのダークモードを検出する方法を調査
+   - 最初の小さな一歩: WindowsおよびmacOSにおけるPythonでのダークモード検出ライブラリやAPI利用方法を調査し、簡単な概念実証コードの方向性を検討する。
+   - Agent実行プロンプ:
+     ```
+     対象ファイル: なし (調査結果をdocs/dark_mode_detection_research.mdとして出力することを想定)
+
+     実行内容: WindowsとmacOS環境において、PythonでOSのダークモード設定を検出するための一般的な方法、利用可能なライブラリ（例: `darkdetect`, `PyQt`など）、またはOS固有のAPI（例: WinAPI, AppKit）について調査し、それぞれの検出精度、利用の容易さ、依存関係、そして適用可能性を比較分析してください。
+
+     確認事項: 調査にあたり、Pythonのバージョン互換性やクロスプラットフォーム対応の要件を考慮してください。
+
+     期待する出力: 調査結果をまとめたmarkdown形式のドキュメント（例: `docs/dark_mode_detection_research.md`）を生成してください。ドキュメントには、各検出方法のメリット・デメリット、サンプルコードの概要、および`gh_pr_phase_monitor`プロジェクトへの適用に関する推奨事項を含めてください。
+     ```
+
+2. [Issue #236](../issue-notes/236.md): `config.toml`のカラースキームをダークモードで切り替えられるように拡張する設計
+   - 最初の小さな一歩: `config.toml.example`を分析し、ダークモード/ライトモードの両方で色設定を定義できるようにするための設定構造案を検討する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: src/gh_pr_phase_monitor/colors.py, src/gh_pr_phase_monitor/config.py, config.toml.example
+     対象ファイル: `config.toml.example`, `src/gh_pr_phase_monitor/config.py`, `src/gh_pr_phase_monitor/colors.py`
 
-     実行内容: `src/gh_pr_phase_monitor/colors.py` にMonokaiカラースキームのカラーコード定義を追加します。その後、`src/gh_pr_phase_monitor/config.py` で新しい `color_scheme` 設定オプションを導入し、Monokaiをデフォルトとして設定可能にします。また、`config.toml.example` にもこの新しい設定項目を追加します。
+     実行内容: `config.toml.example`の現在のカラースキーム定義を分析し、OSのダークモード/ライトモード設定に基づいて異なる色セットを適用できるように、設定ファイルの構造とそれに対応するPythonコード(`src/gh_pr_phase_monitor/config.py`, `src/gh_pr_phase_monitor/colors.py`)の変更点を設計してください。特に、検出されたモードに応じて動的に色をロードするメカニズムに焦点を当ててください。
 
-     確認事項: 既存の`display.py`や`phase_detector.py`など、カラーを使用しているモジュールへの影響がないか、および既存の「Classic」スキームが正常に機能し続けることを確認してください。カラーコードの変更が視認性に問題を引き起こさないことを目視で確認できるテストシナリオを考慮してください。
+     確認事項: 既存のカラースキーム設定の互換性を維持しつつ、新しいダークモード設定を追加できることを確認してください。また、色のロードロジックがシンプルかつ拡張可能であることを考慮してください。
 
-     期待する出力: `colors.py`, `config.py`, `config.toml.example` の変更差分。特に`colors.py`ではMonokaiスキームの正確なカラーコード定義、`config.py`では`color_scheme`のデフォルト値とバリデーションロジックが含まれること。
+     期待する出力: `config.toml.example`の提案される新しい構造（ダークモード設定を含む）と、それをパースし、アプリケーションに適用するための`src/gh_pr_phase_monitor/config.py`および`src/gh_pr_phase_monitor/colors.py`における変更の概要をmarkdown形式で出力してください。
      ```
 
-2. [Issue #30](../issue-notes/30.md) issue-notes欠損時のエラーハンドリング改善
-   - 最初の小さな一歩: `DevelopmentStatusGenerator.cjs` および `IssueTracker.cjs` 内で、issue-notesファイルが存在しない場合にエラーとするのではなく、空の文字列として処理するように修正する。
+3. [Issue #236](../issue-notes/236.md): スプラッシュウィンドウの表示ロジックと色設定箇所の特定
+   - 最初の小さな一歩: スプラッシュウィンドウの表示に関連するファイル（`src/gh_pr_phase_monitor/browser_automation.py` や `src/gh_pr_phase_monitor/display.py` など）を特定し、UIフレームワークと色設定の具体的な場所を調査する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: .github/actions-tmp/.github_automation/project_summary/scripts/development/DevelopmentStatusGenerator.cjs, .github/actions-tmp/.github_automation/project_summary/scripts/development/IssueTracker.cjs
+     対象ファイル: `src/gh_pr_phase_monitor/browser_automation.py`, `src/gh_pr_phase_monitor/display.py`, `src/gh_pr_phase_monitor/main.py`
 
-     実行内容: `IssueTracker.cjs` でissue-notesファイルが存在しない場合にエラーを発生させず、空の文字列を返すように処理を変更します。この変更を受けて、`DevelopmentStatusGenerator.cjs` がissue-notesがない場合でも正常に動作し、空のissue-notesコンテンツとして扱うように調整します。
+     実行内容: プロジェクト内でスプラッシュウィンドウ（またはそれに類する初期表示UI）がどのように実装されているかを分析し、使用されているUIフレームワーク（例: Tkinter, PyQt, PySideなど、またはPyAutoGUIのような画像認識ベースのアプローチ）を特定してください。その後、そのスプラッシュウィンドウの背景色やテキスト色といった視覚的要素がどこで設定されているかを具体的に洗い出してください。
 
-     確認事項: 修正後、issue-notesが存在しないIssueがある状況で、開発状況生成スクリプトがエラー終了せず、期待通りに実行されることを確認してください。また、既存のissue-notesがある場合でも正しく読み込まれることを確認してください。
+     確認事項: スプラッシュウィンドウ以外のUI要素が、この変更によって意図せず影響を受けないことを確認してください。
 
-     期待する出力: `DevelopmentStatusGenerator.cjs` と `IssueTracker.cjs` の変更差分。特に、ファイル読み込み部分でのエラーハンドリングが改善され、ファイルが存在しない場合の挙動が変更されていること。
-     ```
-
-3. [Issue #31](../issue-notes/31.md) 「大きなソースがあるかチェックするyml」の共通ワークフロー化
-   - 最初の小さな一歩: `.github/actions-tmp/.github/workflows/check-large-files.yml` の内容を分析し、共通ワークフローとして再利用可能にするための抽象化ポイントを特定する。
-   - Agent実行プロンプト:
-     ```
-     対象ファイル: .github/actions-tmp/.github/workflows/check-large-files.yml, .github/actions-tmp/.github_automation/check-large-files/scripts/check_large_files.py
-
-     実行内容: `check-large-files.yml` の現在の実装を詳細に分析し、その機能を他のリポジトリやワークフローから容易に呼び出せる共通ワークフロー（reusable workflow）として再構築するために必要なステップを洗い出してください。特に、入力パラメータ（repository, path to config, etc.）、シークレット、出力などを考慮し、`call-` プレフィックスを持つ既存のワークフロー（例: `call-translate-readme.yml`）のパターンを参考にしてください。
-
-     確認事項: 現在の`check-large-files.yml`が単独で動作する際の機能が損なわれないこと。共通ワークフロー化の際に、設定の柔軟性やセキュリティが確保されることを確認してください。
-
-     期待する出力: 共通ワークフロー化に向けた設計案をmarkdown形式で出力してください。具体的には、新しい共通ワークフローの`inputs`と`secrets`の定義案、およびそれを呼び出すための`call-check-large-files.yml`のようなワークフローの構成案を含めてください。
-     ```
+     期待する出力: スプラッシュウィンドウを構成する主なファイル、使用されているUI技術、および色設定が行われている具体的なコード行または関数を指摘するmarkdown形式の分析結果を出力してください。
 
 ---
-Generated at: 2026-02-10 07:08:55 JST
+Generated at: 2026-02-11 07:11:26 JST

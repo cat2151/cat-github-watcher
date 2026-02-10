@@ -1,4 +1,4 @@
-Last updated: 2026-02-10
+Last updated: 2026-02-11
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -193,6 +193,8 @@ Last updated: 2026-02-10
 - .github/actions-tmp/issue-notes/3.md
 - .github/actions-tmp/issue-notes/30.md
 - .github/actions-tmp/issue-notes/31.md
+- .github/actions-tmp/issue-notes/33.md
+- .github/actions-tmp/issue-notes/35.md
 - .github/actions-tmp/issue-notes/4.md
 - .github/actions-tmp/issue-notes/7.md
 - .github/actions-tmp/issue-notes/8.md
@@ -251,6 +253,7 @@ Last updated: 2026-02-10
 - tests/test_batteries_included_defaults.py
 - tests/test_browser_automation.py
 - tests/test_check_process_before_autoraise.py
+- tests/test_color_scheme_config.py
 - tests/test_config_rulesets.py
 - tests/test_config_rulesets_features.py
 - tests/test_elapsed_time_display.py
@@ -279,96 +282,46 @@ Last updated: 2026-02-10
 - tests/test_verbose_config.py
 
 ## 現在のオープンIssues
-## [Issue #231](../issue-notes/231.md): Add configurable Monokai terminal color scheme (default)
-Adds a selectable terminal color palette to GitHub PR Phase Monitor, defaulting to a Monokai-inspired scheme while retaining the legacy “classic” option.
+## [Issue #236](../issue-notes/236.md): スプラッシュウィンドウの色を、OSのdark modeに対応する
 
-## Changes Made
-- Introduced `color_scheme` config option (Monokai default, Classic legacy) with validation and immediate application during `loa...
-ラベル: 
---- issue-notes/231.md の内容 ---
-
-```markdown
-
-```
-
-## [Issue #230](../issue-notes/230.md): カラースキームをmonokaiにする。tomlでカラースキーム設定できるようにしてデフォルトはmonokai。
-
-ラベル: 
---- issue-notes/230.md の内容 ---
+ラベル: good first issue
+--- issue-notes/236.md の内容 ---
 
 ```markdown
 
 ```
 
 ## ドキュメントで言及されているファイルの内容
-### .github/actions-tmp/issue-notes/30.md
-```md
-{% raw %}
-# issue 進捗状況生成時、issueに紐付くissue-notesがないときエラー終了してしまう #30
-[issues #30](https://github.com/cat2151/github-actions/issues/30)
 
-# 何が困るの？
-- 生成されない
-
-# 分析
-- issue紐付くissue-notesが存在しないことは普通にある
-- 今回も、そうなっていることを確認済み
-    - issue 1～8はissue-notesがあった
-    - 当該のissue 9は、issue本体のコメントに書いて進行していた
-        - issue-notesの仕組みを使う前に書いたissueなので、そうなっていた
-- こうするのがよい
-    - エラーにならず、空文字として扱う
-
-# close条件
-- 当該部分で落ちなくなること
-    - 当該部分とは：
-    - https://github.com/cat2151/fighting-game-button-challenge
-        - issue 9
-
-
-
-{% endraw %}
-```
-
-### .github/actions-tmp/issue-notes/31.md
-```md
-{% raw %}
-# issue 「大きなソースがあるかチェックするyml」を、共通ワークフロー化する #31
-[issues #31](https://github.com/cat2151/github-actions/issues/31)
-
-
-
-{% endraw %}
-```
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-ad46ae6 Merge pull request #229 from cat2151/codex/update-url-color
-ca5cb08 test: align url color tests
-3db61b1 feat: colorize displayed urls
-2456d4f Auto-translate README.ja.md to README.md [auto]
-aed1cc3 Initial plan
-cfcfe0e Merge pull request #227 from cat2151/codex/add-toml-for-ci-failure
-48b02bf Refine failure assignment priority loop
-6b70051 Add ci failure auto-assign options
-1cec1be Initial plan
-b7854d3 Merge pull request #226 from cat2151/codex/add-timeline-display-toggle
+33943a0 Auto-translate README.ja.md to README.md [auto]
+8cb461f Merge pull request #235 from cat2151/codex/update-color-code-editing
+1175c17 fix: refine configurable colors handling
+cafb136 feat: allow configuring colors via toml
+9efbf0d Initial plan
+475aea9 Auto-translate README.ja.md to README.md [auto]
+8e2aaad Merge pull request #233 from cat2151/codex/update-browser-button-visibility
+ae80c44 fix: address automation review feedback
+8fa41cb feat: add automation notification overlay and maximize retry
+d288f7e Initial plan
 
 ### 変更されたファイル:
 README.ja.md
 README.md
 config.toml.example
+generated-docs/development-status-generated-prompt.md
+generated-docs/development-status.md
+generated-docs/project-overview-generated-prompt.md
+generated-docs/project-overview.md
+src/gh_pr_phase_monitor/browser_automation.py
 src/gh_pr_phase_monitor/colors.py
 src/gh_pr_phase_monitor/config.py
-src/gh_pr_phase_monitor/display.py
-src/gh_pr_phase_monitor/phase_detector.py
-src/gh_pr_phase_monitor/pr_actions.py
-tests/test_config_rulesets_features.py
-tests/test_no_open_prs_issue_display.py
-tests/test_phase_detection.py
-tests/test_pr_actions.py
+tests/test_browser_automation.py
+tests/test_color_scheme_config.py
 tests/test_verbose_config.py
 
 
 ---
-Generated at: 2026-02-10 07:08:39 JST
+Generated at: 2026-02-11 07:11:10 JST

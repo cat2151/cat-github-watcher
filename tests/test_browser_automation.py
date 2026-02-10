@@ -66,6 +66,23 @@ class TestAssignIssueToCopilotAutomated:
         assert "assign" in call_args_list
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._start_button_notification")
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_shows_notification_when_automation_runs(self, mock_sleep, mock_start, mock_webbrowser, mock_click):
+        """Notification window should be shown during button automation"""
+        mock_click.return_value = True
+        mock_webbrowser.open.return_value = True
+        mock_start.return_value = MagicMock(close=MagicMock())
+
+        result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", {})
+
+        assert result is True
+        mock_start.assert_called_once()
+        mock_start.return_value.close.assert_called_once()
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
     def test_handles_invalid_wait_seconds_string(self, mock_click, mock_webbrowser):
@@ -263,6 +280,23 @@ class TestMergePrAutomated:
         assert "delete_branch" in call_args_list
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._start_button_notification")
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_shows_notification_for_merge_automation(self, mock_sleep, mock_start, mock_webbrowser, mock_click):
+        """Notification window should be shown during merge automation"""
+        mock_click.return_value = True
+        mock_webbrowser.open.return_value = True
+        mock_start.return_value = MagicMock(close=MagicMock())
+
+        result = merge_pr_automated("https://github.com/test/repo/pull/1", {})
+
+        assert result is True
+        mock_start.assert_called_once()
+        mock_start.return_value.close.assert_called_once()
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
@@ -314,6 +348,48 @@ class TestClickButtonWithImage:
             result = _click_button_with_image("test_button", {})
 
             assert result is False
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
+    @patch("src.gh_pr_phase_monitor.browser_automation._maybe_maximize_window")
+    def test_retries_after_maximize_when_not_found_first(self, mock_maximize, mock_get_path):
+        """Test that a maximize retry is attempted before falling back"""
+        from src.gh_pr_phase_monitor.browser_automation import _click_button_with_image
+
+        with patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui:
+            mock_get_path.return_value = Path("/tmp/test_button.png")
+            mock_maximize.return_value = True
+            mock_location = MagicMock()
+            mock_pyautogui.locateOnScreen.side_effect = [None, mock_location]
+            mock_pyautogui.center.return_value = (10, 20)
+
+            result = _click_button_with_image("test_button", {})
+
+            assert result is True
+            assert mock_pyautogui.locateOnScreen.call_count == 2
+            mock_maximize.assert_called_once()
+            mock_pyautogui.click.assert_called_once_with((10, 20))
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
+    @patch("src.gh_pr_phase_monitor.browser_automation._maximize_window")
+    def test_skip_maximize_when_config_disabled(self, mock_maximize, mock_get_path):
+        """Test that maximize retry can be disabled via config"""
+        from src.gh_pr_phase_monitor.browser_automation import _click_button_with_image
+
+        with patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui:
+            mock_get_path.return_value = Path("/tmp/test_button.png")
+            mock_pyautogui.locateOnScreen.return_value = None
+            mock_maximize.return_value = True
+
+            with patch(
+                "src.gh_pr_phase_monitor.browser_automation._click_button_with_ocr", return_value=False
+            ), patch("src.gh_pr_phase_monitor.browser_automation._save_debug_info"):
+                result = _click_button_with_image("test_button", {"maximize_on_first_fail": False})
+
+            assert result is False
+            mock_maximize.assert_not_called()
+            assert mock_pyautogui.locateOnScreen.call_count == 1
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
@@ -851,7 +927,10 @@ class TestAssignWithWindowActivation:
         result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", config)
 
         assert result is True
-        mock_activate.assert_called_once_with("GitHub", config["assign_to_copilot"])
+        mock_activate.assert_called_once()
+        activate_args = mock_activate.call_args[0]
+        assert activate_args[0] == "GitHub"
+        assert activate_args[1]["window_title"] == "GitHub"
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
@@ -900,7 +979,10 @@ class TestMergeWithWindowActivation:
         result = merge_pr_automated("https://github.com/test/repo/pull/1", config)
 
         assert result is True
-        mock_activate.assert_called_once_with("GitHub", config["phase3_merge"])
+        mock_activate.assert_called_once()
+        activate_args = mock_activate.call_args[0]
+        assert activate_args[0] == "GitHub"
+        assert activate_args[1]["window_title"] == "GitHub"
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")

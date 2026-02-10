@@ -181,7 +181,14 @@ cat-github-watcher/
    automated = false  # trueにするとブラウザ自動操縦でマージボタンをクリック
    wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
    debug_dir = "debug_screenshots"  # 画像認識失敗時のデバッグ情報保存先（デフォルト: "debug_screenshots"）
-   
+   notification_enabled = true  # ボタン自動操作中に指定座標で小さな通知ウィンドウを表示
+   notification_message = "ブラウザを開いてMergeボタンを探索中..."  # 通知ウィンドウのメッセージ
+   notification_width = 400
+   notification_height = 150
+   notification_position_x = 100
+   notification_position_y = 100
+   maximize_on_first_fail = true  # 1回目にボタンが見つからない場合にウィンドウを最大化して再探索する
+
    # issueをCopilotに自動割り当て（完全にオプション！このセクション全体がオプションです）
    # 
    # シンプルな使い方: rulesetsで assign_good_first_old = true とするだけ（上記の例を参照）
@@ -211,6 +218,13 @@ cat-github-watcher/
    debug_dir = "debug_screenshots"  # 画像認識失敗時のデバッグ情報保存先（デフォルト: "debug_screenshots"）
    confidence = 0.8  # 画像マッチングの信頼度 0.0-1.0（デフォルト: 0.8）
    enable_ocr_detection = true  # OCRフォールバックを有効化（デフォルト: true）
+   notification_enabled = true  # ボタン自動操作中に指定座標で小さな通知ウィンドウを表示
+   notification_message = "ブラウザを開いてCopilot割り当てボタンを探索中..."  # 通知ウィンドウのメッセージ
+   notification_width = 400
+   notification_height = 150
+   notification_position_x = 100
+   notification_position_y = 100
+   maximize_on_first_fail = true  # 1回目にボタンが見つからない場合にウィンドウを最大化して再探索する
    # enable_html_detection = false  # HTML検出フォールバック（実験的、デフォルト: false）
    ```
 

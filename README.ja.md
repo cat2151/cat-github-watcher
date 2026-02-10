@@ -135,6 +135,15 @@ cat-github-watcher/
    # ターミナル出力のカラースキーム
    # monokai（デフォルト）または classic を指定可能
    color_scheme = "monokai"
+
+   # [colors] セクションで個別にカラーコードを上書き可能（#RRGGBB形式/ANSI可）
+   # 省略時は上記color_schemeのパレットを使用
+   [colors]
+   # phase1 = "#E6DB74"
+   # phase2 = "#66D9EF"
+   # phase3 = "#A6E22E"
+   # llm = "#F92672"
+   # url = "#79C1FF"
    
    # PR作者の表示切り替え
    # CLI出力で "Author: <login>" を表示するかどうかを制御します

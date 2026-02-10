@@ -54,6 +54,15 @@ verbose = false
 # Supported schemes: "monokai" (default), "classic" (legacy colors)
 color_scheme = "monokai"
 
+# Optional custom colors (overrides the selected scheme)
+# Provide hex codes like "#RRGGBB" (ANSI escape codes also supported)
+[colors]
+# phase1 = "#E6DB74"  # yellow (monokai default)
+# phase2 = "#66D9EF"  # cyan/blue (monokai default)
+# phase3 = "#A6E22E"  # green (monokai default)
+# llm = "#F92672"     # pink (monokai default)
+# url = "#79C1FF"     # soft blue (monokai default)
+
 # Display PR author in output
 # When enabled, shows "Author: <login>" in CLI output for each PR
 # Default: false

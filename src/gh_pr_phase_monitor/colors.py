@@ -2,7 +2,10 @@
 ANSI color codes and colorization functions for terminal output
 """
 
+import re
+
 DEFAULT_COLOR_SCHEME = "monokai"
+SUPPORTED_COLOR_KEYS = ("phase1", "phase2", "phase3", "llm", "url")
 
 _COLOR_SCHEMES = {
     # Monokai-inspired palette
@@ -22,6 +25,55 @@ _COLOR_SCHEMES = {
         "url": "\033[94m",
     },
 }
+
+
+def _hex_to_ansi(color_hex: str, color_name: str) -> str:
+    match = re.fullmatch(r"#?([0-9a-fA-F]{6})", color_hex.strip())
+    if not match:
+        raise ValueError(
+            f"Invalid color code for '{color_name}': '{color_hex}'. "
+            "Use 6-digit hex like #RRGGBB or an ANSI escape code."
+        )
+
+    hex_value = match.group(1)
+    red = int(hex_value[0:2], 16)
+    green = int(hex_value[2:4], 16)
+    blue = int(hex_value[4:6], 16)
+    return f"\033[38;2;{red};{green};{blue}m"
+
+
+def normalize_color_code(color_code: str, color_name: str) -> str:
+    if not isinstance(color_code, str):
+        raise ValueError(
+            f"Color '{color_name}' must be a string (hex like #RRGGBB or ANSI code), "
+            f"got {type(color_code).__name__}: {color_code}"
+        )
+
+    if "\x1b[" in color_code or "\033[" in color_code:
+        return color_code
+    return _hex_to_ansi(color_code, color_name)
+
+
+def apply_custom_colors(custom_palette: dict[str, str]) -> dict[str, str]:
+    """Override the active palette with custom color codes."""
+    if not isinstance(custom_palette, dict):
+        raise ValueError("Custom colors must be provided as a table/dictionary.")
+
+    normalized_palette: dict[str, str] = {}
+    for key in SUPPORTED_COLOR_KEYS:
+        if key not in custom_palette:
+            continue
+        normalized_palette[key] = normalize_color_code(custom_palette[key], key)
+
+    if not normalized_palette:
+        return {}
+
+    Colors.YELLOW = normalized_palette.get("phase1", Colors.YELLOW)
+    Colors.CYAN = normalized_palette.get("phase2", Colors.CYAN)
+    Colors.GREEN = normalized_palette.get("phase3", Colors.GREEN)
+    Colors.MAGENTA = normalized_palette.get("llm", Colors.MAGENTA)
+    Colors.BLUE = normalized_palette.get("url", Colors.BLUE)
+    return normalized_palette
 
 
 class Colors:

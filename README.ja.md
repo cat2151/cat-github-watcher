@@ -144,6 +144,7 @@ cat-github-watcher/
    # phase3 = "#A6E22E"
    # llm = "#F92672"
    # url = "#79C1FF"
+   # url = "\u001b[94m"  # TOMLで書けるANSI例（ESC=[94m）
    
    # PR作者の表示切り替え
    # CLI出力で "Author: <login>" を表示するかどうかを制御します

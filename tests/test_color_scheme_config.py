@@ -29,6 +29,7 @@ def test_load_config_uses_default_color_scheme_when_missing():
         assert config["color_scheme"] == DEFAULT_COLOR_SCHEME
         # Default monokai palette embeds the 230;219;116 code for phase1
         assert "38;2;230;219;116" in colorize_phase("phase1")
+        assert config["colors"]["phase1"].endswith("230;219;116m")
     finally:
         os.unlink(config_path)
 
@@ -43,6 +44,7 @@ def test_load_config_applies_valid_color_scheme():
         config = load_config(config_path)
         assert config["color_scheme"] == "classic"
         assert "\033[93m" in colorize_phase("phase1")
+        assert config["colors"]["phase1"] == "\033[93m"
     finally:
         os.unlink(config_path)
 
@@ -57,6 +59,7 @@ def test_load_config_falls_back_on_invalid_color_scheme():
         config = load_config(config_path)
         assert config["color_scheme"] == DEFAULT_COLOR_SCHEME
         assert "38;2;230;219;116" in colorize_phase("phase1")
+        assert config["colors"]["phase1"].endswith("230;219;116m")
     finally:
         os.unlink(config_path)
 
@@ -82,6 +85,7 @@ def test_load_config_applies_custom_hex_colors():
         assert "\x1b[38;2;18;52;86m" == config["colors"]["phase1"]
         assert "38;2;18;52;86" in colorize_phase("phase1")
         assert "38;2;171;205;239" in colorize_url("https://example.com")
+        assert config["colors"]["url"].endswith("[38;2;171;205;239m")
     finally:
         os.unlink(config_path)
 
@@ -103,7 +107,29 @@ def test_load_config_ignores_invalid_custom_colors():
     try:
         config = load_config(config_path)
         assert config["color_scheme"] == DEFAULT_COLOR_SCHEME
-        assert config["colors"] == {}
+        assert config["colors"]["phase1"].endswith("230;219;116m")
         assert "38;2;230;219;116" in colorize_phase("phase1")
+    finally:
+        os.unlink(config_path)
+
+
+def test_load_config_accepts_ansi_sequences():
+    """ANSI escape sequences should be accepted when valid SGR codes."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write(
+            '\n'.join(
+                [
+                    'interval = "1m"',
+                    "[colors]",
+                    'url = "\\u001b[93m"',
+                ]
+            )
+        )
+        config_path = f.name
+
+    try:
+        config = load_config(config_path)
+        assert config["colors"]["url"] == "\u001b[93m"
+        assert "93m" in colorize_url("https://example.com")
     finally:
         os.unlink(config_path)

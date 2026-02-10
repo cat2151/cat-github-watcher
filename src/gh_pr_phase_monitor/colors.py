@@ -49,9 +49,17 @@ def normalize_color_code(color_code: str, color_name: str) -> str:
             f"got {type(color_code).__name__}: {color_code}"
         )
 
-    if "\x1b[" in color_code or "\033[" in color_code:
-        return color_code
-    return _hex_to_ansi(color_code, color_name)
+    stripped = color_code.strip()
+
+    if stripped.startswith("\x1b"):
+        if not re.fullmatch(r"\x1b\[[0-9;]*m", stripped):
+            raise ValueError(
+                f"Invalid ANSI escape for '{color_name}': '{color_code}'. "
+                "Expected SGR format like '\\u001b[38;2;230;219;116m'."
+            )
+        return stripped
+
+    return _hex_to_ansi(stripped, color_name)
 
 
 def apply_custom_colors(custom_palette: dict[str, str]) -> dict[str, str]:
@@ -59,21 +67,15 @@ def apply_custom_colors(custom_palette: dict[str, str]) -> dict[str, str]:
     if not isinstance(custom_palette, dict):
         raise ValueError("Custom colors must be provided as a table/dictionary.")
 
-    normalized_palette: dict[str, str] = {}
-    for key in SUPPORTED_COLOR_KEYS:
-        if key not in custom_palette:
-            continue
-        normalized_palette[key] = normalize_color_code(custom_palette[key], key)
-
-    if not normalized_palette:
+    if not custom_palette:
         return {}
 
-    Colors.YELLOW = normalized_palette.get("phase1", Colors.YELLOW)
-    Colors.CYAN = normalized_palette.get("phase2", Colors.CYAN)
-    Colors.GREEN = normalized_palette.get("phase3", Colors.GREEN)
-    Colors.MAGENTA = normalized_palette.get("llm", Colors.MAGENTA)
-    Colors.BLUE = normalized_palette.get("url", Colors.BLUE)
-    return normalized_palette
+    Colors.YELLOW = custom_palette.get("phase1", Colors.YELLOW)
+    Colors.CYAN = custom_palette.get("phase2", Colors.CYAN)
+    Colors.GREEN = custom_palette.get("phase3", Colors.GREEN)
+    Colors.MAGENTA = custom_palette.get("llm", Colors.MAGENTA)
+    Colors.BLUE = custom_palette.get("url", Colors.BLUE)
+    return custom_palette
 
 
 class Colors:

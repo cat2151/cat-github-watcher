@@ -12,6 +12,7 @@ import tomli
 from .colors import (
     DEFAULT_COLOR_SCHEME,
     SUPPORTED_COLOR_KEYS,
+    Colors,
     apply_custom_colors,
     get_supported_color_schemes,
     normalize_color_code,
@@ -399,7 +400,13 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
     custom_colors = _load_custom_colors(config)
     if custom_colors:
         apply_custom_colors(custom_colors)
-    config["colors"] = custom_colors
+    config["colors"] = {
+        "phase1": Colors.YELLOW,
+        "phase2": Colors.CYAN,
+        "phase3": Colors.GREEN,
+        "llm": Colors.MAGENTA,
+        "url": Colors.BLUE,
+    }
 
     return config
 

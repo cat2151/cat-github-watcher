@@ -19,6 +19,13 @@ DEFAULT_PHASE3_MERGE_CONFIG: Dict[str, Any] = {
     "wait_seconds": 10,
     "browser": "chromium",
     "headless": False,
+    "notification_enabled": True,
+    "notification_message": "ブラウザを開いてMergeボタンを探索中...",
+    "notification_width": 400,
+    "notification_height": 150,
+    "notification_position_x": 100,
+    "notification_position_y": 100,
+    "maximize_on_first_fail": True,
 }
 
 # Default configuration for assign_to_copilot feature (batteries included)
@@ -28,6 +35,13 @@ DEFAULT_ASSIGN_TO_COPILOT_CONFIG: Dict[str, Any] = {
     "wait_seconds": 10,
     "browser": "chromium",
     "headless": False,
+    "notification_enabled": True,
+    "notification_message": "ブラウザを開いてCopilot割り当てボタンを探索中...",
+    "notification_width": 400,
+    "notification_height": 150,
+    "notification_position_x": 100,
+    "notification_position_y": 100,
+    "maximize_on_first_fail": True,
 }
 
 # Default maximum number of parallel PRs in "LLM working" state

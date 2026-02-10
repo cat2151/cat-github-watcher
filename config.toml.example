@@ -178,6 +178,13 @@ comment = "agentによって、レビュー指摘対応が完了したと判断�
 automated = false  # Set to true to use browser automation to click the merge button
 wait_seconds = 10  # How long to wait after opening the browser before clicking (automated mode only)
 window_title = "GitHub"  # Optional: Window title to activate before clicking buttons (for PyAutoGUI automation)
+notification_enabled = true  # Show a small on-top window while automated button clicks are running
+notification_message = "ブラウザを開いてMergeボタンを探索中..."  # Message shown in the notification window
+notification_width = 400
+notification_height = 150
+notification_position_x = 100
+notification_position_y = 100
+maximize_on_first_fail = true  # Maximize the target window and retry if the first search fails
 # Note: Feature branch is automatically deleted after successful merge
 
 # Auto-assign issues to Copilot (optional - this entire section is optional!)
@@ -205,3 +212,10 @@ window_title = "GitHub"  # Optional: Window title to activate before clicking bu
 [assign_to_copilot]
 wait_seconds = 10  # How long to wait after opening the browser before clicking
 window_title = "GitHub"  # Optional: Window title to activate before clicking buttons (for PyAutoGUI automation)
+notification_enabled = true  # Show a small on-top window while automated button clicks are running
+notification_message = "ブラウザを開いてCopilot割り当てボタンを探索中..."  # Message shown in the notification window
+notification_width = 400
+notification_height = 150
+notification_position_x = 100
+notification_position_y = 100
+maximize_on_first_fail = true  # Maximize the target window and retry if the first search fails

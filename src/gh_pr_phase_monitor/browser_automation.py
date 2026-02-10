@@ -9,13 +9,19 @@ See README.ja.md for instructions on how to capture button screenshots.
 """
 
 import json
+import threading
 import time
 import webbrowser
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from .config import DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE, is_process_running
+from .config import (
+    DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE,
+    get_assign_to_copilot_config,
+    get_phase3_merge_config,
+    is_process_running,
+)
 
 # PyAutoGUI imports are optional - will be imported only if automation is enabled
 try:
@@ -34,6 +40,15 @@ try:
 except ImportError:
     PYGETWINDOW_AVAILABLE = False
     gw = None  # Set to None when not available
+
+# tkinter imports are optional - used for on-screen notification window
+try:
+    import tkinter as tk
+
+    TKINTER_AVAILABLE = True
+except Exception:
+    TKINTER_AVAILABLE = False
+    tk = None
 
 # pytesseract imports are optional - for OCR-based button detection fallback
 try:
@@ -69,6 +84,179 @@ DEBUG_MAX_CANDIDATES = 3  # Maximum number of candidate regions to save for debu
 
 # OCR detection settings
 OCR_BUTTON_PADDING = 20  # Pixels to add around detected text to account for button borders
+
+# Default notification window settings for button-based automation
+DEFAULT_NOTIFICATION_WIDTH = 400
+DEFAULT_NOTIFICATION_HEIGHT = 150
+DEFAULT_NOTIFICATION_POSITION_X = 100
+DEFAULT_NOTIFICATION_POSITION_Y = 100
+DEFAULT_ASSIGN_NOTIFICATION_MESSAGE = "ブラウザを開いてCopilot割り当てボタンを探索中..."
+DEFAULT_MERGE_NOTIFICATION_MESSAGE = "ブラウザを開いてMergeボタンを探索中..."
+
+
+def _parse_int_setting(value: Any, default: int) -> int:
+    """Parse an integer setting with a safe fallback."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+class NotificationWindow:
+    """Lightweight topmost notification window shown during automation."""
+
+    def __init__(self, message: str, width: int, height: int, x: int, y: int):
+        self.message = message
+        self.width = width
+        self.height = height
+        self.x = x
+        self.y = y
+        self.root = None
+        self._should_close = False
+
+    def show(self) -> None:
+        """Show the notification window on a separate thread."""
+        if not TKINTER_AVAILABLE or tk is None:
+            return
+
+        thread = threading.Thread(target=self._run, daemon=True)
+        thread.start()
+
+    def _run(self) -> None:
+        """Render the window and block in its own Tk event loop."""
+        try:
+            self.root = tk.Tk()
+            self.root.title("処理中")
+            geometry = f"{self.width}x{self.height}+{self.x}+{self.y}"
+            self.root.geometry(geometry)
+            self.root.attributes("-topmost", True)
+
+            wraplength = max(0, self.width - 50)
+            label = tk.Label(self.root, text=self.message, font=("Arial", 16), wraplength=wraplength)
+            label.pack(expand=True, padx=20, pady=20)
+
+            def _check_close() -> None:
+                """Poll for close requests from other threads and shut down Tk safely."""
+                if self._should_close and self.root is not None:
+                    try:
+                        self.root.quit()
+                        self.root.destroy()
+                    except Exception as e:
+                        print(f"  ⚠ Failed to close notification window cleanly: {e}")
+                    return
+                if self.root is not None:
+                    self.root.after(100, _check_close)
+
+            self.root.after(100, _check_close)
+            self.root.mainloop()
+        except Exception:
+            self.root = None
+
+    def close(self) -> None:
+        """Request the notification window to close."""
+        self._should_close = True
+
+
+def _start_button_notification(config: Dict[str, Any], default_message: str) -> Optional[NotificationWindow]:
+    """Create and show a notification window when configured."""
+    if not config.get("notification_enabled", True):
+        return None
+
+    if not TKINTER_AVAILABLE or tk is None:
+        print("  ℹ Tkinter is not available; skipping notification window")
+        return None
+
+    width = _parse_int_setting(config.get("notification_width", DEFAULT_NOTIFICATION_WIDTH), DEFAULT_NOTIFICATION_WIDTH)
+    height = _parse_int_setting(
+        config.get("notification_height", DEFAULT_NOTIFICATION_HEIGHT), DEFAULT_NOTIFICATION_HEIGHT
+    )
+    pos_x = _parse_int_setting(
+        config.get("notification_position_x", DEFAULT_NOTIFICATION_POSITION_X), DEFAULT_NOTIFICATION_POSITION_X
+    )
+    pos_y = _parse_int_setting(
+        config.get("notification_position_y", DEFAULT_NOTIFICATION_POSITION_Y), DEFAULT_NOTIFICATION_POSITION_Y
+    )
+    message = str(config.get("notification_message", default_message))
+
+    window = NotificationWindow(message, width, height, pos_x, pos_y)
+    try:
+        window.show()
+        return window
+    except Exception as e:
+        print(f"  ⚠ Failed to show notification window: {e}")
+        return None
+
+
+def _close_notification_window(window: Optional[NotificationWindow]) -> None:
+    """Close notification window safely."""
+    if window:
+        try:
+            window.close()
+        except Exception as e:
+            print(f"  ⚠ Failed to close notification window: {e}")
+
+
+def _should_maximize_on_first_fail(config: Dict[str, Any]) -> bool:
+    """Check whether maximize-on-fail retry is enabled (default: True)."""
+    value = config.get("maximize_on_first_fail", True)
+    if isinstance(value, bool):
+        return value
+    return True
+
+
+def _maximize_window(config: Dict[str, Any]) -> bool:
+    """Attempt to maximize the target or active window for better visibility."""
+    if not PYGETWINDOW_AVAILABLE or gw is None:
+        print("  ℹ pygetwindow is not available; skipping window maximization")
+        return False
+
+    window_title = config.get("window_title")
+    try:
+        target_window = None
+        if window_title:
+            print(f"  → Searching for window to maximize (title contains '{window_title}')")
+            all_windows = gw.getAllWindows()
+            matches = [w for w in all_windows if window_title.lower() in w.title.lower()]
+            if matches:
+                target_window = matches[0]
+
+        if target_window is None:
+            try:
+                target_window = gw.getActiveWindow()
+            except Exception:
+                target_window = None
+
+        if target_window is None:
+            print("  ⚠ Could not find a window to maximize")
+            return False
+
+        if getattr(target_window, "isMinimized", False):
+            target_window.restore()
+
+        try:
+            target_window.activate()
+        except Exception:
+            # Some platforms/window managers may not support activate; continue without failing
+            pass
+
+        try:
+            target_window.maximize()
+        except Exception:
+            # Some platforms may not support maximize; rely on activate/restore
+            pass
+
+        print("  → Maximized target window to improve button detection")
+        return True
+    except Exception as e:
+        print(f"  ⚠ Failed to maximize window: {e}")
+        return False
+
+
+def _maybe_maximize_window(config: Dict[str, Any]) -> bool:
+    """Maximize window only when configured to do so."""
+    if not _should_maximize_on_first_fail(config):
+        return False
+    return _maximize_window(config)
 
 
 def is_pyautogui_available() -> bool:
@@ -565,6 +753,11 @@ def _click_button_with_image(button_name: str, config: Dict[str, Any]) -> bool:
         location = pyautogui.locateOnScreen(str(screenshot_path), confidence=confidence)
 
         if location is None:
+            if _maybe_maximize_window(config):
+                time.sleep(0.5)  # Allow layout to settle after maximizing
+                location = pyautogui.locateOnScreen(str(screenshot_path), confidence=confidence)
+
+        if location is None:
             print(f"  ✗ Could not find button '{button_name}' on screen with image recognition")
             print("     Trying fallback methods...")
             # Save debug information for troubleshooting
@@ -667,74 +860,79 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     if config is None:
         config = {}
 
-    assign_config = config.get("assign_to_copilot", {})
+    assign_config = get_assign_to_copilot_config(config)
 
     # Validate and get configuration values
     wait_seconds = _validate_wait_seconds(assign_config)
     button_delay = _validate_button_delay(assign_config)
+    notification: Optional[NotificationWindow] = None
 
     print("  → [PyAutoGUI] Opening issue in browser...")
     print("  ℹ Ensure you are already logged into GitHub in your default browser")
 
     # Determine if window should be raised to foreground
     autoraise = _should_autoraise_window(config)
+    notification = _start_button_notification(assign_config, DEFAULT_ASSIGN_NOTIFICATION_MESSAGE)
 
     try:
-        opened = webbrowser.open(issue_url, autoraise=autoraise)
-        if not opened:
-            print(f"  ✗ Browser did not open for issue URL '{issue_url}'")
-            print("     Please check your default browser settings")
+        try:
+            opened = webbrowser.open(issue_url, autoraise=autoraise)
+            if not opened:
+                print(f"  ✗ Browser did not open for issue URL '{issue_url}'")
+                print("     Please check your default browser settings")
+                return False
+        except Exception as e:
+            print(f"  ✗ Failed to open browser for issue URL '{issue_url}': {e}")
             return False
-    except Exception as e:
-        print(f"  ✗ Failed to open browser for issue URL '{issue_url}': {e}")
-        return False
 
-    # Record the browser open time to enforce cooldown
-    _record_browser_open()
+        # Record the browser open time to enforce cooldown
+        _record_browser_open()
 
-    # Mark this issue as having an assignment attempt with current timestamp
-    # This is done immediately after browser opens to prevent repeated browser opens
-    # even if the automation fails later (e.g., button not found). The goal is to
-    # prevent opening 30+ tabs of the same URL, not to retry until successful.
-    # The timestamp allows retries after 24 hours for temporary failures.
-    _issue_assign_attempted[issue_url] = time.time()
+        # Mark this issue as having an assignment attempt with current timestamp
+        # This is done immediately after browser opens to prevent repeated browser opens
+        # even if the automation fails later (e.g., button not found). The goal is to
+        # prevent opening 30+ tabs of the same URL, not to retry until successful.
+        # The timestamp allows retries after 24 hours for temporary failures.
+        _issue_assign_attempted[issue_url] = time.time()
 
-    # Wait for the configured time
-    print(f"  → Waiting {wait_seconds} seconds for page to load...")
-    time.sleep(wait_seconds)
+        # Wait for the configured time
+        print(f"  → Waiting {wait_seconds} seconds for page to load...")
+        time.sleep(wait_seconds)
 
-    # Activate window if window_title is configured (1 second before clicking buttons)
-    window_title = assign_config.get("window_title")
-    if window_title:
-        print("  → Waiting 1 second before activating window...")
-        time.sleep(1)  # Wait 1 second before activating window
-        _activate_window_by_title(window_title, assign_config)
+        # Activate window if window_title is configured (1 second before clicking buttons)
+        window_title = assign_config.get("window_title")
+        if window_title:
+            print("  → Waiting 1 second before activating window...")
+            time.sleep(1)  # Wait 1 second before activating window
+            _activate_window_by_title(window_title, assign_config)
 
-    # Click "Assign to Copilot" button
-    print("  → Looking for 'Assign to Copilot' button...")
-    if not _click_button_with_image("assign_to_copilot", assign_config):
-        print("  ✗ Could not find or click 'Assign to Copilot' button")
-        return False
+        # Click "Assign to Copilot" button
+        print("  → Looking for 'Assign to Copilot' button...")
+        if not _click_button_with_image("assign_to_copilot", assign_config):
+            print("  ✗ Could not find or click 'Assign to Copilot' button")
+            return False
 
-    print("  ✓ Clicked 'Assign to Copilot' button")
+        print("  ✓ Clicked 'Assign to Copilot' button")
 
-    # Wait for the assignment UI to appear
-    print(f"  → Waiting {button_delay} seconds for UI to respond...")
-    time.sleep(button_delay)
+        # Wait for the assignment UI to appear
+        print(f"  → Waiting {button_delay} seconds for UI to respond...")
+        time.sleep(button_delay)
 
-    # Click "Assign" button
-    print("  → Looking for 'Assign' button...")
-    if not _click_button_with_image("assign", assign_config):
-        print("  ✗ Could not find or click 'Assign' button")
-        return False
+        # Click "Assign" button
+        print("  → Looking for 'Assign' button...")
+        if not _click_button_with_image("assign", assign_config):
+            print("  ✗ Could not find or click 'Assign' button")
+            return False
 
-    print("  ✓ Clicked 'Assign' button")
-    print("  ✓ [PyAutoGUI] Successfully automated issue assignment to Copilot")
+        print("  ✓ Clicked 'Assign' button")
+        print("  ✓ [PyAutoGUI] Successfully automated issue assignment to Copilot")
 
-    # Wait before finishing
-    time.sleep(button_delay)
+        # Wait before finishing
+        time.sleep(button_delay)
 
-    return True
+        return True
+    finally:
+        _close_notification_window(notification)
 
 
 def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> bool:
@@ -789,76 +987,81 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
     if config is None:
         config = {}
 
-    merge_config = config.get("phase3_merge", {})
+    merge_config = get_phase3_merge_config(config)
 
     # Validate and get configuration values
     wait_seconds = _validate_wait_seconds(merge_config)
     button_delay = _validate_button_delay(merge_config)
+    notification: Optional[NotificationWindow] = None
 
     print("  → [PyAutoGUI] Opening PR in browser...")
     print("  ℹ Ensure you are already logged into GitHub in your default browser")
 
     # Determine if window should be raised to foreground
     autoraise = _should_autoraise_window(config)
+    notification = _start_button_notification(merge_config, DEFAULT_MERGE_NOTIFICATION_MESSAGE)
 
     try:
-        opened = webbrowser.open(pr_url, autoraise=autoraise)
-        if not opened:
-            print(f"  ✗ Browser did not open for PR URL '{pr_url}'")
-            print("     Please check your default browser settings")
+        try:
+            opened = webbrowser.open(pr_url, autoraise=autoraise)
+            if not opened:
+                print(f"  ✗ Browser did not open for PR URL '{pr_url}'")
+                print("     Please check your default browser settings")
+                return False
+        except Exception as e:
+            print(f"  ✗ Failed to open browser for PR URL '{pr_url}': {e}")
             return False
-    except Exception as e:
-        print(f"  ✗ Failed to open browser for PR URL '{pr_url}': {e}")
-        return False
 
-    # Record the browser open time to enforce cooldown
-    _record_browser_open()
+        # Record the browser open time to enforce cooldown
+        _record_browser_open()
 
-    # Wait for the configured time
-    print(f"  → Waiting {wait_seconds} seconds for page to load...")
-    time.sleep(wait_seconds)
+        # Wait for the configured time
+        print(f"  → Waiting {wait_seconds} seconds for page to load...")
+        time.sleep(wait_seconds)
 
-    # Activate window if window_title is configured (1 second before clicking buttons)
-    window_title = merge_config.get("window_title")
-    if window_title:
-        print("  → Waiting 1 second before activating window...")
-        time.sleep(1)  # Wait 1 second before activating window
-        _activate_window_by_title(window_title, merge_config)
+        # Activate window if window_title is configured (1 second before clicking buttons)
+        window_title = merge_config.get("window_title")
+        if window_title:
+            print("  → Waiting 1 second before activating window...")
+            time.sleep(1)  # Wait 1 second before activating window
+            _activate_window_by_title(window_title, merge_config)
 
-    # Click "Merge pull request" button
-    print("  → Looking for 'Merge pull request' button...")
-    if not _click_button_with_image("merge_pull_request", merge_config):
-        print("  ✗ Could not find or click 'Merge pull request' button")
-        return False
+        # Click "Merge pull request" button
+        print("  → Looking for 'Merge pull request' button...")
+        if not _click_button_with_image("merge_pull_request", merge_config):
+            print("  ✗ Could not find or click 'Merge pull request' button")
+            return False
 
-    print("  ✓ Clicked 'Merge pull request' button")
+        print("  ✓ Clicked 'Merge pull request' button")
 
-    # Wait for the confirmation UI to appear
-    print(f"  → Waiting {button_delay} seconds for UI to respond...")
-    time.sleep(button_delay)
+        # Wait for the confirmation UI to appear
+        print(f"  → Waiting {button_delay} seconds for UI to respond...")
+        time.sleep(button_delay)
 
-    # Click "Confirm merge" button
-    print("  → Looking for 'Confirm merge' button...")
-    if not _click_button_with_image("confirm_merge", merge_config):
-        print("  ✗ Could not find or click 'Confirm merge' button")
-        return False
+        # Click "Confirm merge" button
+        print("  → Looking for 'Confirm merge' button...")
+        if not _click_button_with_image("confirm_merge", merge_config):
+            print("  ✗ Could not find or click 'Confirm merge' button")
+            return False
 
-    print("  ✓ Clicked 'Confirm merge' button")
+        print("  ✓ Clicked 'Confirm merge' button")
 
-    # Wait for merge to complete and delete branch button to appear
-    print(f"  → Waiting {button_delay + 1.0} seconds for merge to complete...")
-    time.sleep(button_delay + 1.0)
+        # Wait for merge to complete and delete branch button to appear
+        print(f"  → Waiting {button_delay + 1.0} seconds for merge to complete...")
+        time.sleep(button_delay + 1.0)
 
-    # Click "Delete branch" button (optional - don't fail if not found)
-    print("  → Looking for 'Delete branch' button...")
-    if not _click_button_with_image("delete_branch", merge_config):
-        print("  ⚠ Could not find or click 'Delete branch' button (may have already been deleted)")
-    else:
-        print("  ✓ Clicked 'Delete branch' button")
+        # Click "Delete branch" button (optional - don't fail if not found)
+        print("  → Looking for 'Delete branch' button...")
+        if not _click_button_with_image("delete_branch", merge_config):
+            print("  ⚠ Could not find or click 'Delete branch' button (may have already been deleted)")
+        else:
+            print("  ✓ Clicked 'Delete branch' button")
 
-    print("  ✓ [PyAutoGUI] Successfully automated PR merge")
+        print("  ✓ [PyAutoGUI] Successfully automated PR merge")
 
-    # Wait before finishing
-    time.sleep(button_delay)
+        # Wait before finishing
+        time.sleep(button_delay)
 
-    return True
+        return True
+    finally:
+        _close_notification_window(notification)

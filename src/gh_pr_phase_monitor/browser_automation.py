@@ -9,6 +9,9 @@ See README.ja.md for instructions on how to capture button screenshots.
 """
 
 import json
+import re
+import subprocess
+import sys
 import threading
 import time
 import webbrowser
@@ -16,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .colors import Colors
 from .config import (
     DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE,
     get_assign_to_copilot_config,
@@ -94,6 +98,90 @@ DEFAULT_ASSIGN_NOTIFICATION_MESSAGE = "ブラウザを開いてCopilot割り当�
 DEFAULT_MERGE_NOTIFICATION_MESSAGE = "ブラウザを開いてMergeボタンを探索中..."
 
 
+_SIMPLE_ANSI_HEX = {
+    "90": "#555555",
+    "91": "#ff5555",
+    "92": "#55ff55",
+    "93": "#ffff55",
+    "94": "#5555ff",
+    "95": "#ff55ff",
+    "96": "#55ffff",
+    "97": "#ffffff",
+}
+
+
+def _ansi_to_hex(color_code: str) -> Optional[str]:
+    true_color = re.search(r"\x1b\[38;2;(\d+);(\d+);(\d+)m", color_code or "")
+    if true_color:
+        red, green, blue = (int(true_color.group(i)) for i in range(1, 4))
+        return f"#{red:02x}{green:02x}{blue:02x}"
+
+    indexed = re.search(r"\x1b\[(\d{2})m", color_code or "")
+    if indexed:
+        return _SIMPLE_ANSI_HEX.get(indexed.group(1))
+    return None
+
+
+def _is_dark_mode_enabled() -> bool:
+    try:
+        if sys.platform == "darwin":
+            result = subprocess.run(
+                ["defaults", "read", "-g", "AppleInterfaceStyle"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+            return result.stdout.strip().lower() == "dark"
+
+        if sys.platform.startswith("win"):
+            try:
+                import winreg
+
+                with winreg.OpenKey(
+                    winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+                ) as key:
+                    apps_use_light, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+                return apps_use_light == 0
+            except Exception:
+                return False
+
+        # Linux / other POSIX (best-effort GNOME detection)
+        gsettings_cmds = [
+            ["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"],
+            ["gsettings", "get", "org.gnome.desktop.interface", "gtk-theme"],
+        ]
+        for cmd in gsettings_cmds:
+            try:
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
+                )
+                output = result.stdout.strip().lower()
+                if result.returncode == 0 and output:
+                    if "dark" in output:
+                        return True
+                    if "light" in output:
+                        return False
+            except Exception:
+                continue
+    except Exception:
+        return False
+
+    return False
+
+
+def _get_notification_theme() -> Dict[str, str]:
+    dark_mode = _is_dark_mode_enabled()
+    background = "#111111" if dark_mode else "#ffffff"
+    fallback_text = "#f5f5f5" if dark_mode else "#111111"
+
+    accent = _ansi_to_hex(Colors.BLUE) or _ansi_to_hex(Colors.CYAN) or _ansi_to_hex(Colors.GREEN)
+    text_color = accent or fallback_text
+
+    return {"background": background, "text": text_color, "accent": accent or text_color}
+
+
 def _parse_int_setting(value: Any, default: int) -> int:
     """Parse an integer setting with a safe fallback."""
     try:
@@ -127,12 +215,26 @@ class NotificationWindow:
         try:
             self.root = tk.Tk()
             self.root.title("処理中")
+            theme = _get_notification_theme()
+            self.root.configure(
+                bg=theme["background"],
+                highlightbackground=theme["accent"],
+                highlightcolor=theme["accent"],
+                highlightthickness=2,
+            )
             geometry = f"{self.width}x{self.height}+{self.x}+{self.y}"
             self.root.geometry(geometry)
             self.root.attributes("-topmost", True)
 
             wraplength = max(0, self.width - 50)
-            label = tk.Label(self.root, text=self.message, font=("Arial", 16), wraplength=wraplength)
+            label = tk.Label(
+                self.root,
+                text=self.message,
+                font=("Arial", 16),
+                wraplength=wraplength,
+                bg=theme["background"],
+                fg=theme["text"],
+            )
             label.pack(expand=True, padx=20, pady=20)
 
             def _check_close() -> None:

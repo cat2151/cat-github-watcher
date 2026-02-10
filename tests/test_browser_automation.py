@@ -21,6 +21,34 @@ class TestIsPyAutoGUIAvailable:
         assert isinstance(result, bool)
 
 
+class TestNotificationTheme:
+    """Tests for splash/notification theming"""
+
+    def test_dark_mode_uses_dark_background_and_palette(self, monkeypatch):
+        from src.gh_pr_phase_monitor import browser_automation as ba
+
+        monkeypatch.setattr(ba, "_is_dark_mode_enabled", lambda: True)
+        monkeypatch.setattr(ba.Colors, "BLUE", "\033[38;2;10;20;30m")
+
+        theme = ba._get_notification_theme()
+
+        assert theme["background"] == "#111111"
+        assert theme["text"] == "#0a141e"
+        assert theme["accent"] == "#0a141e"
+
+    def test_light_mode_uses_configured_palette(self, monkeypatch):
+        from src.gh_pr_phase_monitor import browser_automation as ba
+
+        monkeypatch.setattr(ba, "_is_dark_mode_enabled", lambda: False)
+        monkeypatch.setattr(ba.Colors, "BLUE", "\033[94m")
+
+        theme = ba._get_notification_theme()
+
+        assert theme["background"] == "#ffffff"
+        assert theme["text"] == "#5555ff"
+        assert theme["accent"] == "#5555ff"
+
+
 class TestAssignIssueToCopilotAutomated:
     """Tests for assign_issue_to_copilot_automated function"""
 

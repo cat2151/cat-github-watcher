@@ -368,6 +368,7 @@ def test_display_issues_when_phase3_and_llm_working_mix(
     try:
         main()
     except KeyboardInterrupt:
+        # Expected - mock_wait raises KeyboardInterrupt to exit after first iteration
         pass
 
     assert mock_display_issues.called, "Issues should be displayed when only non-phase3 count is below cap"

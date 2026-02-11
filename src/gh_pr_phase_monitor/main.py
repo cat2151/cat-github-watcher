@@ -200,16 +200,16 @@ def main():
                             print(f"\n{'=' * 50}")
                             print("All PRs are in 'phase3' (ready for human review); treating parallel count as 0")
                             print(f"{'=' * 50}")
-                        elif active_parallel_prs < 3:
-                            print(f"\n{'=' * 50}")
-                            print(f"Active PR count (excluding phase3) is {active_parallel_prs} (less than 3)")
-                            print(f"{'=' * 50}")
                         elif llm_working_below_cap:
                             print(f"\n{'=' * 50}")
                             print(
                                 f"LLM working PRs below limit: {llm_working_count}/{max_llm_working_parallel} "
                                 "(showing available work)"
                             )
+                            print(f"{'=' * 50}")
+                        elif active_parallel_prs < 3:
+                            print(f"\n{'=' * 50}")
+                            print(f"Active PR count (excluding phase3) is {active_parallel_prs} (less than 3)")
                             print(f"{'=' * 50}")
                         # Display issues and potentially auto-assign new work
                         # Throttling is applied inside the function based on llm_working_count

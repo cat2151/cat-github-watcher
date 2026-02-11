@@ -186,9 +186,9 @@ def main():
                     total_pr_count = len(all_prs)
                     all_llm_working = bool(pr_phases) and all(phase == PHASE_LLM_WORKING for phase in pr_phases)
                     all_phase3 = bool(pr_phases) and all(phase == PHASE_3 for phase in pr_phases)
-                    effective_parallel_prs = 0 if all_phase3 else total_pr_count
+                    active_parallel_prs = sum(1 for phase in pr_phases if phase != PHASE_3)
 
-                    if all_llm_working or effective_parallel_prs < 3:
+                    if all_llm_working or active_parallel_prs < 3:
                         if all_llm_working and total_pr_count >= 3:
                             print(f"\n{'=' * 50}")
                             print("All PRs are in 'LLM working' phase")
@@ -197,9 +197,9 @@ def main():
                             print(f"\n{'=' * 50}")
                             print("All PRs are in 'phase3' (ready for human review); treating parallel count as 0")
                             print(f"{'=' * 50}")
-                        elif effective_parallel_prs < 3:
+                        elif active_parallel_prs < 3:
                             print(f"\n{'=' * 50}")
-                            print(f"PR count is {total_pr_count} (less than 3)")
+                            print(f"Active PR count (excluding phase3) is {active_parallel_prs} (less than 3)")
                             print(f"{'=' * 50}")
                         # Display issues and potentially auto-assign new work
                         # Throttling is applied inside the function based on llm_working_count

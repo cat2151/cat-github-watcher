@@ -267,3 +267,61 @@ def test_display_issues_when_three_or_more_prs_all_llm_working(
     call_args = mock_display_issues.call_args
     assert call_args is not None
     assert call_args[1]["llm_working_count"] == 3
+
+
+@patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
+@patch("src.gh_pr_phase_monitor.main.display_status_summary")
+@patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+@patch("src.gh_pr_phase_monitor.main.process_pr")
+@patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+@patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
+@patch("src.gh_pr_phase_monitor.main.load_config")
+def test_display_issues_when_three_or_more_prs_all_phase3(
+    mock_load_config,
+    mock_get_repos,
+    mock_get_prs,
+    mock_process_pr,
+    mock_display_issues,
+    mock_display_summary,
+    mock_wait,
+):
+    """
+    Test that issues ARE displayed when there are 3 or more PRs
+    and ALL are in phase3 (phase3 should not count toward parallel limits)
+    """
+    # Mock configuration
+    mock_load_config.return_value = {"interval": "1m"}
+
+    # Mock repositories with open PRs
+    mock_get_repos.return_value = [
+        {"name": "repo1", "owner": "testuser", "openPRCount": 1},
+        {"name": "repo2", "owner": "testuser", "openPRCount": 1},
+        {"name": "repo3", "owner": "testuser", "openPRCount": 1},
+    ]
+
+    # Mock 3 PRs all in phase3
+    mock_get_prs.return_value = [
+        _create_mock_pr("repo1", "PR 1", "https://github.com/testuser/repo1/pull/1", PHASE_3),
+        _create_mock_pr("repo2", "PR 2", "https://github.com/testuser/repo2/pull/1", PHASE_3),
+        _create_mock_pr("repo3", "PR 3", "https://github.com/testuser/repo3/pull/1", PHASE_3),
+    ]
+
+    # Mock wait_with_countdown to exit after first iteration
+    mock_wait.side_effect = KeyboardInterrupt("Exit test")
+
+    # Import main and run
+    from src.gh_pr_phase_monitor.main import main
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Expected - mock_wait raises KeyboardInterrupt to exit after first iteration
+        pass
+
+    # Verify display_issues_from_repos_without_prs was called
+    assert mock_display_issues.called, "Issues should be displayed when all PRs are phase3"
+
+    # Phase3 should not contribute to llm_working_count
+    call_args = mock_display_issues.call_args
+    assert call_args is not None
+    assert call_args[1]["llm_working_count"] == 0

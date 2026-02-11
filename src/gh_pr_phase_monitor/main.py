@@ -20,7 +20,7 @@ from .config import (
 from .display import display_issues_from_repos_without_prs, display_status_summary
 from .github_client import get_pr_details_batch, get_repositories_with_open_prs
 from .monitor import check_no_state_change_timeout
-from .phase_detector import PHASE_LLM_WORKING, determine_phase
+from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
 from .pr_actions import process_pr
 from .pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
 from .wait_handler import wait_with_countdown
@@ -185,13 +185,19 @@ def main():
                     # The llm_working_count throttles assignment when parallel work is too high
                     total_pr_count = len(all_prs)
                     all_llm_working = pr_phases and all(phase == PHASE_LLM_WORKING for phase in pr_phases)
+                    all_phase3 = pr_phases and all(phase == PHASE_3 for phase in pr_phases)
+                    effective_parallel_prs = 0 if all_phase3 else total_pr_count
 
-                    if all_llm_working or total_pr_count < 3:
+                    if all_llm_working or effective_parallel_prs < 3:
                         if all_llm_working and total_pr_count >= 3:
                             print(f"\n{'=' * 50}")
                             print("All PRs are in 'LLM working' phase")
                             print(f"{'=' * 50}")
-                        elif total_pr_count < 3:
+                        elif all_phase3 and total_pr_count >= 3:
+                            print(f"\n{'=' * 50}")
+                            print("All PRs are in 'phase3' (ready for human review); treating parallel count as 0")
+                            print(f"{'=' * 50}")
+                        elif effective_parallel_prs < 3:
                             print(f"\n{'=' * 50}")
                             print(f"PR count is {total_pr_count} (less than 3)")
                             print(f"{'=' * 50}")

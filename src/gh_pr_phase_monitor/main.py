@@ -184,8 +184,8 @@ def main():
                     # 2. PR count is less than 3 (few PRs, so we can look for more work)
                     # The llm_working_count throttles assignment when parallel work is too high
                     total_pr_count = len(all_prs)
-                    all_llm_working = pr_phases and all(phase == PHASE_LLM_WORKING for phase in pr_phases)
-                    all_phase3 = pr_phases and all(phase == PHASE_3 for phase in pr_phases)
+                    all_llm_working = bool(pr_phases) and all(phase == PHASE_LLM_WORKING for phase in pr_phases)
+                    all_phase3 = bool(pr_phases) and all(phase == PHASE_3 for phase in pr_phases)
                     effective_parallel_prs = 0 if all_phase3 else total_pr_count
 
                     if all_llm_working or effective_parallel_prs < 3:

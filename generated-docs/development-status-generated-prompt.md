@@ -1,4 +1,4 @@
-Last updated: 2026-02-11
+Last updated: 2026-02-12
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -192,9 +192,8 @@ Last updated: 2026-02-11
 - .github/actions-tmp/issue-notes/29.md
 - .github/actions-tmp/issue-notes/3.md
 - .github/actions-tmp/issue-notes/30.md
-- .github/actions-tmp/issue-notes/31.md
-- .github/actions-tmp/issue-notes/33.md
 - .github/actions-tmp/issue-notes/35.md
+- .github/actions-tmp/issue-notes/38.md
 - .github/actions-tmp/issue-notes/4.md
 - .github/actions-tmp/issue-notes/7.md
 - .github/actions-tmp/issue-notes/8.md
@@ -257,6 +256,7 @@ Last updated: 2026-02-11
 - tests/test_config_rulesets.py
 - tests/test_config_rulesets_features.py
 - tests/test_elapsed_time_display.py
+- tests/test_error_logging.py
 - tests/test_hot_reload.py
 - tests/test_integration_issue_fetching.py
 - tests/test_interval_contamination_bug.py
@@ -282,32 +282,26 @@ Last updated: 2026-02-11
 - tests/test_verbose_config.py
 
 ## 現在のオープンIssues
-## [Issue #236](../issue-notes/236.md): スプラッシュウィンドウの色を、OSのdark modeに対応する
-
-ラベル: good first issue
---- issue-notes/236.md の内容 ---
-
-```markdown
-
-```
+オープン中のIssueはありません
 
 ## ドキュメントで言及されているファイルの内容
 
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
+e6e6cc9 Merge pull request #239 from cat2151/codex/add-error-logging-feature
+b26e33c Address review feedback for error logging
+8d4bb77 Add error logging and harden monitoring loop
+d181f12 Initial plan
+8fe6cee Merge pull request #237 from cat2151/codex/add-dark-mode-support
+6150868 fix: harden notification theming lookups
+cc29834 feat: theme splash notifications for dark mode
+b5fb770 Initial plan
+e068238 Update project summaries (overview & development status) [auto]
 33943a0 Auto-translate README.ja.md to README.md [auto]
-8cb461f Merge pull request #235 from cat2151/codex/update-color-code-editing
-1175c17 fix: refine configurable colors handling
-cafb136 feat: allow configuring colors via toml
-9efbf0d Initial plan
-475aea9 Auto-translate README.ja.md to README.md [auto]
-8e2aaad Merge pull request #233 from cat2151/codex/update-browser-button-visibility
-ae80c44 fix: address automation review feedback
-8fa41cb feat: add automation notification overlay and maximize retry
-d288f7e Initial plan
 
 ### 変更されたファイル:
+.gitignore
 README.ja.md
 README.md
 config.toml.example
@@ -318,10 +312,11 @@ generated-docs/project-overview.md
 src/gh_pr_phase_monitor/browser_automation.py
 src/gh_pr_phase_monitor/colors.py
 src/gh_pr_phase_monitor/config.py
+src/gh_pr_phase_monitor/main.py
 tests/test_browser_automation.py
 tests/test_color_scheme_config.py
-tests/test_verbose_config.py
+tests/test_error_logging.py
 
 
 ---
-Generated at: 2026-02-11 07:11:10 JST
+Generated at: 2026-02-12 07:05:04 JST

@@ -1,4 +1,4 @@
-Last updated: 2026-02-11
+Last updated: 2026-02-12
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -531,6 +531,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_config_rulesets.py
   📄 test_config_rulesets_features.py
   📄 test_elapsed_time_display.py
+  📄 test_error_logging.py
   📄 test_hot_reload.py
   📄 test_integration_issue_fetching.py
   📄 test_interval_contamination_bug.py
@@ -582,4 +583,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-02-11 07:11:10 JST
+Generated at: 2026-02-12 07:05:04 JST

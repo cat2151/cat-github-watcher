@@ -1,50 +1,48 @@
-Last updated: 2026-02-11
+Last updated: 2026-02-12
 
 # Development Status
 
 ## 現在のIssues
-- 現在、唯一のオープンIssue [Issue #236](../issue-notes/236.md) は、スプラッシュウィンドウがOSのダークモードに対応していない問題に焦点を当てています。
-- この課題は、アプリケーションのUIがシステム設定に自動的に適応できるよう、色設定の動的な切り替えを必要とします。
-- 解決には、OSのダークモード検出、既存のカラースキーム設定の拡張、そしてスプラッシュウィンドウの特定部分の色変更ロジックの実装が求められます。
+オープン中のIssueはありません。
 
 ## 次の一手候補
-1. [Issue #236](../issue-notes/236.md): PythonでOSのダークモードを検出する方法を調査
-   - 最初の小さな一歩: WindowsおよびmacOSにおけるPythonでのダークモード検出ライブラリやAPI利用方法を調査し、簡単な概念実証コードの方向性を検討する。
-   - Agent実行プロンプ:
-     ```
-     対象ファイル: なし (調査結果をdocs/dark_mode_detection_research.mdとして出力することを想定)
-
-     実行内容: WindowsとmacOS環境において、PythonでOSのダークモード設定を検出するための一般的な方法、利用可能なライブラリ（例: `darkdetect`, `PyQt`など）、またはOS固有のAPI（例: WinAPI, AppKit）について調査し、それぞれの検出精度、利用の容易さ、依存関係、そして適用可能性を比較分析してください。
-
-     確認事項: 調査にあたり、Pythonのバージョン互換性やクロスプラットフォーム対応の要件を考慮してください。
-
-     期待する出力: 調査結果をまとめたmarkdown形式のドキュメント（例: `docs/dark_mode_detection_research.md`）を生成してください。ドキュメントには、各検出方法のメリット・デメリット、サンプルコードの概要、および`gh_pr_phase_monitor`プロジェクトへの適用に関する推奨事項を含めてください。
-     ```
-
-2. [Issue #236](../issue-notes/236.md): `config.toml`のカラースキームをダークモードで切り替えられるように拡張する設計
-   - 最初の小さな一歩: `config.toml.example`を分析し、ダークモード/ライトモードの両方で色設定を定義できるようにするための設定構造案を検討する。
+1. エラーロギング機能の堅牢性向上とテストカバレッジの拡張
+   - 最初の小さな一歩: `tests/test_error_logging.py` を分析し、既存のテストケースでカバーされていないエラーシナリオを特定する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `config.toml.example`, `src/gh_pr_phase_monitor/config.py`, `src/gh_pr_phase_monitor/colors.py`
+     対象ファイル: `src/gh_pr_phase_monitor/main.py`, `src/gh_pr_phase_monitor/config.py`, `src/gh_pr_phase_monitor/display.py`, `tests/test_error_logging.py`
 
-     実行内容: `config.toml.example`の現在のカラースキーム定義を分析し、OSのダークモード/ライトモード設定に基づいて異なる色セットを適用できるように、設定ファイルの構造とそれに対応するPythonコード(`src/gh_pr_phase_monitor/config.py`, `src/gh_pr_phase_monitor/colors.py`)の変更点を設計してください。特に、検出されたモードに応じて動的に色をロードするメカニズムに焦点を当ててください。
+     実行内容: `tests/test_error_logging.py`を分析し、`src/gh_pr_phase_monitor/main.py`などの主要ロジックで発生しうる未テストのエラーケース（例: APIからの予期せぬ応答、ファイルI/Oエラー、設定ファイルの読み込み失敗など）を洗い出してください。その後、これらのケースをカバーするための追加テストケースの概要を提案してください。
 
-     確認事項: 既存のカラースキーム設定の互換性を維持しつつ、新しいダークモード設定を追加できることを確認してください。また、色のロードロジックがシンプルかつ拡張可能であることを考慮してください。
+     確認事項: エラーロギングが既存のロジックにどのように組み込まれているか、およびログ出力の形式や場所を確認してください。
 
-     期待する出力: `config.toml.example`の提案される新しい構造（ダークモード設定を含む）と、それをパースし、アプリケーションに適用するための`src/gh_pr_phase_monitor/config.py`および`src/gh_pr_phase_monitor/colors.py`における変更の概要をmarkdown形式で出力してください。
+     期待する出力: 未カバーのエラーケースのリストと、それらを検証するための`tests/test_error_logging.py`への追加テストケースの概要をMarkdown形式で出力してください。
      ```
 
-3. [Issue #236](../issue-notes/236.md): スプラッシュウィンドウの表示ロジックと色設定箇所の特定
-   - 最初の小さな一歩: スプラッシュウィンドウの表示に関連するファイル（`src/gh_pr_phase_monitor/browser_automation.py` や `src/gh_pr_phase_monitor/display.py` など）を特定し、UIフレームワークと色設定の具体的な場所を調査する。
+2. ダークモード対応のテーマ適用ロジックの改善とUIテストの追加
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/colors.py`と`src/gh_pr_phase_monitor/display.py`におけるテーマ適用ロジックを理解する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `src/gh_pr_phase_monitor/browser_automation.py`, `src/gh_pr_phase_monitor/display.py`, `src/gh_pr_phase_monitor/main.py`
+     対象ファイル: `src/gh_pr_phase_monitor/colors.py`, `src/gh_pr_phase_monitor/display.py`, `tests/test_color_scheme_config.py`
 
-     実行内容: プロジェクト内でスプラッシュウィンドウ（またはそれに類する初期表示UI）がどのように実装されているかを分析し、使用されているUIフレームワーク（例: Tkinter, PyQt, PySideなど、またはPyAutoGUIのような画像認識ベースのアプローチ）を特定してください。その後、そのスプラッシュウィンドウの背景色やテキスト色といった視覚的要素がどこで設定されているかを具体的に洗い出してください。
+     実行内容: `src/gh_pr_phase_monitor/colors.py`と`src/gh_pr_phase_monitor/display.py`におけるダークモードのテーマ適用ロジックを分析し、特に通知やUI要素への色の適用が意図通りに行われているかを確認してください。さらに、`tests/test_color_scheme_config.py`のテストカバレッジを評価し、異なるテーマ設定（ライト/ダーク）やシステム設定（OSのテーマ）がUI要素に正しく反映されることを検証するための追加テストケースの提案を行ってください。
 
-     確認事項: スプラッシュウィンドウ以外のUI要素が、この変更によって意図せず影響を受けないことを確認してください。
+     確認事項: OSのテーマ設定（ライト/ダーク）がプログラムにどのように伝達され、`colors.py`でどのように処理されているかを確認してください。
 
-     期待する出力: スプラッシュウィンドウを構成する主なファイル、使用されているUI技術、および色設定が行われている具体的なコード行または関数を指摘するmarkdown形式の分析結果を出力してください。
+     期待する出力: ダークモードのテーマ適用ロジックに関する分析結果、および`tests/test_color_scheme_config.py`へ追加すべきUIテストケースの概要（検証すべき要素と期待される色情報を含む）をMarkdown形式で出力してください。
+     ```
+
+3. 開発状況生成プロンプト（`development-status-prompt.md`）の明確化と改善
+   - 最初の小さな一歩: 現在の`.github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md`の内容をレビューし、不明瞭な点や改善の余地がある箇所を特定する。
+   - Agent実行プロンプト:
+     ```
+     対象ファイル: `.github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md`
+
+     実行内容: このプロンプトを分析し、現在の開発状況出力の生成において「オープン中のIssueがない場合」の振る舞いを明確にするための指示を追加する改善提案を行ってください。また、全体的な指示の明確性、ハルシネーション防止の観点から、追加または修正すべき点があれば提案してください。
+
+     確認事項: プロンプトが生成物の要件（3行要約、3つの次の一手候補、Agent実行プロンプトの形式など）を適切に網羅しているかを確認してください。
+
+     期待する出力: `.github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md`を更新するための具体的な提案（追加・変更するテキストとその理由）をMarkdown形式で出力してください。
 
 ---
-Generated at: 2026-02-11 07:11:26 JST
+Generated at: 2026-02-12 07:05:20 JST

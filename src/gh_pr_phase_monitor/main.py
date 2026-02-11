@@ -172,6 +172,7 @@ def main():
                                 f"Failed to process PR {pr.get('url', 'unknown') or pr.get('title', 'unknown')}",
                                 pr_error,
                             )
+                            pr_phases.append(PHASE_LLM_WORKING)
 
                     # Count how many PRs are in "LLM working" phase
                     # This count is used for rate limit protection - when too many PRs are being
@@ -215,7 +216,8 @@ def main():
             consecutive_failures += 1
 
             if consecutive_failures >= 3:
-                print("\nEncountered 3 consecutive unexpected errors; continuing monitoring in safe mode.")
+                print("\nEncountered 3 consecutive unexpected errors; continuing monitoring with error counter capped.")
+                consecutive_failures = 3
 
         # Display status summary before waiting
         # This helps users understand the current state at a glance,

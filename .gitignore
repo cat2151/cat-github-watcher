@@ -215,4 +215,4 @@ debug_screenshots/
 #
 *.bat
 pr_phase_snapshots/
-
+logs/

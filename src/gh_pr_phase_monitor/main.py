@@ -6,6 +6,8 @@ import signal
 import sys
 import time
 import traceback
+from datetime import UTC, datetime
+from pathlib import Path
 
 from .config import (
     DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
@@ -22,6 +24,25 @@ from .phase_detector import PHASE_LLM_WORKING, determine_phase
 from .pr_actions import process_pr
 from .pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
 from .wait_handler import wait_with_countdown
+
+LOG_DIR = Path("logs")
+
+
+def log_error_to_file(message: str, exc: Exception | None = None, base_dir: Path | str | None = None) -> None:
+    """Append an error entry to logs/error.log without interrupting execution"""
+    try:
+        log_dir = Path(base_dir) if base_dir else LOG_DIR
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / "error.log"
+        timestamp = datetime.now(UTC).isoformat(timespec="seconds")
+        with log_path.open("a", encoding="utf-8") as log_file:
+            log_file.write(f"[{timestamp} UTC] {message}\n")
+            if exc:
+                log_file.writelines(traceback.format_exception(type(exc), exc, exc.__traceback__))
+            log_file.write("\n")
+    except Exception:
+        # Avoid any logging-related failures impacting the main loop
+        pass
 
 
 def main():
@@ -131,16 +152,26 @@ def main():
                     )
                     # Track phases to detect if all PRs are in "LLM working"
                     for pr in all_prs:
-                        phase = determine_phase(pr)
-
                         try:
-                            record_reaction_snapshot(pr, phase, enable_snapshots=snapshots_enabled)
                             phase = determine_phase(pr)
-                        except Exception as snapshot_error:
-                            print(f"    Failed to capture PR reaction/LLM status data: {snapshot_error}")
 
-                        pr_phases.append(phase)
-                        process_pr(pr, config, phase)
+                            try:
+                                record_reaction_snapshot(pr, phase, enable_snapshots=snapshots_enabled)
+                                phase = determine_phase(pr)
+                            except Exception as snapshot_error:
+                                print(f"    Failed to capture PR reaction/LLM status data: {snapshot_error}")
+                                log_error_to_file(
+                                    f"Failed to capture PR reaction/LLM status data for {pr.get('url', 'unknown')}",
+                                    snapshot_error,
+                                )
+
+                            pr_phases.append(phase)
+                            process_pr(pr, config, phase)
+                        except Exception as pr_error:
+                            log_error_to_file(
+                                f"Failed to process PR {pr.get('url', 'unknown') or pr.get('title', 'unknown')}",
+                                pr_error,
+                            )
 
                     # Count how many PRs are in "LLM working" phase
                     # This count is used for rate limit protection - when too many PRs are being
@@ -173,17 +204,18 @@ def main():
         except RuntimeError as e:
             print(f"\nError: {e}")
             print("Please ensure you are authenticated with gh CLI")
-            sys.exit(1)
+            log_error_to_file("Runtime error during monitoring loop", e)
+            consecutive_failures += 1
         except Exception as e:
             print(f"\nUnexpected error: {e}")
             traceback.print_exc()
+            log_error_to_file("Unexpected error during monitoring loop", e)
 
             # Track consecutive unexpected failures to avoid infinite error loops
             consecutive_failures += 1
 
             if consecutive_failures >= 3:
-                print("\nEncountered 3 consecutive unexpected errors; exiting to avoid an infinite error loop.")
-                sys.exit(1)
+                print("\nEncountered 3 consecutive unexpected errors; continuing monitoring in safe mode.")
 
         # Display status summary before waiting
         # This helps users understand the current state at a glance,
@@ -191,10 +223,17 @@ def main():
         # Note: If an error occurred during data collection, the summary will show
         # incomplete or empty data, which is acceptable as it reflects the actual
         # state that was successfully retrieved before the error.
-        display_status_summary(all_prs, pr_phases, repos_with_prs, config)
+        try:
+            display_status_summary(all_prs, pr_phases, repos_with_prs, config)
+        except Exception as summary_error:
+            log_error_to_file("Failed to display status summary", summary_error)
 
         # Check if PR state has not changed for too long and switch to reduced frequency mode
-        use_reduced_frequency = check_no_state_change_timeout(all_prs, pr_phases, config)
+        try:
+            use_reduced_frequency = check_no_state_change_timeout(all_prs, pr_phases, config)
+        except Exception as timeout_error:
+            log_error_to_file("Failed to evaluate reduced frequency interval", timeout_error)
+            use_reduced_frequency = False
 
         # Determine which interval to use
         if use_reduced_frequency:
@@ -213,9 +252,14 @@ def main():
             current_interval_str = normal_interval_str
 
         # Wait with countdown display and check for config changes
-        new_config, new_interval_seconds, new_interval_str, new_config_mtime = wait_with_countdown(
-            current_interval_seconds, current_interval_str, config_path, config_mtime
-        )
+        try:
+            new_config, new_interval_seconds, new_interval_str, new_config_mtime = wait_with_countdown(
+                current_interval_seconds, current_interval_str, config_path, config_mtime
+            )
+        except Exception as wait_error:
+            log_error_to_file("wait_with_countdown failed; falling back to sleep", wait_error)
+            time.sleep(current_interval_seconds)
+            continue
 
         # Update config and interval based on what was returned from wait
         # Config will be non-empty only if successfully reloaded during wait

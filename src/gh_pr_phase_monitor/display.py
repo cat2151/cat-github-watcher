@@ -12,11 +12,8 @@ from .config import (
     get_assign_to_copilot_config,
     resolve_execution_config_for_repo,
 )
-from .github_client import (
-    assign_issue_to_copilot,
-    get_issues_from_repositories,
-    get_repositories_with_no_prs_and_open_issues,
-)
+from .github_client import assign_issue_to_copilot, get_issues_from_repositories
+from . import github_client
 from .phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label
 from .state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from .time_utils import format_elapsed_time
@@ -139,7 +136,7 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
     print("Checking for repositories with no open PRs but with open issues...")
 
     try:
-        repos_with_issues = get_repositories_with_no_prs_and_open_issues()
+        repos_with_issues = github_client.get_repositories_with_no_prs_and_open_issues()
 
         if not repos_with_issues:
             print("  No repositories found with open issues and no open PRs")

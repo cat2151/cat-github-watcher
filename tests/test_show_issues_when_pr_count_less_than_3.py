@@ -374,3 +374,72 @@ def test_display_issues_when_phase3_and_llm_working_mix(
     call_args = mock_display_issues.call_args
     assert call_args is not None
     assert call_args[1]["llm_working_count"] == 1
+
+
+@patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
+@patch("src.gh_pr_phase_monitor.main.display_status_summary")
+@patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+@patch("src.gh_pr_phase_monitor.main.process_pr")
+@patch("src.gh_pr_phase_monitor.main.record_reaction_snapshot")
+@patch("src.gh_pr_phase_monitor.main.determine_phase")
+@patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+@patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
+@patch("src.gh_pr_phase_monitor.main.load_config")
+def test_display_issues_when_llm_working_below_cap_even_with_three_active_prs(
+    mock_load_config,
+    mock_get_repos,
+    mock_get_prs,
+    mock_determine_phase,
+    mock_record_snapshot,
+    mock_process_pr,
+    mock_display_issues,
+    mock_display_summary,
+    mock_wait,
+):
+    """LLM working count below the configured cap should always trigger issue display."""
+
+    mock_load_config.return_value = {"interval": "1m", "max_llm_working_parallel": 3}
+
+    mock_get_repos.return_value = [
+        {"name": "repo1", "owner": "testuser", "openPRCount": 1},
+        {"name": "repo2", "owner": "testuser", "openPRCount": 1},
+        {"name": "repo3", "owner": "testuser", "openPRCount": 1},
+    ]
+
+    prs = [
+        {
+            "phase": PHASE_1,
+            "repository": {"name": "repo1", "owner": "testuser"},
+            "title": "PR 1",
+            "url": "https://github.com/testuser/repo1/pull/1",
+        },
+        {
+            "phase": PHASE_2,
+            "repository": {"name": "repo2", "owner": "testuser"},
+            "title": "PR 2",
+            "url": "https://github.com/testuser/repo2/pull/1",
+        },
+        {
+            "phase": PHASE_LLM_WORKING,
+            "repository": {"name": "repo3", "owner": "testuser"},
+            "title": "PR 3",
+            "url": "https://github.com/testuser/repo3/pull/1",
+        },
+    ]
+
+    mock_get_prs.return_value = prs
+    mock_determine_phase.side_effect = lambda pr: pr["phase"]
+    mock_record_snapshot.return_value = None
+    mock_wait.side_effect = KeyboardInterrupt("Exit test")
+
+    from src.gh_pr_phase_monitor.main import main
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
+
+    assert mock_display_issues.called, "Issues should be displayed when LLM work is under the parallel cap"
+    call_args = mock_display_issues.call_args
+    assert call_args is not None
+    assert call_args[1]["llm_working_count"] == 1

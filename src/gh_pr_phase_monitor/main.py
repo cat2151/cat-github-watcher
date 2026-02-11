@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .config import (
     DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
+    DEFAULT_MAX_LLM_WORKING_PARALLEL,
     get_config_mtime,
     load_config,
     parse_interval,
@@ -178,6 +179,8 @@ def main():
                     # This count is used for rate limit protection - when too many PRs are being
                     # worked on simultaneously, we pause auto-assignment to prevent API rate limits
                     llm_working_count = sum(1 for phase in pr_phases if phase == PHASE_LLM_WORKING)
+                    max_llm_working_parallel = config.get("max_llm_working_parallel", DEFAULT_MAX_LLM_WORKING_PARALLEL)
+                    llm_working_below_cap = llm_working_count < max_llm_working_parallel
 
                     # Look for new issues to assign when:
                     # 1. All PRs are in "LLM working" phase (existing work is in progress), OR
@@ -188,7 +191,7 @@ def main():
                     all_phase3 = bool(pr_phases) and all(phase == PHASE_3 for phase in pr_phases)
                     active_parallel_prs = sum(1 for phase in pr_phases if phase != PHASE_3)
 
-                    if all_llm_working or active_parallel_prs < 3:
+                    if llm_working_below_cap or all_llm_working or active_parallel_prs < 3:
                         if all_llm_working and total_pr_count >= 3:
                             print(f"\n{'=' * 50}")
                             print("All PRs are in 'LLM working' phase")
@@ -200,6 +203,13 @@ def main():
                         elif active_parallel_prs < 3:
                             print(f"\n{'=' * 50}")
                             print(f"Active PR count (excluding phase3) is {active_parallel_prs} (less than 3)")
+                            print(f"{'=' * 50}")
+                        elif llm_working_below_cap:
+                            print(f"\n{'=' * 50}")
+                            print(
+                                f"LLM working PRs below limit: {llm_working_count}/{max_llm_working_parallel} "
+                                "(showing available work)"
+                            )
                             print(f"{'=' * 50}")
                         # Display issues and potentially auto-assign new work
                         # Throttling is applied inside the function based on llm_working_count

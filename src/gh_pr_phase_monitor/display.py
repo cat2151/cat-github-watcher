@@ -12,11 +12,20 @@ from .config import (
     get_assign_to_copilot_config,
     resolve_execution_config_for_repo,
 )
-from .github_client import (
-    assign_issue_to_copilot,
-    get_issues_from_repositories,
-    get_repositories_with_no_prs_and_open_issues,
-)
+from . import github_client
+
+
+# Alias github_client functions for compatibility with existing patches/tests
+def get_issues_from_repositories(*args, **kwargs):
+    return github_client.get_issues_from_repositories(*args, **kwargs)
+
+
+def assign_issue_to_copilot(*args, **kwargs):
+    return github_client.assign_issue_to_copilot(*args, **kwargs)
+
+
+def get_repositories_with_no_prs_and_open_issues():
+    return github_client.get_repositories_with_no_prs_and_open_issues()
 from .phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label
 from .state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from .time_utils import format_elapsed_time

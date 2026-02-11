@@ -97,8 +97,18 @@ DEFAULT_NOTIFICATION_POSITION_Y = 100
 DEFAULT_ASSIGN_NOTIFICATION_MESSAGE = "ブラウザを開いてCopilot割り当てボタンを探索中..."
 DEFAULT_MERGE_NOTIFICATION_MESSAGE = "ブラウザを開いてMergeボタンを探索中..."
 
+_SUBPROCESS_TIMEOUT_SECONDS = 0.5
+
 
 _SIMPLE_ANSI_HEX = {
+    "30": "#000000",
+    "31": "#ff0000",
+    "32": "#00ff00",
+    "33": "#ffff00",
+    "34": "#0000ff",
+    "35": "#ff00ff",
+    "36": "#00ffff",
+    "37": "#ffffff",
     "90": "#555555",
     "91": "#ff5555",
     "92": "#55ff55",
@@ -111,14 +121,25 @@ _SIMPLE_ANSI_HEX = {
 
 
 def _ansi_to_hex(color_code: str) -> Optional[str]:
-    true_color = re.search(r"\x1b\[38;2;(\d+);(\d+);(\d+)m", color_code or "")
-    if true_color:
-        red, green, blue = (int(true_color.group(i)) for i in range(1, 4))
-        return f"#{red:02x}{green:02x}{blue:02x}"
+    if not color_code:
+        return None
 
-    indexed = re.search(r"\x1b\[(\d{2})m", color_code or "")
-    if indexed:
-        return _SIMPLE_ANSI_HEX.get(indexed.group(1))
+    match = re.search(r"\x1b\[([0-9;]+)m", color_code)
+    if not match:
+        return None
+
+    params = match.group(1).split(";")
+
+    if len(params) >= 5 and params[0] == "38" and params[1] == "2":
+        try:
+            red, green, blue = (int(params[2]), int(params[3]), int(params[4]))
+            return f"#{red:02x}{green:02x}{blue:02x}"
+        except ValueError:
+            return None
+
+    for param in reversed(params):
+        if param in _SIMPLE_ANSI_HEX:
+            return _SIMPLE_ANSI_HEX[param]
     return None
 
 
@@ -132,6 +153,7 @@ def _is_dark_mode_enabled() -> bool:
                 encoding="utf-8",
                 errors="replace",
                 check=False,
+                timeout=_SUBPROCESS_TIMEOUT_SECONDS,
             )
             return result.stdout.strip().lower() == "dark"
 
@@ -155,7 +177,13 @@ def _is_dark_mode_enabled() -> bool:
         for cmd in gsettings_cmds:
             try:
                 result = subprocess.run(
-                    cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    check=False,
+                    timeout=_SUBPROCESS_TIMEOUT_SECONDS,
                 )
                 output = result.stdout.strip().lower()
                 if result.returncode == 0 and output:
@@ -163,6 +191,8 @@ def _is_dark_mode_enabled() -> bool:
                         return True
                     if "light" in output:
                         return False
+            except subprocess.TimeoutExpired:
+                return False
             except Exception:
                 continue
     except Exception:

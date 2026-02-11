@@ -40,13 +40,23 @@ class TestNotificationTheme:
         from src.gh_pr_phase_monitor import browser_automation as ba
 
         monkeypatch.setattr(ba, "_is_dark_mode_enabled", lambda: False)
-        monkeypatch.setattr(ba.Colors, "BLUE", "\033[94m")
+        monkeypatch.setattr(ba.Colors, "BLUE", "\033[1;94m")
 
         theme = ba._get_notification_theme()
 
         assert theme["background"] == "#ffffff"
         assert theme["text"] == "#5555ff"
         assert theme["accent"] == "#5555ff"
+
+    def test_light_mode_supports_standard_palette_codes(self, monkeypatch):
+        from src.gh_pr_phase_monitor import browser_automation as ba
+
+        monkeypatch.setattr(ba, "_is_dark_mode_enabled", lambda: False)
+        monkeypatch.setattr(ba.Colors, "BLUE", "\033[32m")
+
+        theme = ba._get_notification_theme()
+
+        assert theme["accent"] == "#00ff00"
 
 
 class TestAssignIssueToCopilotAutomated:

@@ -14,7 +14,7 @@ from src.gh_pr_phase_monitor.display import display_issues_from_repos_without_pr
 def test_issue_url_is_colorized(capsys):
     """Issue URLs should be colorized for easier clicking"""
     url = "https://github.com/testuser/test-repo/issues/1"
-    with patch("src.gh_pr_phase_monitor.display.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
         with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
             mock_get_repos.return_value = [
                 {
@@ -57,19 +57,7 @@ def test_display_issues_when_no_repos_with_prs():
 
                 # Mock good first issue response
                 mock_get_issues.side_effect = [
-                    # First call: good first issue
-                    [
-                        {
-                            "title": "Good first issue",
-                            "url": "https://github.com/testuser/test-repo/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                            "labels": ["good first issue"],
-                        }
-                    ],
-                    # Second call: top 10 issues
+                    # First call: top 10 issues (used for detection/display)
                     [
                         {
                             "title": "Issue 1",
@@ -87,6 +75,18 @@ def test_display_issues_when_no_repos_with_prs():
                             "author": {"login": "contributor2"},
                             "repository": {"owner": "testuser", "name": "test-repo"},
                         },
+                    ],
+                    # Second call: good first issue for assignment
+                    [
+                        {
+                            "title": "Good first issue",
+                            "url": "https://github.com/testuser/test-repo/issues/1",
+                            "number": 1,
+                            "updatedAt": "2024-01-01T00:00:00Z",
+                            "author": {"login": "contributor1"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                            "labels": ["good first issue"],
+                        }
                     ],
                 ]
 
@@ -112,15 +112,15 @@ def test_display_issues_when_no_repos_with_prs():
                 # Verify that issues were fetched twice (good first issue + top 10)
                 assert mock_get_issues.call_count == 2
 
-                # Verify first call was for good first issue (with sort_by_number=True)
+                # Verify first call was for top issues (used for detection/display)
                 first_call = mock_get_issues.call_args_list[0]
-                assert first_call[1]["limit"] == 1
-                assert first_call[1]["labels"] == ["good first issue"]
-                assert first_call[1]["sort_by_number"] is True
+                assert first_call[1]["limit"] == 10
 
-                # Verify second call was for top 10 issues
+                # Verify second call was for good first issue assignment (with sort_by_number=True)
                 second_call = mock_get_issues.call_args_list[1]
-                assert second_call[1]["limit"] == 10
+                assert second_call[1]["limit"] == 1
+                assert second_call[1]["labels"] == ["good first issue"]
+                assert second_call[1]["sort_by_number"] is True
 
                 # Verify assignment was attempted
                 mock_assign.assert_called_once()
@@ -315,19 +315,7 @@ def test_display_issues_with_assign_lowest_number():
 
                 # Mock lowest number issue response
                 mock_get_issues.side_effect = [
-                    # First call: oldest issue
-                    [
-                        {
-                            "title": "Issue with lowest number",
-                            "url": "https://github.com/testuser/test-repo/issues/5",
-                            "number": 5,
-                            "updatedAt": "2024-01-05T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                            "labels": ["bug"],
-                        }
-                    ],
-                    # Second call: top 10 issues
+                    # First call: top 10 issues for display/detection
                     [
                         {
                             "title": "Issue 1",
@@ -345,6 +333,18 @@ def test_display_issues_with_assign_lowest_number():
                             "author": {"login": "contributor2"},
                             "repository": {"owner": "testuser", "name": "test-repo"},
                         },
+                    ],
+                    # Second call: oldest issue
+                    [
+                        {
+                            "title": "Issue with lowest number",
+                            "url": "https://github.com/testuser/test-repo/issues/5",
+                            "number": 5,
+                            "updatedAt": "2024-01-05T00:00:00Z",
+                            "author": {"login": "contributor1"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                            "labels": ["bug"],
+                        }
                     ],
                 ]
 
@@ -370,16 +370,16 @@ def test_display_issues_with_assign_lowest_number():
                 # Verify that issues were fetched twice (oldest issue + top 10)
                 assert mock_get_issues.call_count == 2
 
-                # Verify first call was for oldest issue (with sort_by_number=True, no labels)
+                # Verify first call was for top issues (display/detection)
                 first_call = mock_get_issues.call_args_list[0]
-                assert first_call[1]["limit"] == 1
-                assert first_call[1]["sort_by_number"] is True
-                # Should not have labels filter for oldest issue mode
-                assert "labels" not in first_call[1] or first_call[1]["labels"] is None
+                assert first_call[1]["limit"] == 10
 
-                # Verify second call was for top 10 issues
+                # Verify second call was for oldest issue (with sort_by_number=True, no labels)
                 second_call = mock_get_issues.call_args_list[1]
-                assert second_call[1]["limit"] == 10
+                assert second_call[1]["limit"] == 1
+                assert second_call[1]["sort_by_number"] is True
+                # Should not have labels filter for oldest issue mode
+                assert "labels" not in second_call[1] or second_call[1]["labels"] is None
 
                 # Verify assignment was attempted
                 mock_assign.assert_called_once()
@@ -402,7 +402,8 @@ def test_assign_only_fetches_from_enabled_repos():
 
                 # Mock issue response
                 mock_get_issues.side_effect = [
-                    # First call: good first issue (should only fetch from repo-with-assign)
+                    [],  # First call: top issues for display/detection
+                    # Second call: good first issue (should only fetch from repo-with-assign)
                     [
                         {
                             "title": "Good first issue from enabled repo",
@@ -414,8 +415,6 @@ def test_assign_only_fetches_from_enabled_repos():
                             "labels": ["good first issue"],
                         }
                     ],
-                    # Second call: top 10 issues
-                    [],
                 ]
 
                 mock_assign.return_value = True
@@ -441,9 +440,9 @@ def test_assign_only_fetches_from_enabled_repos():
                 # Verify that get_issues_from_repositories was called
                 assert mock_get_issues.call_count == 2
 
-                # Verify first call only included repo-with-assign
-                first_call = mock_get_issues.call_args_list[0]
-                repos_arg = first_call[0][0]  # First positional argument
+                # Verify assignment fetch only included repo-with-assign
+                second_call = mock_get_issues.call_args_list[1]
+                repos_arg = second_call[0][0]  # First positional argument
                 assert len(repos_arg) == 1
                 assert repos_arg[0]["name"] == "repo-with-assign"
 
@@ -456,29 +455,29 @@ def test_priority_prefers_ci_failure_then_deploy_then_good_first():
     Verify assignment priority: ci-failure > deploy-pages-failure > good first issue
     """
     with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
-                mock_get_repos.return_value = [{"name": "test-repo", "owner": "testuser", "openIssueCount": 1}]
+            with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
+                with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
+                    mock_get_repos.return_value = [{"name": "test-repo", "owner": "testuser", "openIssueCount": 1}]
 
-                mock_get_issues.side_effect = [
-                    [
-                        {
-                            "title": "CI failure",
-                            "url": "https://github.com/testuser/test-repo/issues/10",
-                            "number": 10,
+                    mock_get_issues.side_effect = [
+                        [],  # First call: top issues for display/detection
+                        [
+                            {
+                                "title": "CI failure",
+                                "url": "https://github.com/testuser/test-repo/issues/10",
+                                "number": 10,
                             "updatedAt": "2024-01-10T00:00:00Z",
                             "author": {"login": "bot"},
                             "repository": {"owner": "testuser", "name": "test-repo"},
                             "labels": ["ci-failure"],
                         }
-                    ],
-                    [],
-                ]
+                        ],
+                    ]
 
-                mock_assign.return_value = True
+                    mock_assign.return_value = True
 
-                config = {
-                    "assign_to_copilot": {},
+                    config = {
+                        "assign_to_copilot": {},
                     "rulesets": [
                         {
                             "repositories": ["test-repo"],
@@ -487,15 +486,15 @@ def test_priority_prefers_ci_failure_then_deploy_then_good_first():
                             "assign_good_first_old": True,
                         }
                     ],
-                }
+                    }
 
-                display_issues_from_repos_without_prs(config)
+                    display_issues_from_repos_without_prs(config)
 
-                assert mock_get_issues.call_count == 2
-                first_call = mock_get_issues.call_args_list[0]
-                assert first_call[1]["labels"] == ["ci-failure"]
-                assert first_call[1]["sort_by_number"] is True
-                mock_assign.assert_called_once()
+                    assert mock_get_issues.call_count == 2
+                    second_call = mock_get_issues.call_args_list[1]
+                    assert second_call[1]["labels"] == ["ci-failure"]
+                    assert second_call[1]["sort_by_number"] is True
+                    mock_assign.assert_called_once()
 
 
 def test_fallback_to_deploy_pages_failure_when_no_ci_failure():
@@ -508,6 +507,7 @@ def test_fallback_to_deploy_pages_failure_when_no_ci_failure():
                 mock_get_repos.return_value = [{"name": "test-repo", "owner": "testuser", "openIssueCount": 1}]
 
                 mock_get_issues.side_effect = [
+                    [],  # First call: top issues for display/detection
                     [],  # No ci-failure issues
                     [
                         {
@@ -520,7 +520,6 @@ def test_fallback_to_deploy_pages_failure_when_no_ci_failure():
                             "labels": ["deploy-pages-failure"],
                         }
                     ],
-                    [],
                 ]
 
                 mock_assign.return_value = True
@@ -540,11 +539,11 @@ def test_fallback_to_deploy_pages_failure_when_no_ci_failure():
                 display_issues_from_repos_without_prs(config)
 
                 assert mock_get_issues.call_count == 3
-                first_call = mock_get_issues.call_args_list[0]
-                assert first_call[1]["labels"] == ["ci-failure"]
                 second_call = mock_get_issues.call_args_list[1]
-                assert second_call[1]["labels"] == ["deploy-pages-failure"]
-                assert second_call[1]["sort_by_number"] is True
+                assert second_call[1]["labels"] == ["ci-failure"]
+                third_call = mock_get_issues.call_args_list[2]
+                assert third_call[1]["labels"] == ["deploy-pages-failure"]
+                assert third_call[1]["sort_by_number"] is True
                 mock_assign.assert_called_once()
 
 

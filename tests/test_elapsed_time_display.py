@@ -229,7 +229,7 @@ class TestWaitWithCountdown:
 
     def test_countdown_uses_carriage_return_for_updates(self):
         """Test that countdown uses ANSI escape sequences (carriage return) for in-place updates"""
-        with patch("builtins.print") as mock_print, patch("time.sleep") as mock_sleep, patch("time.time") as mock_time:
+        with patch("builtins.print") as mock_print, patch("time.sleep"), patch("time.time") as mock_time:
             # Mock time.time to simulate passage of time
             mock_time.side_effect = [0, 0, 1, 2, 2]
             wait_with_countdown(2, "2s")
@@ -263,7 +263,7 @@ class TestWaitWithCountdown:
 
     def test_countdown_formats_time_correctly(self):
         """Test that countdown formats time with minutes and seconds"""
-        with patch("builtins.print") as mock_print, patch("time.sleep") as mock_sleep, patch("time.time") as mock_time:
+        with patch("builtins.print") as mock_print, patch("time.sleep"), patch("time.time") as mock_time:
             # Mock time.time to simulate 90 seconds of elapsed time
             # We need enough values for 90 iterations + extra for checks
             times = [0] + [i for i in range(91) for _ in range(2)]  # start + pairs for each iteration

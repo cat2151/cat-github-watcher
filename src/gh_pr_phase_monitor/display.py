@@ -6,6 +6,7 @@ import time
 import traceback
 from typing import Any, Dict, List, Optional
 
+from . import github_client
 from .colors import colorize_phase, colorize_url
 from .config import (
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
@@ -13,7 +14,6 @@ from .config import (
     resolve_execution_config_for_repo,
 )
 from .github_client import assign_issue_to_copilot, get_issues_from_repositories
-from . import github_client
 from .phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label
 from .state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from .time_utils import format_elapsed_time
@@ -145,6 +145,18 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
             for repo in repos_with_issues:
                 print(f"    - {repo['name']}: {repo['openIssueCount']} open issue(s)")
 
+            # Fetch top issues early to detect assigned work and reuse for display
+            issue_limit = config.get("issue_display_limit", 10) if config else 10
+            top_issues = get_issues_from_repositories(repos_with_issues, limit=issue_limit)
+
+            assigned_issue_count = sum(1 for issue in top_issues if issue.get("assignees"))
+            effective_llm_working_count = llm_working_count + assigned_issue_count
+
+            if assigned_issue_count:
+                print(
+                    f"  Detected {assigned_issue_count} open issue(s) with assignees; treating as LLM working load."
+                )
+
             # Check if auto-assign feature is enabled in config
             # With the new design:
             # - Rulesets can specify "assign_good_first_old" to assign one old "good first issue" (oldest by issue number)
@@ -194,12 +206,15 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                 max_llm_working = config.get("max_llm_working_parallel", DEFAULT_MAX_LLM_WORKING_PARALLEL)
 
             # Check if we should pause auto-assignment
-            should_pause_assignment = llm_working_count >= max_llm_working
+            should_pause_assignment = effective_llm_working_count >= max_llm_working
 
             if should_pause_assignment:
                 print(f"\n{'=' * 50}")
                 print(f"LLM workingのPR数が最大並列数（{max_llm_working}）に達しています。")
-                print(f"現在のLLM working PR数: {llm_working_count}")
+                print(
+                    "現在のLLM workingカウント: "
+                    f"{effective_llm_working_count} (PR: {llm_working_count}, assigned issues: {assigned_issue_count})"
+                )
                 print("レートリミット回避のため、新しいissueの自動assignを保留します。")
                 print(f"{'=' * 50}")
                 # Skip assignment but continue to display issues
@@ -254,15 +269,10 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         else:
                             print(f"  No '{label_name}' issues found in repositories without open PRs")
 
-            # Get the issue display limit from config (default: 10)
-            issue_limit = config.get("issue_display_limit", 10) if config else 10
-
             # Then, show top N issues from these repositories
             print(f"\n{'=' * 50}")
             print(f"Fetching top {issue_limit} issues from these repositories...")
             print(f"{'=' * 50}")
-
-            top_issues = get_issues_from_repositories(repos_with_issues, limit=issue_limit)
 
             if not top_issues:
                 print("  No issues found")

@@ -1,4 +1,4 @@
-Last updated: 2026-02-12
+Last updated: 2026-02-13
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -583,4 +583,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-02-12 07:05:04 JST
+Generated at: 2026-02-13 07:04:43 JST

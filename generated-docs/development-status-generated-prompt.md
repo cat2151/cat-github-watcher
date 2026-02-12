@@ -1,4 +1,4 @@
-Last updated: 2026-02-12
+Last updated: 2026-02-13
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -289,34 +289,31 @@ Last updated: 2026-02-12
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-e6e6cc9 Merge pull request #239 from cat2151/codex/add-error-logging-feature
-b26e33c Address review feedback for error logging
-8d4bb77 Add error logging and harden monitoring loop
-d181f12 Initial plan
-8fe6cee Merge pull request #237 from cat2151/codex/add-dark-mode-support
-6150868 fix: harden notification theming lookups
-cc29834 feat: theme splash notifications for dark mode
-b5fb770 Initial plan
-e068238 Update project summaries (overview & development status) [auto]
-33943a0 Auto-translate README.ja.md to README.md [auto]
+8e7abc5 Merge pull request #243 from cat2151/codex/display-open-pr-list-when-count-low
+22251a7 Address review feedback
+aa1047d Ensure issues display when LLM work below cap
+2d6eb16 Initial plan
+4ab3733 Merge pull request #241 from cat2151/codex/fix-auto-assign-logic
+ccfef6d feat: ignore phase3 in parallel count
+3176fac fix: ensure phase flags are boolean
+77ed43f fix: allow auto-assign when only phase3 prs
+05fc9df Initial plan
+b7b094a Update project summaries (overview & development status) [auto]
 
 ### 変更されたファイル:
 .gitignore
-README.ja.md
 README.md
-config.toml.example
 generated-docs/development-status-generated-prompt.md
 generated-docs/development-status.md
 generated-docs/project-overview-generated-prompt.md
 generated-docs/project-overview.md
 src/gh_pr_phase_monitor/browser_automation.py
-src/gh_pr_phase_monitor/colors.py
-src/gh_pr_phase_monitor/config.py
+src/gh_pr_phase_monitor/display.py
 src/gh_pr_phase_monitor/main.py
 tests/test_browser_automation.py
-tests/test_color_scheme_config.py
 tests/test_error_logging.py
+tests/test_show_issues_when_pr_count_less_than_3.py
 
 
 ---
-Generated at: 2026-02-12 07:05:04 JST
+Generated at: 2026-02-13 07:04:43 JST

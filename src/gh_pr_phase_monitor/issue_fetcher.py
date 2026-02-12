@@ -84,6 +84,11 @@ def get_issues_from_repositories(
                       name
                     }}
                   }}
+                  assignees(first: 10) {{
+                    nodes {{
+                      login
+                    }}
+                  }}
                 }}
               }}
             }}
@@ -122,6 +127,8 @@ def get_issues_from_repositories(
                     # Extract label names
                     label_nodes = issue.get("labels", {}).get("nodes", [])
                     label_names = [label.get("name", "") for label in label_nodes]
+                    assignee_nodes = issue.get("assignees", {}).get("nodes", [])
+                    assignee_logins = [assignee.get("login", "") for assignee in assignee_nodes if assignee.get("login")]
 
                     issue_with_repo = {
                         "title": issue.get("title", ""),
@@ -131,6 +138,7 @@ def get_issues_from_repositories(
                         "updatedAt": issue.get("updatedAt", ""),
                         "author": author,
                         "labels": label_names,
+                        "assignees": assignee_logins,
                         "repository": {"name": repo_name, "owner": owner},
                     }
                     all_issues.append(issue_with_repo)

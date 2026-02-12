@@ -64,6 +64,52 @@ def test_assignment_paused_when_limit_reached():
                 assert mock_get_issues.call_count == 1
 
 
+def test_assigned_issues_count_as_llm_working():
+    """
+    Test that issues with assignees are treated as LLM working to prevent new assignments
+    """
+    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
+            with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
+                mock_get_repos.return_value = [
+                    {
+                        "name": "test-repo",
+                        "owner": "testuser",
+                        "openIssueCount": 1,
+                    }
+                ]
+
+                mock_get_issues.side_effect = [
+                    [
+                        {
+                            "title": "Assigned issue",
+                            "url": "https://github.com/testuser/test-repo/issues/1",
+                            "number": 1,
+                            "updatedAt": "2024-01-01T00:00:00Z",
+                            "author": {"login": "contributor1"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                            "assignees": ["openai-code-agent"],
+                        }
+                    ],
+                ]
+
+                config = {
+                    "assign_to_copilot": {},
+                    "max_llm_working_parallel": 1,
+                    "rulesets": [
+                        {
+                            "repositories": ["test-repo"],
+                            "assign_good_first_old": True,
+                        }
+                    ],
+                }
+
+                display_issues_from_repos_without_prs(config, llm_working_count=0)
+
+                mock_assign.assert_not_called()
+                assert mock_get_issues.call_count == 1
+
+
 def test_assignment_proceeds_when_below_limit():
     """
     Test that assignment proceeds when LLM working count is below the limit
@@ -82,7 +128,18 @@ def test_assignment_proceeds_when_below_limit():
 
                 # Mock issue response
                 mock_get_issues.side_effect = [
-                    # First call: good first issue
+                    # First call: top 10 issues
+                    [
+                        {
+                            "title": "Issue 1",
+                            "url": "https://github.com/testuser/test-repo/issues/1",
+                            "number": 1,
+                            "updatedAt": "2024-01-01T00:00:00Z",
+                            "author": {"login": "contributor1"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                        },
+                    ],
+                    # Second call: good first issue
                     [
                         {
                             "title": "Good first issue",
@@ -93,17 +150,6 @@ def test_assignment_proceeds_when_below_limit():
                             "repository": {"owner": "testuser", "name": "test-repo"},
                             "labels": ["good first issue"],
                         }
-                    ],
-                    # Second call: top 10 issues
-                    [
-                        {
-                            "title": "Issue 1",
-                            "url": "https://github.com/testuser/test-repo/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                        },
                     ],
                 ]
 
@@ -198,7 +244,18 @@ def test_custom_limit():
 
                 # Mock issue response
                 mock_get_issues.side_effect = [
-                    # First call: good first issue
+                    # First call: top 10 issues
+                    [
+                        {
+                            "title": "Issue 1",
+                            "url": "https://github.com/testuser/test-repo/issues/1",
+                            "number": 1,
+                            "updatedAt": "2024-01-01T00:00:00Z",
+                            "author": {"login": "contributor1"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                        },
+                    ],
+                    # Second call: good first issue
                     [
                         {
                             "title": "Good first issue",
@@ -209,17 +266,6 @@ def test_custom_limit():
                             "repository": {"owner": "testuser", "name": "test-repo"},
                             "labels": ["good first issue"],
                         }
-                    ],
-                    # Second call: top 10 issues
-                    [
-                        {
-                            "title": "Issue 1",
-                            "url": "https://github.com/testuser/test-repo/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                        },
                     ],
                 ]
 
@@ -311,7 +357,18 @@ def test_zero_llm_working_count():
 
                 # Mock issue response
                 mock_get_issues.side_effect = [
-                    # First call: good first issue
+                    # First call: top 10 issues
+                    [
+                        {
+                            "title": "Issue 1",
+                            "url": "https://github.com/testuser/test-repo/issues/1",
+                            "number": 1,
+                            "updatedAt": "2024-01-01T00:00:00Z",
+                            "author": {"login": "contributor1"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                        },
+                    ],
+                    # Second call: good first issue
                     [
                         {
                             "title": "Good first issue",
@@ -322,17 +379,6 @@ def test_zero_llm_working_count():
                             "repository": {"owner": "testuser", "name": "test-repo"},
                             "labels": ["good first issue"],
                         }
-                    ],
-                    # Second call: top 10 issues
-                    [
-                        {
-                            "title": "Issue 1",
-                            "url": "https://github.com/testuser/test-repo/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                        },
                     ],
                 ]
 

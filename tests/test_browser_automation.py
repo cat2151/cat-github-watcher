@@ -123,6 +123,26 @@ class TestAssignIssueToCopilotAutomated:
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser_automation._start_button_notification")
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_skips_when_notification_closed_by_user(
+        self, mock_sleep, mock_start, mock_click, mock_webbrowser
+    ):
+        """If the notification window is closed, automation should be skipped safely"""
+        mock_webbrowser.open.return_value = True
+        mock_notification = MagicMock(close=MagicMock(), closed_by_user=True)
+        mock_start.return_value = mock_notification
+
+        result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", {})
+
+        assert result is False
+        mock_click.assert_not_called()
+        mock_start.assert_called_once()
+        mock_notification.close.assert_called_once()
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
     def test_handles_invalid_wait_seconds_string(self, mock_click, mock_webbrowser):
         """Test that function handles invalid wait_seconds (string) gracefully"""
         mock_click.return_value = False

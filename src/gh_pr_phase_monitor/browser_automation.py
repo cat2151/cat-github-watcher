@@ -14,8 +14,9 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 import webbrowser
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -118,6 +119,22 @@ _SIMPLE_ANSI_HEX = {
     "96": "#55ffff",
     "97": "#ffffff",
 }
+
+
+def _log_error(message: str, exc: Exception | BaseException | None = None) -> None:
+    """Append an error entry to logs/error.log without raising further exceptions."""
+    try:
+        log_dir = Path("logs")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / "error.log"
+        timestamp = datetime.now(UTC).isoformat(timespec="seconds")
+        with log_path.open("a", encoding="utf-8") as log_file:
+            log_file.write(f"[{timestamp} UTC] {message}\n")
+            if exc:
+                log_file.writelines(traceback.format_exception(type(exc), exc, exc.__traceback__))
+            log_file.write("\n")
+    except Exception:
+        pass
 
 
 def _ansi_to_hex(color_code: str) -> Optional[str]:
@@ -231,6 +248,7 @@ class NotificationWindow:
         self.y = y
         self.root = None
         self._should_close = False
+        self._closed_by_user = False
 
     def show(self) -> None:
         """Show the notification window on a separate thread."""
@@ -255,6 +273,7 @@ class NotificationWindow:
             geometry = f"{self.width}x{self.height}+{self.x}+{self.y}"
             self.root.geometry(geometry)
             self.root.attributes("-topmost", True)
+            self.root.protocol("WM_DELETE_WINDOW", self._on_user_close)
 
             wraplength = max(0, self.width - 50)
             label = tk.Label(
@@ -269,6 +288,8 @@ class NotificationWindow:
 
             def _check_close() -> None:
                 """Poll for close requests from other threads and shut down Tk safely."""
+                if self.root is None or not bool(self.root.winfo_exists()):
+                    return
                 if self._should_close and self.root is not None:
                     try:
                         self.root.quit()
@@ -287,6 +308,21 @@ class NotificationWindow:
     def close(self) -> None:
         """Request the notification window to close."""
         self._should_close = True
+
+    def _on_user_close(self) -> None:
+        """Handle manual close from the user."""
+        self._closed_by_user = True
+        self._should_close = True
+        try:
+            if self.root is not None:
+                self.root.quit()
+                self.root.destroy()
+        except Exception as e:
+            print(f"  ⚠ Failed to close notification window cleanly: {e}")
+
+    @property
+    def closed_by_user(self) -> bool:
+        return self._closed_by_user
 
 
 def _start_button_notification(config: Dict[str, Any], default_message: str) -> Optional[NotificationWindow]:
@@ -999,72 +1035,87 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     button_delay = _validate_button_delay(assign_config)
     notification: Optional[NotificationWindow] = None
 
-    print("  → [PyAutoGUI] Opening issue in browser...")
-    print("  ℹ Ensure you are already logged into GitHub in your default browser")
-
-    # Determine if window should be raised to foreground
-    autoraise = _should_autoraise_window(config)
-    notification = _start_button_notification(assign_config, DEFAULT_ASSIGN_NOTIFICATION_MESSAGE)
-
     try:
+        print("  → [PyAutoGUI] Opening issue in browser...")
+        print("  ℹ Ensure you are already logged into GitHub in your default browser")
+
+        # Determine if window should be raised to foreground
+        autoraise = _should_autoraise_window(config)
+        notification = _start_button_notification(assign_config, DEFAULT_ASSIGN_NOTIFICATION_MESSAGE)
+
         try:
-            opened = webbrowser.open(issue_url, autoraise=autoraise)
-            if not opened:
-                print(f"  ✗ Browser did not open for issue URL '{issue_url}'")
-                print("     Please check your default browser settings")
+            try:
+                opened = webbrowser.open(issue_url, autoraise=autoraise)
+                if not opened:
+                    print(f"  ✗ Browser did not open for issue URL '{issue_url}'")
+                    print("     Please check your default browser settings")
+                    return False
+            except Exception as e:
+                print(f"  ✗ Failed to open browser for issue URL '{issue_url}': {e}")
                 return False
-        except Exception as e:
-            print(f"  ✗ Failed to open browser for issue URL '{issue_url}': {e}")
-            return False
 
-        # Record the browser open time to enforce cooldown
-        _record_browser_open()
+            # Record the browser open time to enforce cooldown
+            _record_browser_open()
 
-        # Mark this issue as having an assignment attempt with current timestamp
-        # This is done immediately after browser opens to prevent repeated browser opens
-        # even if the automation fails later (e.g., button not found). The goal is to
-        # prevent opening 30+ tabs of the same URL, not to retry until successful.
-        # The timestamp allows retries after 24 hours for temporary failures.
-        _issue_assign_attempted[issue_url] = time.time()
+            # Mark this issue as having an assignment attempt with current timestamp
+            # This is done immediately after browser opens to prevent repeated browser opens
+            # even if the automation fails later (e.g., button not found). The goal is to
+            # prevent opening 30+ tabs of the same URL, not to retry until successful.
+            # The timestamp allows retries after 24 hours for temporary failures.
+            _issue_assign_attempted[issue_url] = time.time()
 
-        # Wait for the configured time
-        print(f"  → Waiting {wait_seconds} seconds for page to load...")
-        time.sleep(wait_seconds)
+            # Wait for the configured time
+            print(f"  → Waiting {wait_seconds} seconds for page to load...")
+            time.sleep(wait_seconds)
 
-        # Activate window if window_title is configured (1 second before clicking buttons)
-        window_title = assign_config.get("window_title")
-        if window_title:
-            print("  → Waiting 1 second before activating window...")
-            time.sleep(1)  # Wait 1 second before activating window
-            _activate_window_by_title(window_title, assign_config)
+            if notification and getattr(notification, "closed_by_user", False):
+                print("  ⚠ Notification window was closed by user; skipping automated assignment")
+                return False
 
-        # Click "Assign to Copilot" button
-        print("  → Looking for 'Assign to Copilot' button...")
-        if not _click_button_with_image("assign_to_copilot", assign_config):
-            print("  ✗ Could not find or click 'Assign to Copilot' button")
-            return False
+            # Activate window if window_title is configured (1 second before clicking buttons)
+            window_title = assign_config.get("window_title")
+            if window_title:
+                print("  → Waiting 1 second before activating window...")
+                time.sleep(1)  # Wait 1 second before activating window
+                _activate_window_by_title(window_title, assign_config)
 
-        print("  ✓ Clicked 'Assign to Copilot' button")
+            # Click "Assign to Copilot" button
+            print("  → Looking for 'Assign to Copilot' button...")
+            if not _click_button_with_image("assign_to_copilot", assign_config):
+                print("  ✗ Could not find or click 'Assign to Copilot' button")
+                return False
 
-        # Wait for the assignment UI to appear
-        print(f"  → Waiting {button_delay} seconds for UI to respond...")
-        time.sleep(button_delay)
+            print("  ✓ Clicked 'Assign to Copilot' button")
 
-        # Click "Assign" button
-        print("  → Looking for 'Assign' button...")
-        if not _click_button_with_image("assign", assign_config):
-            print("  ✗ Could not find or click 'Assign' button")
-            return False
+            # Wait for the assignment UI to appear
+            print(f"  → Waiting {button_delay} seconds for UI to respond...")
+            time.sleep(button_delay)
 
-        print("  ✓ Clicked 'Assign' button")
-        print("  ✓ [PyAutoGUI] Successfully automated issue assignment to Copilot")
+            if notification and getattr(notification, "closed_by_user", False):
+                print("  ⚠ Notification window was closed by user; skipping automated assignment")
+                return False
 
-        # Wait before finishing
-        time.sleep(button_delay)
+            # Click "Assign" button
+            print("  → Looking for 'Assign' button...")
+            if not _click_button_with_image("assign", assign_config):
+                print("  ✗ Could not find or click 'Assign' button")
+                return False
 
-        return True
-    finally:
-        _close_notification_window(notification)
+            print("  ✓ Clicked 'Assign' button")
+            print("  ✓ [PyAutoGUI] Successfully automated issue assignment to Copilot")
+
+            # Wait before finishing
+            time.sleep(button_delay)
+
+            return True
+        finally:
+            _close_notification_window(notification)
+    except BaseException as exc:  # Catch broad exceptions to avoid terminating the monitor loop
+        if isinstance(exc, KeyboardInterrupt):
+            raise
+        _log_error(f"Auto-assign failed for {issue_url}", exc)
+        print("  ✗ Unexpected error during automated assignment; skipping and continuing")
+        return False
 
 
 def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> bool:

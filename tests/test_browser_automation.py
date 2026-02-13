@@ -140,6 +140,27 @@ class TestAssignIssueToCopilotAutomated:
         mock_start.assert_called_once()
         mock_notification.close.assert_called_once()
 
+    @patch("src.gh_pr_phase_monitor.browser_automation._log_error")
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser_automation._start_button_notification")
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_logs_and_returns_false_on_unexpected_error(
+        self, mock_sleep, mock_start, mock_click, mock_webbrowser, mock_log_error
+    ):
+        """Unexpected automation errors should be logged and surfaced as False without raising."""
+        mock_webbrowser.open.return_value = True
+        mock_start.return_value = MagicMock(close=MagicMock(), closed_by_user=False)
+        mock_click.side_effect = RuntimeError("boom")
+
+        result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", {})
+
+        assert result is False
+        mock_log_error.assert_called_once()
+        assert "https://github.com/test/repo/issues/1" in mock_log_error.call_args[0][0]
+        mock_start.return_value.close.assert_called_once()
+
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")

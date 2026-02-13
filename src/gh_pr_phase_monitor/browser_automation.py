@@ -133,8 +133,12 @@ def _log_error(message: str, exc: Exception | BaseException | None = None) -> No
             if exc:
                 log_file.writelines(traceback.format_exception(type(exc), exc, exc.__traceback__))
             log_file.write("\n")
-    except Exception:
-        pass
+    except Exception as log_exc:
+        # Logging must never raise; emit minimal message to stderr as last resort.
+        print(
+            f"[browser_automation._log_error] Failed to write to error.log: {log_exc!r} (original message: {message})",
+            file=sys.stderr,
+        )
 
 
 def _ansi_to_hex(color_code: str) -> Optional[str]:
@@ -1110,9 +1114,7 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
             return True
         finally:
             _close_notification_window(notification)
-    except BaseException as exc:  # Catch broad exceptions to avoid terminating the monitor loop
-        if isinstance(exc, KeyboardInterrupt):
-            raise
+    except Exception as exc:  # Catch unexpected automation errors without terminating the monitor loop
         _log_error(f"Auto-assign failed for {issue_url}", exc)
         print("  ✗ Unexpected error during automated assignment; skipping and continuing")
         return False

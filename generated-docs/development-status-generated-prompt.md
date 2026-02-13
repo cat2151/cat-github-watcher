@@ -1,4 +1,4 @@
-Last updated: 2026-02-13
+Last updated: 2026-02-14
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -195,6 +195,8 @@ Last updated: 2026-02-13
 - .github/actions-tmp/issue-notes/35.md
 - .github/actions-tmp/issue-notes/38.md
 - .github/actions-tmp/issue-notes/4.md
+- .github/actions-tmp/issue-notes/40.md
+- .github/actions-tmp/issue-notes/42.md
 - .github/actions-tmp/issue-notes/7.md
 - .github/actions-tmp/issue-notes/8.md
 - .github/actions-tmp/issue-notes/9.md
@@ -289,31 +291,34 @@ Last updated: 2026-02-13
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
+a23ab97 Merge pull request #247 from cat2151/codex/fix-auto-assign-error
+bd6d559 fix: refine logging and tests per review
+a558ac8 fix: handle notification window close
+c446b97 Initial plan
+dbc21e5 Merge pull request #245 from cat2151/codex/handle-assignee-open-issues
+2f81f03 Handle assigned issues with assignees as LLM work
+e62bb6f Initial plan
+61ff1aa Update project summaries (overview & development status) [auto]
 8e7abc5 Merge pull request #243 from cat2151/codex/display-open-pr-list-when-count-low
 22251a7 Address review feedback
-aa1047d Ensure issues display when LLM work below cap
-2d6eb16 Initial plan
-4ab3733 Merge pull request #241 from cat2151/codex/fix-auto-assign-logic
-ccfef6d feat: ignore phase3 in parallel count
-3176fac fix: ensure phase flags are boolean
-77ed43f fix: allow auto-assign when only phase3 prs
-05fc9df Initial plan
-b7b094a Update project summaries (overview & development status) [auto]
 
 ### 変更されたファイル:
 .gitignore
-README.md
 generated-docs/development-status-generated-prompt.md
 generated-docs/development-status.md
 generated-docs/project-overview-generated-prompt.md
 generated-docs/project-overview.md
 src/gh_pr_phase_monitor/browser_automation.py
 src/gh_pr_phase_monitor/display.py
+src/gh_pr_phase_monitor/issue_fetcher.py
 src/gh_pr_phase_monitor/main.py
 tests/test_browser_automation.py
+tests/test_elapsed_time_display.py
 tests/test_error_logging.py
+tests/test_max_llm_working_parallel.py
+tests/test_no_open_prs_issue_display.py
 tests/test_show_issues_when_pr_count_less_than_3.py
 
 
 ---
-Generated at: 2026-02-13 07:04:43 JST
+Generated at: 2026-02-14 07:05:28 JST

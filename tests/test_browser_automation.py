@@ -600,21 +600,22 @@ class TestClickButtonWithImage:
             assert result is True
             assert mock_pyautogui.locateOnScreen.call_count == 3
             sleep_args = [call.args[0] for call in mock_sleep.call_args_list]
-            assert sleep_args == [0.1, 0.1, 0.0]
+            assert sleep_args == [0.1, 0.1]
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
     @patch("src.gh_pr_phase_monitor.browser_automation._maybe_maximize_window", return_value=False)
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
-    def test_honors_pre_click_delay(self, mock_sleep, mock_maximize, mock_get_path):
-        """pre_click_delay should be applied before clicking when button is found."""
+    def test_reverifies_before_click_without_sleep(self, mock_sleep, mock_maximize, mock_get_path):
+        """Button is re-verified before clicking and no pre-click sleep is taken."""
         from src.gh_pr_phase_monitor.browser_automation import _click_button_with_image
 
         mock_get_path.return_value = Path("/tmp/test_button.png")
 
         with patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui:
-            mock_location = MagicMock()
-            mock_pyautogui.locateOnScreen.return_value = mock_location
+            first_location = MagicMock(name="first")
+            second_location = MagicMock(name="second")
+            mock_pyautogui.locateOnScreen.side_effect = [first_location, second_location]
             mock_pyautogui.center.return_value = (7, 8)
 
             result = _click_button_with_image(
@@ -626,8 +627,9 @@ class TestClickButtonWithImage:
             )
 
             assert result is True
-            sleep_args = [call.args[0] for call in mock_sleep.call_args_list]
-            assert sleep_args == [0.25]
+            assert mock_pyautogui.locateOnScreen.call_count == 2  # initial find + final verification
+            mock_pyautogui.click.assert_called_once_with((7, 8))
+            assert mock_sleep.call_count == 0
 
 
 class TestGetScreenshotPath:

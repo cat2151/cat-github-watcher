@@ -1101,9 +1101,12 @@ def _click_button_with_image(
                 print(f"  ✗ All detection methods failed for button '{button_name}'")
                 return False
 
-            # Click in the center of the found button
-            center = pyautogui.center(location)
-            time.sleep(pre_click_delay)  # Brief pause before clicking
+            # Re-verify just before clicking to avoid stale coordinates, then click immediately
+            verification_location = pyautogui.locateOnScreen(str(screenshot_path), confidence=confidence)
+            if verification_location is None:
+                print(f"  ✗ Button '{button_name}' not found during final verification; skipping click")
+                return False
+            center = pyautogui.center(verification_location)
             if _user_cancelled_notification:
                 print("  ⚠ Notification window was closed by user; skipping button search")
                 return False

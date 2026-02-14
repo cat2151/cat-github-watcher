@@ -21,7 +21,12 @@ auto_updater = importlib.import_module("src.gh_pr_phase_monitor.auto_updater")
 
 @pytest.fixture(autouse=True)
 def reset_last_check_time():
+    original_last_check_time = getattr(auto_updater, "_last_check_time", 0.0)
     auto_updater._last_check_time = 0.0
+    try:
+        yield
+    finally:
+        auto_updater._last_check_time = original_last_check_time
 
 
 def test_skips_when_interval_not_elapsed(monkeypatch):

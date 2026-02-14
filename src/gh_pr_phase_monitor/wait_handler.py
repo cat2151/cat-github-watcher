@@ -11,6 +11,17 @@ from .config import get_config_mtime, load_config, parse_interval, print_config
 from .time_utils import format_elapsed_time
 
 
+def _log_self_update_error(exc: Exception) -> None:
+    """Log self-update errors without raising, mirroring main loop behavior."""
+    try:
+        from .main import log_error_to_file
+
+        log_error_to_file("Auto-update callback failed during wait", exc)
+    except Exception:
+        # Avoid any logging-related failures impacting the wait loop
+        pass
+
+
 def wait_with_countdown(
     interval_seconds: int,
     interval_str: str,
@@ -32,6 +43,8 @@ def wait_with_countdown(
         interval_str: Human-readable interval string (e.g., "1m", "30s")
         config_path: Path to the configuration file (empty string disables hot reload)
         last_config_mtime: Last known modification time of the config file
+        self_update_callback: Optional callback invoked periodically during wait (e.g., auto-update)
+        self_update_interval_seconds: Minimum seconds between callback invocations
 
     Returns:
         Tuple of (config, interval_seconds, interval_str, new_config_mtime)
@@ -70,9 +83,8 @@ def wait_with_countdown(
         if self_update_callback and time.time() - last_update_check >= self_update_interval_seconds:
             try:
                 self_update_callback()
-            except Exception:
-                # Self-update failures should not break the wait loop
-                pass
+            except Exception as exc:
+                _log_self_update_error(exc)
             last_update_check = time.time()
 
         # Check if config file has been modified (only if config_path is provided)

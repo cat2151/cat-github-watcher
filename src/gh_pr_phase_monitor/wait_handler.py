@@ -3,7 +3,7 @@ Wait and countdown handling with hot reload support
 """
 
 import time
-from typing import Any, Dict, Tuple
+from typing import Any, Callable, Dict, Tuple
 
 import tomli
 
@@ -11,8 +11,24 @@ from .config import get_config_mtime, load_config, parse_interval, print_config
 from .time_utils import format_elapsed_time
 
 
+def _log_self_update_error(exc: Exception) -> None:
+    """Log self-update errors without raising, mirroring main loop behavior."""
+    try:
+        from .main import log_error_to_file
+
+        log_error_to_file("Auto-update callback failed during wait", exc)
+    except Exception:
+        # Avoid any logging-related failures impacting the wait loop
+        pass
+
+
 def wait_with_countdown(
-    interval_seconds: int, interval_str: str, config_path: str = "", last_config_mtime: float = 0.0
+    interval_seconds: int,
+    interval_str: str,
+    config_path: str = "",
+    last_config_mtime: float = 0.0,
+    self_update_callback: Callable[[], None] | None = None,
+    self_update_interval_seconds: int = 60,
 ) -> Tuple[Dict[str, Any], int, str, float]:
     """Wait for the specified interval with a live countdown display and hot reload support
 
@@ -27,6 +43,8 @@ def wait_with_countdown(
         interval_str: Human-readable interval string (e.g., "1m", "30s")
         config_path: Path to the configuration file (empty string disables hot reload)
         last_config_mtime: Last known modification time of the config file
+        self_update_callback: Optional callback invoked periodically during wait (e.g., auto-update)
+        self_update_interval_seconds: Minimum seconds between callback invocations
 
     Returns:
         Tuple of (config, interval_seconds, interval_str, new_config_mtime)
@@ -43,6 +61,7 @@ def wait_with_countdown(
 
     # Track actual elapsed time from the start of wait
     wait_start_time = time.time()
+    last_update_check = wait_start_time
 
     # Display countdown with updates every second using ANSI escape sequences
     while True:
@@ -60,6 +79,13 @@ def wait_with_countdown(
         print(f"\rWaiting {remaining_str}     ", end="", flush=True)
         sleep_duration = min(1, remaining)
         time.sleep(sleep_duration)
+
+        if self_update_callback and time.time() - last_update_check >= self_update_interval_seconds:
+            try:
+                self_update_callback()
+            except Exception as exc:
+                _log_self_update_error(exc)
+            last_update_check = time.time()
 
         # Check if config file has been modified (only if config_path is provided)
         # Note: This check happens every second as per hot reload requirements

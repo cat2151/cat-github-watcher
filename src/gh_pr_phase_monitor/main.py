@@ -9,7 +9,9 @@ import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .auto_updater import UPDATE_CHECK_INTERVAL_SECONDS, maybe_self_update
 from .config import (
+    DEFAULT_ENABLE_AUTO_UPDATE,
     DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
     get_config_mtime,
@@ -100,6 +102,13 @@ def main():
     consecutive_failures = 0
     while True:
         iteration += 1
+
+        if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE):
+            try:
+                maybe_self_update()
+            except Exception as update_error:
+                log_error_to_file("Auto-update check failed", update_error)
+
         print(f"\n{'=' * 50}")
         print(f"Check #{iteration} - {time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'=' * 50}")
@@ -272,7 +281,14 @@ def main():
         # Wait with countdown display and check for config changes
         try:
             new_config, new_interval_seconds, new_interval_str, new_config_mtime = wait_with_countdown(
-                current_interval_seconds, current_interval_str, config_path, config_mtime
+                current_interval_seconds,
+                current_interval_str,
+                config_path,
+                config_mtime,
+                self_update_callback=maybe_self_update
+                if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE)
+                else None,
+                self_update_interval_seconds=UPDATE_CHECK_INTERVAL_SECONDS,
             )
         except Exception as wait_error:
             log_error_to_file("wait_with_countdown failed; falling back to sleep", wait_error)

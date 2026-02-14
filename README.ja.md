@@ -41,6 +41,7 @@ GitHub Copilotが自動実装を行うPRのフェーズを監視し、適切な�
   - 個別のPRがphase3になったときに通知
   - すべてのPRがphase3になったときにも通知（メッセージはtomlで設定可能）
 - **issue一覧表示**: 全PRが「LLM working」の場合、オープンPRのないリポジトリのissue上位N件を表示（デフォルト: 10件、`issue_display_limit`で変更可能）
+- **自己更新**: `enable_auto_update = true` を設定すると、1分ごとにGitHubリポジトリの更新を検知し、作業ツリーがクリーンでfast-forward可能なら自動pullして再起動（デフォルト無効）
 - **省電力モード**: 状態変化がない場合、API使用量を削減するため監視間隔を自動的に延長（`no_change_timeout`と`reduced_frequency_interval`で設定可能）
 - **Verboseモード**: 起動時と実行中に詳細な設定情報を表示し、設定ミスの検出を支援（`verbose`で有効化）
 

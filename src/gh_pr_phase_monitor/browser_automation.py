@@ -1134,7 +1134,7 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
 
     This function uses PyAutoGUI with image recognition to:
     1. Open the issue in a browser (requires an already-authenticated browser session)
-    2. Wait for the configured time (default 10 seconds)
+    2. Wait for the configured time (default 2 seconds)
     3. Click the "Assign to Copilot" button (using screenshot)
     4. Click the "Assign" button (using screenshot)
 

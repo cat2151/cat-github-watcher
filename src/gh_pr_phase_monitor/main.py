@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .auto_updater import UPDATE_CHECK_INTERVAL_SECONDS, maybe_self_update
 from .config import (
+    DEFAULT_ENABLE_AUTO_UPDATE,
     DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
     get_config_mtime,
@@ -102,10 +103,11 @@ def main():
     while True:
         iteration += 1
 
-        try:
-            maybe_self_update()
-        except Exception as update_error:
-            log_error_to_file("Auto-update check failed", update_error)
+        if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE):
+            try:
+                maybe_self_update()
+            except Exception as update_error:
+                log_error_to_file("Auto-update check failed", update_error)
 
         print(f"\n{'=' * 50}")
         print(f"Check #{iteration} - {time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -283,7 +285,9 @@ def main():
                 current_interval_str,
                 config_path,
                 config_mtime,
-                self_update_callback=maybe_self_update,
+                self_update_callback=maybe_self_update
+                if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE)
+                else None,
                 self_update_interval_seconds=UPDATE_CHECK_INTERVAL_SECONDS,
             )
         except Exception as wait_error:

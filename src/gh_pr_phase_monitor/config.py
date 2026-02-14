@@ -66,6 +66,9 @@ DEFAULT_DISPLAY_PR_AUTHOR = False
 # Default setting for displaying LLM status timelines in CLI output
 DEFAULT_DISPLAY_LLM_STATUS_TIMELINE = False
 
+# Default setting for auto-update (disabled by default for safety)
+DEFAULT_ENABLE_AUTO_UPDATE = False
+
 # Default setting for saving pr_phase_snapshots (disabled by default for safety/privacy)
 DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS = False
 
@@ -384,6 +387,14 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
             config["enable_pr_phase_snapshots"] = DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS
     else:
         config["enable_pr_phase_snapshots"] = DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS
+    if "enable_auto_update" in config:
+        try:
+            config["enable_auto_update"] = _validate_boolean_flag(config["enable_auto_update"], "enable_auto_update")
+        except ValueError as e:
+            print(f"Warning: {e}. Using default value: {DEFAULT_ENABLE_AUTO_UPDATE}")
+            config["enable_auto_update"] = DEFAULT_ENABLE_AUTO_UPDATE
+    else:
+        config["enable_auto_update"] = DEFAULT_ENABLE_AUTO_UPDATE
     if "color_scheme" in config:
         try:
             config["color_scheme"] = _validate_color_scheme(config["color_scheme"])
@@ -438,6 +449,7 @@ def print_config(config: Dict[str, Any]) -> None:
         f"  display_llm_status_timeline: {config.get('display_llm_status_timeline', DEFAULT_DISPLAY_LLM_STATUS_TIMELINE)}"
     )
     print(f"  enable_pr_phase_snapshots: {config.get('enable_pr_phase_snapshots', DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS)}")
+    print(f"  enable_auto_update: {config.get('enable_auto_update', DEFAULT_ENABLE_AUTO_UPDATE)}")
 
     coding_agent = config.get("coding_agent")
     if coding_agent and isinstance(coding_agent, dict):

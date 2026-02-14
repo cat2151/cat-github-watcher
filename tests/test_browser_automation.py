@@ -143,6 +143,32 @@ class TestAssignIssueToCopilotAutomated:
         mock_start.return_value.close.assert_called_once()
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._wait_with_cancellation", return_value=False)
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser_automation._get_active_window_title")
+    @patch("src.gh_pr_phase_monitor.browser_automation._start_button_notification")
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_updates_notification_with_search_status(
+        self, mock_sleep, mock_start, mock_get_title, mock_click, mock_webbrowser, mock_wait
+    ):
+        """Splash window should reflect active window and search status."""
+        mock_click.return_value = True
+        mock_webbrowser.open.return_value = True
+        notification = MagicMock(close=MagicMock())
+        mock_start.return_value = notification
+        mock_get_title.return_value = "issue\nタブ"
+
+        result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", {})
+
+        assert result is True
+        messages = [call.args[0] for call in notification.update_message.call_args_list]
+        assert any("active window titleは、issue タブ です" in msg for msg in messages)
+        assert any("Assign to Copilotボタンを探索中です…" in msg for msg in messages)
+        assert any("Assign to Copilotボタンを発見しました。クリックします" in msg for msg in messages)
+        assert any("緑のAssignボタンを発見しました。クリックしました。自動assignを正常終了します" in msg for msg in messages)
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
     @patch("src.gh_pr_phase_monitor.browser_automation._start_button_notification")

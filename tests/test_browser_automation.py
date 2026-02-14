@@ -419,6 +419,24 @@ class TestMergePrAutomated:
         assert result is True
         assert mock_click.call_count == 3
 
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._start_button_notification")
+    @patch("src.gh_pr_phase_monitor.browser_automation._wait_with_cancellation")
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    def test_merge_aborts_when_notification_closed(
+        self, mock_click, mock_webbrowser, mock_wait, mock_start_notification
+    ):
+        """If the notification is closed, merge automation should abort early"""
+        mock_webbrowser.open.return_value = True
+        mock_start_notification.return_value = MagicMock()
+        mock_wait.return_value = True  # Simulate user close during initial wait
+
+        result = merge_pr_automated("https://github.com/test/repo/pull/1", {})
+
+        assert result is False
+        mock_click.assert_not_called()
+
 
 class TestClickButtonWithImage:
     """Tests for _click_button_with_image helper function"""

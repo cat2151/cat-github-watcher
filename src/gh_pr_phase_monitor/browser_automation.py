@@ -1148,10 +1148,6 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
                 print("  ⚠ Notification window was closed by user; skipping automated assignment")
                 return False
 
-            if _was_closed_by_user(notification):
-                print("  ⚠ Notification window was closed by user; skipping automated assignment")
-                return False
-
             # Activate window if window_title is configured (1 second before clicking buttons)
             window_title = assign_config.get("window_title")
             if window_title:
@@ -1286,17 +1282,24 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
 
         # Wait for the configured time
         print(f"  → Waiting {wait_seconds} seconds for page to load...")
-        time.sleep(wait_seconds)
+        if _wait_with_cancellation(wait_seconds, notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
 
         # Activate window if window_title is configured (1 second before clicking buttons)
         window_title = merge_config.get("window_title")
         if window_title:
             print("  → Waiting 1 second before activating window...")
-            time.sleep(1)  # Wait 1 second before activating window
+            if _wait_with_cancellation(1, notification):
+                print("  ⚠ Notification window was closed by user; skipping automated merge")
+                return False
             _activate_window_by_title(window_title, merge_config)
 
         # Click "Merge pull request" button
         print("  → Looking for 'Merge pull request' button...")
+        if _was_closed_by_user(notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
         if not _click_button_with_image("merge_pull_request", merge_config):
             print("  ✗ Could not find or click 'Merge pull request' button")
             return False
@@ -1305,10 +1308,15 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
 
         # Wait for the confirmation UI to appear
         print(f"  → Waiting {button_delay} seconds for UI to respond...")
-        time.sleep(button_delay)
+        if _wait_with_cancellation(button_delay, notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
 
         # Click "Confirm merge" button
         print("  → Looking for 'Confirm merge' button...")
+        if _was_closed_by_user(notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
         if not _click_button_with_image("confirm_merge", merge_config):
             print("  ✗ Could not find or click 'Confirm merge' button")
             return False
@@ -1317,10 +1325,15 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
 
         # Wait for merge to complete and delete branch button to appear
         print(f"  → Waiting {button_delay + 1.0} seconds for merge to complete...")
-        time.sleep(button_delay + 1.0)
+        if _wait_with_cancellation(button_delay + 1.0, notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
 
         # Click "Delete branch" button (optional - don't fail if not found)
         print("  → Looking for 'Delete branch' button...")
+        if _was_closed_by_user(notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
         if not _click_button_with_image("delete_branch", merge_config):
             print("  ⚠ Could not find or click 'Delete branch' button (may have already been deleted)")
         else:
@@ -1329,7 +1342,7 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
         print("  ✓ [PyAutoGUI] Successfully automated PR merge")
 
         # Wait before finishing
-        time.sleep(button_delay)
+        _wait_with_cancellation(button_delay, notification)
 
         return True
     finally:

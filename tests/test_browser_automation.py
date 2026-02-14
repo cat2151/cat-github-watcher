@@ -232,7 +232,7 @@ class TestAssignIssueToCopilotAutomated:
 
         result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", config)
 
-        # Should use default value (10) instead of -5
+        # Should use default value (2) instead of -5
         assert result is False
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)

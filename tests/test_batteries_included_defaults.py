@@ -90,7 +90,7 @@ class TestAssignToCopilotDefaults:
 
         assert result == DEFAULT_ASSIGN_TO_COPILOT_CONFIG
         assert result["automation_backend"] == "playwright"
-        assert result["wait_seconds"] == 10
+        assert result["wait_seconds"] == 2
         assert result["browser"] == "chromium"
         assert result["headless"] is False
 
@@ -108,7 +108,7 @@ class TestAssignToCopilotDefaults:
 
         # Missing values should use defaults
         assert result["automation_backend"] == "playwright"
-        assert result["wait_seconds"] == 10
+        assert result["wait_seconds"] == 2
         assert result["headless"] is False
 
     def test_full_config_overrides_all_defaults(self):
@@ -148,7 +148,7 @@ class TestDefaultConstantsAreSensible:
 
     def test_assign_to_copilot_defaults_are_safe(self):
         """assign_to_copilot defaults should be safe (reasonable wait time)"""
-        assert DEFAULT_ASSIGN_TO_COPILOT_CONFIG["wait_seconds"] >= 10
+        assert DEFAULT_ASSIGN_TO_COPILOT_CONFIG["wait_seconds"] == 2
 
     def test_both_defaults_use_playwright(self):
         """Both features should default to playwright backend"""

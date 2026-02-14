@@ -22,6 +22,7 @@ from typing import Any, Dict, Optional
 
 from .colors import Colors
 from .config import (
+    DEFAULT_ASSIGN_TO_COPILOT_CONFIG,
     DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE,
     get_assign_to_copilot_config,
     get_phase3_merge_config,
@@ -692,23 +693,24 @@ def _get_active_window_title() -> Optional[str]:
     return None
 
 
-def _validate_wait_seconds(config: Dict[str, Any]) -> int:
+def _validate_wait_seconds(config: Dict[str, Any], default: int = 10) -> int:
     """Validate and get wait_seconds from configuration
 
     Args:
         config: Configuration dict with wait_seconds setting
+        default: Default wait time to fall back to when invalid
 
     Returns:
-        Validated wait_seconds value (defaults to 10 if invalid)
+        Validated wait_seconds value (defaults to provided value if invalid)
     """
     try:
-        wait_seconds = int(config.get("wait_seconds", 10))
+        wait_seconds = int(config.get("wait_seconds", default))
         if wait_seconds < 0:
-            print("  ⚠ wait_seconds must be positive, using default: 10")
-            wait_seconds = 10
+            print(f"  ⚠ wait_seconds must be positive, using default: {default}")
+            wait_seconds = default
     except (ValueError, TypeError):
-        print("  ⚠ Invalid wait_seconds value in config, using default: 10")
-        wait_seconds = 10
+        print(f"  ⚠ Invalid wait_seconds value in config, using default: {default}")
+        wait_seconds = default
     return wait_seconds
 
 
@@ -1160,7 +1162,7 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
         issue_url: The URL of the GitHub issue
         config: Optional configuration dict with automation settings
                 Supported keys in assign_to_copilot section:
-                - wait_seconds (int): Seconds to wait for page load (default: 10)
+                - wait_seconds (int): Seconds to wait for page load (default: 2)
                 - button_delay (float): Seconds to wait between button clicks (default: 2.0)
                 - confidence (float): Image matching confidence 0.0-1.0 (default: 0.8)
                 - screenshot_dir (str): Directory containing screenshots (default: "screenshots")
@@ -1204,7 +1206,7 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
     active_window_title = _get_active_window_title()
 
     # Validate and get configuration values
-    wait_seconds = _validate_wait_seconds(assign_config)
+    wait_seconds = _validate_wait_seconds(assign_config, default=DEFAULT_ASSIGN_TO_COPILOT_CONFIG["wait_seconds"])
     button_delay = _validate_button_delay(assign_config)
     notification: Optional[NotificationWindow] = None
 

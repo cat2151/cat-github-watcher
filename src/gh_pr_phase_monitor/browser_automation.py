@@ -277,6 +277,7 @@ class NotificationWindow:
         self.cancel_message = cancel_message
         self._message_var = None
         self.message = _sanitize_notification_text(message)
+        self._last_rendered_message = self.message
 
     def show(self) -> None:
         """Show the notification window on a separate thread."""
@@ -319,6 +320,12 @@ class NotificationWindow:
                 """Poll for close requests from other threads and shut down Tk safely."""
                 if self.root is None or not bool(self.root.winfo_exists()):
                     return
+                if self.message != self._last_rendered_message and self._message_var is not None:
+                    try:
+                        self._message_var.set(self.message)
+                        self._last_rendered_message = self.message
+                    except Exception:
+                        pass
                 if self._should_close and self.root is not None:
                     try:
                         self.root.quit()
@@ -370,16 +377,6 @@ class NotificationWindow:
         """Update the notification text safely from other threads."""
         sanitized = _sanitize_notification_text(message)
         self.message = sanitized
-        if self.root is None or self._message_var is None:
-            return
-        try:
-            if bool(self.root.winfo_exists()):
-                self.root.after(0, self._message_var.set, sanitized)
-        except Exception:
-            try:
-                self._message_var.set(sanitized)
-            except Exception:
-                pass
 
 
 def _was_closed_by_user(notification: Optional[NotificationWindow]) -> bool:
@@ -468,7 +465,7 @@ def _update_notification_status(
         return
     message = _compose_status_message(status, active_window_title)
     try:
-        notification.update_message(message)  # type: ignore[attr-defined]
+        notification.update_message(message)
     except Exception as exc:
         _log_error("Failed to update notification message", exc)
 

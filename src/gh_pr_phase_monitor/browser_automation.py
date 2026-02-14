@@ -1013,7 +1013,7 @@ def _click_button_with_image(button_name: str, config: Dict[str, Any]) -> bool:
             # Save debug information for troubleshooting
             try:
                 _save_debug_info(button_name, confidence, config)
-            except BaseException as debug_exc:  # noqa: BLE001
+            except Exception as debug_exc:  # noqa: BLE001
                 _log_error(f"Failed to save debug info for '{button_name}' after image search miss", debug_exc)
 
             # Try OCR-based detection as fallback

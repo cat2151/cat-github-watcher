@@ -59,6 +59,28 @@ class TestNotificationTheme:
         assert theme["accent"] == "#00ff00"
 
 
+class TestNotificationWindow:
+    """Tests for NotificationWindow behavior"""
+
+    def test_user_close_shows_cancel_dialog(self, monkeypatch):
+        from src.gh_pr_phase_monitor import browser_automation as ba
+
+        fake_root = MagicMock()
+        fake_root.quit = MagicMock()
+        fake_root.destroy = MagicMock()
+
+        monkeypatch.setattr(ba, "messagebox", MagicMock())
+        monkeypatch.setattr(ba, "_user_cancelled_notification", False)
+
+        window = ba.NotificationWindow("msg", 100, 100, 0, 0, cancel_message="auto assignを中断します")
+        window.root = fake_root
+
+        window._on_user_close()
+
+        ba.messagebox.showinfo.assert_called_once_with("auto assign", "auto assignを中断します", parent=fake_root)
+        assert window.closed_by_user is True
+
+
 class TestAssignIssueToCopilotAutomated:
     """Tests for assign_issue_to_copilot_automated function"""
 
@@ -397,6 +419,24 @@ class TestMergePrAutomated:
         assert result is True
         assert mock_click.call_count == 3
 
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._start_button_notification")
+    @patch("src.gh_pr_phase_monitor.browser_automation._wait_with_cancellation")
+    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
+    def test_merge_aborts_when_notification_closed(
+        self, mock_click, mock_webbrowser, mock_wait, mock_start_notification
+    ):
+        """If the notification is closed, merge automation should abort early"""
+        mock_webbrowser.open.return_value = True
+        mock_start_notification.return_value = MagicMock()
+        mock_wait.return_value = True  # Simulate user close during initial wait
+
+        result = merge_pr_automated("https://github.com/test/repo/pull/1", {})
+
+        assert result is False
+        mock_click.assert_not_called()
+
 
 class TestClickButtonWithImage:
     """Tests for _click_button_with_image helper function"""
@@ -427,6 +467,23 @@ class TestClickButtonWithImage:
             result = _click_button_with_image("test_button", {})
 
             assert result is False
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    def test_skips_search_when_user_cancelled(self, monkeypatch):
+        """User cancellation should skip button search and debug capture"""
+        from src.gh_pr_phase_monitor import browser_automation as ba
+
+        monkeypatch.setattr(ba, "_user_cancelled_notification", True)
+        with patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui, patch(
+            "src.gh_pr_phase_monitor.browser_automation._get_screenshot_path"
+        ) as mock_get_path, patch("src.gh_pr_phase_monitor.browser_automation._save_debug_info") as mock_save_debug:
+            mock_get_path.return_value = Path("/tmp/test_button.png")
+
+            result = ba._click_button_with_image("test_button", {})
+
+            assert result is False
+            mock_pyautogui.locateOnScreen.assert_not_called()
+            mock_save_debug.assert_not_called()
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")

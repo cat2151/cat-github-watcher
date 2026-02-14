@@ -49,11 +49,13 @@ except ImportError:
 # tkinter imports are optional - used for on-screen notification window
 try:
     import tkinter as tk
+    from tkinter import messagebox
 
     TKINTER_AVAILABLE = True
 except Exception:
     TKINTER_AVAILABLE = False
     tk = None
+    messagebox = None
 
 # pytesseract imports are optional - for OCR-based button detection fallback
 try:
@@ -81,6 +83,9 @@ _issue_assign_attempted: Dict[str, float] = {}
 # Time (in seconds) before an issue URL can be retried (24 hours)
 ISSUE_ASSIGN_RETRY_AFTER_SECONDS = 24 * 60 * 60
 
+# Track whether the notification window was explicitly closed by the user
+_user_cancelled_notification = False
+
 # Debug candidate detection settings
 # These thresholds are only used when image recognition fails with the original confidence threshold
 # The search stops after finding DEBUG_MAX_CANDIDATES candidates
@@ -97,6 +102,7 @@ DEFAULT_NOTIFICATION_POSITION_X = 100
 DEFAULT_NOTIFICATION_POSITION_Y = 100
 DEFAULT_ASSIGN_NOTIFICATION_MESSAGE = "ブラウザを開いてCopilot割り当てボタンを探索中..."
 DEFAULT_MERGE_NOTIFICATION_MESSAGE = "ブラウザを開いてMergeボタンを探索中..."
+ASSIGN_CANCEL_MESSAGE = "auto assignを中断します"
 
 _SUBPROCESS_TIMEOUT_SECONDS = 0.5
 
@@ -244,7 +250,15 @@ def _parse_int_setting(value: Any, default: int) -> int:
 class NotificationWindow:
     """Lightweight topmost notification window shown during automation."""
 
-    def __init__(self, message: str, width: int, height: int, x: int, y: int):
+    def __init__(
+        self,
+        message: str,
+        width: int,
+        height: int,
+        x: int,
+        y: int,
+        cancel_message: Optional[str] = None,
+    ):
         self.message = message
         self.width = width
         self.height = height
@@ -253,6 +267,7 @@ class NotificationWindow:
         self.root = None
         self._should_close = False
         self._closed_by_user = False
+        self.cancel_message = cancel_message
 
     def show(self) -> None:
         """Show the notification window on a separate thread."""
@@ -317,6 +332,9 @@ class NotificationWindow:
         """Handle manual close from the user."""
         self._closed_by_user = True
         self._should_close = True
+        global _user_cancelled_notification
+        _user_cancelled_notification = True
+        self._show_cancel_dialog()
         try:
             if self.root is not None:
                 self.root.quit()
@@ -324,12 +342,53 @@ class NotificationWindow:
         except Exception as e:
             print(f"  ⚠ Failed to close notification window cleanly: {e}")
 
+    def _show_cancel_dialog(self) -> None:
+        """Display a one-button dialog when the user cancels automation."""
+        if not self.cancel_message or messagebox is None:
+            return
+        try:
+            parent = self.root if self.root is not None else None
+            messagebox.showinfo("auto assign", self.cancel_message, parent=parent)
+        except Exception as e:
+            print(f"  ⚠ Failed to show cancellation dialog: {e}")
+
     @property
     def closed_by_user(self) -> bool:
         return self._closed_by_user
 
 
-def _start_button_notification(config: Dict[str, Any], default_message: str) -> Optional[NotificationWindow]:
+def _was_closed_by_user(notification: Optional[NotificationWindow]) -> bool:
+    """Check whether the notification window was explicitly closed by the user."""
+    if notification is None:
+        return False
+    return getattr(notification, "closed_by_user", False) is True
+
+
+def _wait_with_cancellation(duration: float, notification: Optional[NotificationWindow]) -> bool:
+    """Wait for a duration while honoring user cancellation requests.
+
+    Returns:
+        True if the user closed the notification window during the wait, False otherwise.
+    """
+    if duration <= 0:
+        return _was_closed_by_user(notification)
+
+    remaining = float(duration)
+    interval = 0.5
+
+    while remaining > 0:
+        if _was_closed_by_user(notification):
+            return True
+        sleep_time = min(interval, remaining)
+        time.sleep(sleep_time)
+        remaining -= sleep_time
+
+    return _was_closed_by_user(notification)
+
+
+def _start_button_notification(
+    config: Dict[str, Any], default_message: str, cancel_message: Optional[str] = None
+) -> Optional[NotificationWindow]:
     """Create and show a notification window when configured."""
     if not config.get("notification_enabled", True):
         return None
@@ -350,7 +409,7 @@ def _start_button_notification(config: Dict[str, Any], default_message: str) -> 
     )
     message = str(config.get("notification_message", default_message))
 
-    window = NotificationWindow(message, width, height, pos_x, pos_y)
+    window = NotificationWindow(message, width, height, pos_x, pos_y, cancel_message=cancel_message)
     try:
         window.show()
         return window
@@ -906,6 +965,10 @@ def _click_button_with_image(button_name: str, config: Dict[str, Any]) -> bool:
         print("  ✗ PyAutoGUI is not available")
         return False
 
+    if _user_cancelled_notification:
+        print("  ⚠ Notification window was closed by user; skipping button search")
+        return False
+
     screenshot_path = _get_screenshot_path(button_name, config)
     if screenshot_path is None:
         print(f"  ✗ Screenshot not found for button '{button_name}'")
@@ -930,6 +993,9 @@ def _click_button_with_image(button_name: str, config: Dict[str, Any]) -> bool:
                 location = pyautogui.locateOnScreen(str(screenshot_path), confidence=confidence)
 
         if location is None:
+            if _user_cancelled_notification:
+                print("  ⚠ Notification window was closed by user; skipping button search")
+                return False
             print(f"  ✗ Could not find button '{button_name}' on screen with image recognition")
             print("     Trying fallback methods...")
             # Save debug information for troubleshooting
@@ -946,6 +1012,9 @@ def _click_button_with_image(button_name: str, config: Dict[str, Any]) -> bool:
         # Click in the center of the found button
         center = pyautogui.center(location)
         time.sleep(0.5)  # Brief pause before clicking
+        if _user_cancelled_notification:
+            print("  ⚠ Notification window was closed by user; skipping button search")
+            return False
         pyautogui.click(center)
         print(f"  ✓ Clicked button '{button_name}' at position {center}")
         return True
@@ -1007,6 +1076,9 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
         print("  ✗ PyAutoGUI is not installed. Install with: pip install pyautogui pillow")
         return False
 
+    global _user_cancelled_notification
+    _user_cancelled_notification = False
+
     # Check if assignment has already been attempted for this issue recently
     if issue_url in _issue_assign_attempted:
         last_attempt_time = _issue_assign_attempted[issue_url]
@@ -1045,7 +1117,9 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
 
         # Determine if window should be raised to foreground
         autoraise = _should_autoraise_window(config)
-        notification = _start_button_notification(assign_config, DEFAULT_ASSIGN_NOTIFICATION_MESSAGE)
+        notification = _start_button_notification(
+            assign_config, DEFAULT_ASSIGN_NOTIFICATION_MESSAGE, cancel_message=ASSIGN_CANCEL_MESSAGE
+        )
 
         try:
             try:
@@ -1070,9 +1144,7 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
 
             # Wait for the configured time
             print(f"  → Waiting {wait_seconds} seconds for page to load...")
-            time.sleep(wait_seconds)
-
-            if notification and getattr(notification, "closed_by_user", False):
+            if _wait_with_cancellation(wait_seconds, notification):
                 print("  ⚠ Notification window was closed by user; skipping automated assignment")
                 return False
 
@@ -1085,6 +1157,9 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
 
             # Click "Assign to Copilot" button
             print("  → Looking for 'Assign to Copilot' button...")
+            if _was_closed_by_user(notification):
+                print("  ⚠ Notification window was closed by user; skipping automated assignment")
+                return False
             if not _click_button_with_image("assign_to_copilot", assign_config):
                 print("  ✗ Could not find or click 'Assign to Copilot' button")
                 return False
@@ -1093,9 +1168,11 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
 
             # Wait for the assignment UI to appear
             print(f"  → Waiting {button_delay} seconds for UI to respond...")
-            time.sleep(button_delay)
+            if _wait_with_cancellation(button_delay, notification):
+                print("  ⚠ Notification window was closed by user; skipping automated assignment")
+                return False
 
-            if notification and getattr(notification, "closed_by_user", False):
+            if _was_closed_by_user(notification):
                 print("  ⚠ Notification window was closed by user; skipping automated assignment")
                 return False
 
@@ -1160,6 +1237,9 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
         print("  ✗ PyAutoGUI is not installed. Install with: pip install pyautogui pillow")
         return False
 
+    global _user_cancelled_notification
+    _user_cancelled_notification = False
+
     # Check if enough time has passed since the last browser open
     if not _can_open_browser():
         remaining = _get_remaining_cooldown()
@@ -1202,17 +1282,24 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
 
         # Wait for the configured time
         print(f"  → Waiting {wait_seconds} seconds for page to load...")
-        time.sleep(wait_seconds)
+        if _wait_with_cancellation(wait_seconds, notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
 
         # Activate window if window_title is configured (1 second before clicking buttons)
         window_title = merge_config.get("window_title")
         if window_title:
             print("  → Waiting 1 second before activating window...")
-            time.sleep(1)  # Wait 1 second before activating window
+            if _wait_with_cancellation(1, notification):
+                print("  ⚠ Notification window was closed by user; skipping automated merge")
+                return False
             _activate_window_by_title(window_title, merge_config)
 
         # Click "Merge pull request" button
         print("  → Looking for 'Merge pull request' button...")
+        if _was_closed_by_user(notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
         if not _click_button_with_image("merge_pull_request", merge_config):
             print("  ✗ Could not find or click 'Merge pull request' button")
             return False
@@ -1221,10 +1308,15 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
 
         # Wait for the confirmation UI to appear
         print(f"  → Waiting {button_delay} seconds for UI to respond...")
-        time.sleep(button_delay)
+        if _wait_with_cancellation(button_delay, notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
 
         # Click "Confirm merge" button
         print("  → Looking for 'Confirm merge' button...")
+        if _was_closed_by_user(notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
         if not _click_button_with_image("confirm_merge", merge_config):
             print("  ✗ Could not find or click 'Confirm merge' button")
             return False
@@ -1233,10 +1325,15 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
 
         # Wait for merge to complete and delete branch button to appear
         print(f"  → Waiting {button_delay + 1.0} seconds for merge to complete...")
-        time.sleep(button_delay + 1.0)
+        if _wait_with_cancellation(button_delay + 1.0, notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
 
         # Click "Delete branch" button (optional - don't fail if not found)
         print("  → Looking for 'Delete branch' button...")
+        if _was_closed_by_user(notification):
+            print("  ⚠ Notification window was closed by user; skipping automated merge")
+            return False
         if not _click_button_with_image("delete_branch", merge_config):
             print("  ⚠ Could not find or click 'Delete branch' button (may have already been deleted)")
         else:
@@ -1245,7 +1342,7 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
         print("  ✓ [PyAutoGUI] Successfully automated PR merge")
 
         # Wait before finishing
-        time.sleep(button_delay)
+        _wait_with_cancellation(button_delay, notification)
 
         return True
     finally:

@@ -147,9 +147,7 @@ class TestAssignIssueToCopilotAutomated:
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
     @patch("src.gh_pr_phase_monitor.browser_automation._start_button_notification")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
-    def test_skips_when_notification_closed_by_user(
-        self, mock_sleep, mock_start, mock_click, mock_webbrowser
-    ):
+    def test_skips_when_notification_closed_by_user(self, mock_sleep, mock_start, mock_click, mock_webbrowser):
         """If the notification window is closed, automation should be skipped safely"""
         mock_webbrowser.open.return_value = True
         mock_notification = MagicMock(close=MagicMock(), closed_by_user=True)
@@ -474,9 +472,11 @@ class TestClickButtonWithImage:
         from src.gh_pr_phase_monitor import browser_automation as ba
 
         monkeypatch.setattr(ba, "_user_cancelled_notification", True)
-        with patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui, patch(
-            "src.gh_pr_phase_monitor.browser_automation._get_screenshot_path"
-        ) as mock_get_path, patch("src.gh_pr_phase_monitor.browser_automation._save_debug_info") as mock_save_debug:
+        with (
+            patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui,
+            patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path") as mock_get_path,
+            patch("src.gh_pr_phase_monitor.browser_automation._save_debug_info") as mock_save_debug,
+        ):
             mock_get_path.return_value = Path("/tmp/test_button.png")
 
             result = ba._click_button_with_image("test_button", {})
@@ -520,9 +520,10 @@ class TestClickButtonWithImage:
             mock_pyautogui.locateOnScreen.return_value = None
             mock_maximize.return_value = True
 
-            with patch(
-                "src.gh_pr_phase_monitor.browser_automation._click_button_with_ocr", return_value=False
-            ), patch("src.gh_pr_phase_monitor.browser_automation._save_debug_info"):
+            with (
+                patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_ocr", return_value=False),
+                patch("src.gh_pr_phase_monitor.browser_automation._save_debug_info"),
+            ):
                 result = _click_button_with_image("test_button", {"maximize_on_first_fail": False})
 
             assert result is False
@@ -1035,6 +1036,21 @@ class TestActivateWindowByTitle:
 
         assert result is True
         mock_window.activate.assert_called_once()
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation.gw")
+    def test_skips_search_when_active_window_matches(self, mock_gw):
+        """Return early when the active window already matches the title."""
+        from src.gh_pr_phase_monitor.browser_automation import _activate_window_by_title
+
+        active_window = MagicMock()
+        active_window.title = "GitHub - notifications"
+        mock_gw.getActiveWindow.return_value = active_window
+
+        result = _activate_window_by_title("github", {})
+
+        assert result is True
+        mock_gw.getAllWindows.assert_not_called()
 
 
 class TestAssignWithWindowActivation:

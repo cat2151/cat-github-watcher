@@ -1,4 +1,4 @@
-Last updated: 2026-02-14
+Last updated: 2026-02-15
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -230,6 +230,7 @@ Last updated: 2026-02-14
 - screenshots/assign_to_copilot.png
 - src/__init__.py
 - src/gh_pr_phase_monitor/__init__.py
+- src/gh_pr_phase_monitor/auto_updater.py
 - src/gh_pr_phase_monitor/browser_automation.py
 - src/gh_pr_phase_monitor/colors.py
 - src/gh_pr_phase_monitor/comment_fetcher.py
@@ -251,6 +252,8 @@ Last updated: 2026-02-14
 - src/gh_pr_phase_monitor/state_tracker.py
 - src/gh_pr_phase_monitor/time_utils.py
 - src/gh_pr_phase_monitor/wait_handler.py
+- tests/test_auto_update_config.py
+- tests/test_auto_updater.py
 - tests/test_batteries_included_defaults.py
 - tests/test_browser_automation.py
 - tests/test_check_process_before_autoraise.py
@@ -282,6 +285,7 @@ Last updated: 2026-02-14
 - tests/test_status_summary.py
 - tests/test_validate_phase3_merge_config.py
 - tests/test_verbose_config.py
+- tests/test_wait_handler_callback.py
 
 ## 現在のオープンIssues
 オープン中のIssueはありません
@@ -291,34 +295,34 @@ Last updated: 2026-02-14
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-a23ab97 Merge pull request #247 from cat2151/codex/fix-auto-assign-error
-bd6d559 fix: refine logging and tests per review
-a558ac8 fix: handle notification window close
-c446b97 Initial plan
-dbc21e5 Merge pull request #245 from cat2151/codex/handle-assignee-open-issues
-2f81f03 Handle assigned issues with assignees as LLM work
-e62bb6f Initial plan
-61ff1aa Update project summaries (overview & development status) [auto]
-8e7abc5 Merge pull request #243 from cat2151/codex/display-open-pr-list-when-count-low
-22251a7 Address review feedback
+07fffa6 Auto-translate README.ja.md to README.md [auto]
+61e82d9 Merge pull request #259 from cat2151/codex/remove-wait-time-for-button-search
+9e85046 fix: address review feedback
+ffd10cc fix: start auto-assign search sooner
+c86c2ab Initial plan
+10e0ea7 Auto-translate README.ja.md to README.md [auto]
+8bc0247 Merge pull request #257 from cat2151/codex/implement-auto-update-feature
+164da94 test: cover wait callback and fixture cleanup
+01302f0 chore: gate auto update behind config
+8ca2a3b feat: add self update and restart logic
 
 ### 変更されたファイル:
-.gitignore
-generated-docs/development-status-generated-prompt.md
-generated-docs/development-status.md
-generated-docs/project-overview-generated-prompt.md
-generated-docs/project-overview.md
+README.ja.md
+README.md
+docs/button-detection-improvements.ja.md
+docs/window-activation-feature.md
+src/gh_pr_phase_monitor/__init__.py
+src/gh_pr_phase_monitor/auto_updater.py
 src/gh_pr_phase_monitor/browser_automation.py
-src/gh_pr_phase_monitor/display.py
-src/gh_pr_phase_monitor/issue_fetcher.py
+src/gh_pr_phase_monitor/config.py
 src/gh_pr_phase_monitor/main.py
+src/gh_pr_phase_monitor/wait_handler.py
+tests/test_auto_update_config.py
+tests/test_auto_updater.py
+tests/test_batteries_included_defaults.py
 tests/test_browser_automation.py
-tests/test_elapsed_time_display.py
-tests/test_error_logging.py
-tests/test_max_llm_working_parallel.py
-tests/test_no_open_prs_issue_display.py
-tests/test_show_issues_when_pr_count_less_than_3.py
+tests/test_wait_handler_callback.py
 
 
 ---
-Generated at: 2026-02-14 07:05:28 JST
+Generated at: 2026-02-15 07:01:27 JST

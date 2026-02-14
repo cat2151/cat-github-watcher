@@ -1,4 +1,4 @@
-Last updated: 2026-02-14
+Last updated: 2026-02-15
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -104,6 +104,7 @@ GitHub Copilotが自動実装を行うPRのフェーズを監視し、適切な�
   - 個別のPRがphase3になったときに通知
   - すべてのPRがphase3になったときにも通知（メッセージはtomlで設定可能）
 - **issue一覧表示**: 全PRが「LLM working」の場合、オープンPRのないリポジトリのissue上位N件を表示（デフォルト: 10件、`issue_display_limit`で変更可能）
+- **自己更新**: `enable_auto_update = true` を設定すると、1分ごとにGitHubリポジトリの更新を検知し、作業ツリーがクリーンでfast-forward可能なら自動pullして再起動（デフォルト無効）
 - **省電力モード**: 状態変化がない場合、API使用量を削減するため監視間隔を自動的に延長（`no_change_timeout`と`reduced_frequency_interval`で設定可能）
 - **Verboseモード**: 起動時と実行中に詳細な設定情報を表示し、設定ミスの検出を支援（`verbose`で有効化）
 
@@ -278,7 +279,7 @@ cat-github-watcher/
    # - ブラウザ自動操縦で自動的にボタンをクリック
    # - PyAutoGUIを使用した画像認識
    # - 画像認識が失敗した場合、OCRフォールバック（オプション）
-   # - wait_seconds = 10
+   # - wait_seconds = 2
    # 
    # 必須: PyAutoGUIのインストールが必要（pip install pyautogui pillow）
    # オプション: OCRフォールバックにはpytesseractのインストールが必要
@@ -287,7 +288,7 @@ cat-github-watcher/
    # リポジトリごとにrulesetsで assign_ci_failure_old / assign_deploy_pages_failure_old /
    # assign_good_first_old / assign_old を指定して明示的に有効化する必要があります
    [assign_to_copilot]
-   wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
+   wait_seconds = 2  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
    debug_dir = "debug_screenshots"  # 画像認識失敗時のデバッグ情報保存先（デフォルト: "debug_screenshots"）
    confidence = 0.8  # 画像マッチングの信頼度 0.0-1.0（デフォルト: 0.8）
    enable_ocr_detection = true  # OCRフォールバックを有効化（デフォルト: true）
@@ -502,6 +503,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 __init__.py
   📁 gh_pr_phase_monitor/
     📄 __init__.py
+    📄 auto_updater.py
     📄 browser_automation.py
     📄 colors.py
     📄 comment_fetcher.py
@@ -524,6 +526,8 @@ MIT License - 詳細はLICENSEファイルを参照してください
     📄 time_utils.py
     📄 wait_handler.py
 📁 tests/
+  📄 test_auto_update_config.py
+  📄 test_auto_updater.py
   📄 test_batteries_included_defaults.py
   📄 test_browser_automation.py
   📄 test_check_process_before_autoraise.py
@@ -555,6 +559,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_status_summary.py
   📄 test_validate_phase3_merge_config.py
   📄 test_verbose_config.py
+  📄 test_wait_handler_callback.py
 
 ## ファイル詳細分析
 
@@ -583,4 +588,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-02-14 07:05:28 JST
+Generated at: 2026-02-15 07:01:27 JST

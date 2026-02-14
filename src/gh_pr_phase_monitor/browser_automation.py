@@ -592,6 +592,17 @@ def _activate_window_by_title(window_title: Optional[str], config: Dict[str, Any
         print(error_msg)
         raise SystemExit(1)
 
+    active_window = None
+    try:
+        active_window = gw.getActiveWindow()
+    except Exception:
+        active_window = None
+
+    active_title = getattr(active_window, "title", None)
+    if isinstance(active_title, str) and window_title.lower() in active_title.lower():
+        print(f"  ℹ Active window already matches title '{window_title}', skipping search")
+        return True
+
     try:
         print(f"  → Looking for window with title containing: '{window_title}'")
 
@@ -747,6 +758,7 @@ def _save_debug_info(button_name: str, confidence: float, config: Dict[str, Any]
         print(f"  ℹ Debug screenshot saved: {screenshot_path}")
     except Exception as e:
         print(f"  ⚠ Could not save debug screenshot: {e}")
+        _log_error(f"Failed to capture debug screenshot for '{button_name}'", e)
         return
 
     # Get template screenshot path and handle None case
@@ -999,7 +1011,10 @@ def _click_button_with_image(button_name: str, config: Dict[str, Any]) -> bool:
             print(f"  ✗ Could not find button '{button_name}' on screen with image recognition")
             print("     Trying fallback methods...")
             # Save debug information for troubleshooting
-            _save_debug_info(button_name, confidence, config)
+            try:
+                _save_debug_info(button_name, confidence, config)
+            except Exception as debug_exc:  # noqa: BLE001
+                _log_error(f"Failed to save debug info for '{button_name}' after image search miss", debug_exc)
 
             # Try OCR-based detection as fallback
             print("  → Attempting OCR fallback...")
@@ -1023,11 +1038,12 @@ def _click_button_with_image(button_name: str, config: Dict[str, Any]) -> bool:
         print(f"  ✗ Error clicking button '{button_name}': {e}")
         print("     This may occur if running in a headless environment, SSH session without display,")
         print("     or if the screen is locked. PyAutoGUI requires an active display.")
+        _log_error(f"Button click failed for '{button_name}'", e)
         # Save debug information even on exception
         try:
             _save_debug_info(button_name, confidence, config)
-        except Exception:
-            pass  # Silently ignore errors in debug info saving
+        except Exception as debug_exc:
+            _log_error(f"Failed to save debug info for '{button_name}' after exception", debug_exc)
         return False
 
 

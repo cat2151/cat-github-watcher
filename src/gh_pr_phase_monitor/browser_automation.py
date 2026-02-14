@@ -1013,7 +1013,14 @@ def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:
         return False
 
 
-def _click_button_with_image(button_name: str, config: Dict[str, Any]) -> bool:
+def _click_button_with_image(
+    button_name: str,
+    config: Dict[str, Any],
+    *,
+    max_attempts: int = 1,
+    poll_interval: float = 0.0,
+    pre_click_delay: float = 0.5,
+) -> bool:
     """Find and click a button using image recognition
 
     Args:
@@ -1050,47 +1057,59 @@ def _click_button_with_image(button_name: str, config: Dict[str, Any]) -> bool:
     confidence = _validate_confidence(config)
 
     try:
-        print(f"  → Looking for button using screenshot: {screenshot_path}")
-        print(
-            "  ⚠ Make sure the correct GitHub browser window/tab is focused "
-            "because the first matching button on the entire screen will be clicked."
-        )
-        location = pyautogui.locateOnScreen(str(screenshot_path), confidence=confidence)
+        attempts = max(1, max_attempts)
+        has_maximized = False
+        for attempt in range(attempts):
+            print(f"  → Looking for button using screenshot: {screenshot_path}")
+            print(
+                "  ⚠ Make sure the correct GitHub browser window/tab is focused "
+                "because the first matching button on the entire screen will be clicked."
+            )
+            location = pyautogui.locateOnScreen(str(screenshot_path), confidence=confidence)
 
-        if location is None:
-            if _maybe_maximize_window(config):
-                time.sleep(0.5)  # Allow layout to settle after maximizing
-                location = pyautogui.locateOnScreen(str(screenshot_path), confidence=confidence)
+            if location is None and not has_maximized:
+                if _maybe_maximize_window(config):
+                    has_maximized = True
+                    time.sleep(0.5)  # Allow layout to settle after maximizing
+                    location = pyautogui.locateOnScreen(str(screenshot_path), confidence=confidence)
 
-        if location is None:
+            if location is None and attempt < attempts - 1:
+                if _user_cancelled_notification:
+                    print("  ⚠ Notification window was closed by user; skipping button search")
+                    return False
+                if poll_interval > 0:
+                    time.sleep(poll_interval)
+                continue
+
+            if location is None:
+                if _user_cancelled_notification:
+                    print("  ⚠ Notification window was closed by user; skipping button search")
+                    return False
+                print(f"  ✗ Could not find button '{button_name}' on screen with image recognition")
+                print("     Trying fallback methods...")
+                # Save debug information for troubleshooting
+                try:
+                    _save_debug_info(button_name, confidence, config)
+                except Exception as debug_exc:  # noqa: BLE001
+                    _log_error(f"Failed to save debug info for '{button_name}' after image search miss", debug_exc)
+
+                # Try OCR-based detection as fallback
+                print("  → Attempting OCR fallback...")
+                if _click_button_with_ocr(button_name, config):
+                    return True
+
+                print(f"  ✗ All detection methods failed for button '{button_name}'")
+                return False
+
+            # Click in the center of the found button
+            center = pyautogui.center(location)
+            time.sleep(pre_click_delay)  # Brief pause before clicking
             if _user_cancelled_notification:
                 print("  ⚠ Notification window was closed by user; skipping button search")
                 return False
-            print(f"  ✗ Could not find button '{button_name}' on screen with image recognition")
-            print("     Trying fallback methods...")
-            # Save debug information for troubleshooting
-            try:
-                _save_debug_info(button_name, confidence, config)
-            except Exception as debug_exc:  # noqa: BLE001
-                _log_error(f"Failed to save debug info for '{button_name}' after image search miss", debug_exc)
-
-            # Try OCR-based detection as fallback
-            print("  → Attempting OCR fallback...")
-            if _click_button_with_ocr(button_name, config):
-                return True
-
-            print(f"  ✗ All detection methods failed for button '{button_name}'")
-            return False
-
-        # Click in the center of the found button
-        center = pyautogui.center(location)
-        time.sleep(0.5)  # Brief pause before clicking
-        if _user_cancelled_notification:
-            print("  ⚠ Notification window was closed by user; skipping button search")
-            return False
-        pyautogui.click(center)
-        print(f"  ✓ Clicked button '{button_name}' at position {center}")
-        return True
+            pyautogui.click(center)
+            print(f"  ✓ Clicked button '{button_name}' at position {center}")
+            return True
 
     except Exception as e:
         print(f"  ✗ Error clicking button '{button_name}': {e}")
@@ -1239,7 +1258,13 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
             if _was_closed_by_user(notification):
                 print("  ⚠ Notification window was closed by user; skipping automated assignment")
                 return False
-            if not _click_button_with_image("assign_to_copilot", assign_config):
+            if not _click_button_with_image(
+                "assign_to_copilot",
+                assign_config,
+                max_attempts=30,
+                poll_interval=1.0,
+                pre_click_delay=1.0,
+            ):
                 print("  ✗ Could not find or click 'Assign to Copilot' button")
                 active_window_title = _get_active_window_title() or active_window_title
                 _update_notification_status(
@@ -1267,7 +1292,13 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
             print("  → Looking for 'Assign' button...")
             active_window_title = _get_active_window_title() or active_window_title
             _update_notification_status(notification, "緑のAssignボタンを探索中です…", active_window_title)
-            if not _click_button_with_image("assign", assign_config):
+            if not _click_button_with_image(
+                "assign",
+                assign_config,
+                max_attempts=30,
+                poll_interval=1.0,
+                pre_click_delay=1.0,
+            ):
                 print("  ✗ Could not find or click 'Assign' button")
                 active_window_title = _get_active_window_title() or active_window_title
                 _update_notification_status(

@@ -170,6 +170,14 @@ def _ansi_to_hex(color_code: str) -> Optional[str]:
     return None
 
 
+def _sanitize_notification_text(text: str) -> str:
+    """Convert newlines to spaces for splash display and trim whitespace."""
+    if not isinstance(text, str):
+        return ""
+    sanitized = text.replace("\r", " ").replace("\n", " ")
+    return " ".join(sanitized.split())
+
+
 def _is_dark_mode_enabled() -> bool:
     try:
         if sys.platform == "darwin":
@@ -259,7 +267,6 @@ class NotificationWindow:
         y: int,
         cancel_message: Optional[str] = None,
     ):
-        self.message = message
         self.width = width
         self.height = height
         self.x = x
@@ -268,6 +275,9 @@ class NotificationWindow:
         self._should_close = False
         self._closed_by_user = False
         self.cancel_message = cancel_message
+        self._message_var = None
+        self.message = _sanitize_notification_text(message)
+        self._last_rendered_message = self.message
 
     def show(self) -> None:
         """Show the notification window on a separate thread."""
@@ -295,9 +305,10 @@ class NotificationWindow:
             self.root.protocol("WM_DELETE_WINDOW", self._on_user_close)
 
             wraplength = max(0, self.width - 50)
+            self._message_var = tk.StringVar(value=self.message)
             label = tk.Label(
                 self.root,
-                text=self.message,
+                textvariable=self._message_var,
                 font=("Arial", 16),
                 wraplength=wraplength,
                 bg=theme["background"],
@@ -309,6 +320,12 @@ class NotificationWindow:
                 """Poll for close requests from other threads and shut down Tk safely."""
                 if self.root is None or not bool(self.root.winfo_exists()):
                     return
+                if self.message != self._last_rendered_message and self._message_var is not None:
+                    try:
+                        self._message_var.set(self.message)
+                        self._last_rendered_message = self.message
+                    except Exception:
+                        pass
                 if self._should_close and self.root is not None:
                     try:
                         self.root.quit()
@@ -355,6 +372,11 @@ class NotificationWindow:
     @property
     def closed_by_user(self) -> bool:
         return self._closed_by_user
+
+    def update_message(self, message: str) -> None:
+        """Update the notification text safely from other threads."""
+        sanitized = _sanitize_notification_text(message)
+        self.message = sanitized
 
 
 def _was_closed_by_user(notification: Optional[NotificationWindow]) -> bool:
@@ -407,7 +429,7 @@ def _start_button_notification(
     pos_y = _parse_int_setting(
         config.get("notification_position_y", DEFAULT_NOTIFICATION_POSITION_Y), DEFAULT_NOTIFICATION_POSITION_Y
     )
-    message = str(config.get("notification_message", default_message))
+    message = _sanitize_notification_text(str(config.get("notification_message", default_message)))
 
     window = NotificationWindow(message, width, height, pos_x, pos_y, cancel_message=cancel_message)
     try:
@@ -425,6 +447,27 @@ def _close_notification_window(window: Optional[NotificationWindow]) -> None:
             window.close()
         except Exception as e:
             print(f"  ⚠ Failed to close notification window: {e}")
+
+
+def _compose_status_message(status: str, active_window_title: Optional[str]) -> str:
+    base_status = _sanitize_notification_text(status)
+    active_title = _sanitize_notification_text(active_window_title) if active_window_title else ""
+    if not active_title:
+        return base_status
+    return f"active window titleは、{active_title} です / {base_status}"
+
+
+def _update_notification_status(
+    notification: Optional[NotificationWindow], status: str, active_window_title: Optional[str]
+) -> None:
+    """Update splash window text with current search status."""
+    if notification is None or _was_closed_by_user(notification):
+        return
+    message = _compose_status_message(status, active_window_title)
+    try:
+        notification.update_message(message)
+    except Exception as exc:
+        _log_error("Failed to update notification message", exc)
 
 
 def _should_maximize_on_first_fail(config: Dict[str, Any]) -> bool:
@@ -632,6 +675,21 @@ def _activate_window_by_title(window_title: Optional[str], config: Dict[str, Any
     except Exception as e:
         print(f"  ⚠ Failed to activate window: {e}")
         return False
+
+
+def _get_active_window_title() -> Optional[str]:
+    """Return the active window title if available, sanitized for display."""
+    if not PYGETWINDOW_AVAILABLE or gw is None:
+        return None
+    try:
+        window = gw.getActiveWindow()
+    except Exception:
+        return None
+
+    title = getattr(window, "title", None)
+    if isinstance(title, str) and title.strip():
+        return _sanitize_notification_text(title)
+    return None
 
 
 def _validate_wait_seconds(config: Dict[str, Any]) -> int:
@@ -1121,6 +1179,7 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
         config = {}
 
     assign_config = get_assign_to_copilot_config(config)
+    active_window_title = _get_active_window_title()
 
     # Validate and get configuration values
     wait_seconds = _validate_wait_seconds(assign_config)
@@ -1170,16 +1229,28 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
                 print("  → Waiting 1 second before activating window...")
                 time.sleep(1)  # Wait 1 second before activating window
                 _activate_window_by_title(window_title, assign_config)
+            active_window_title = _get_active_window_title() or active_window_title
 
             # Click "Assign to Copilot" button
             print("  → Looking for 'Assign to Copilot' button...")
+            _update_notification_status(
+                notification, "Assign to Copilotボタンを探索中です…", active_window_title
+            )
             if _was_closed_by_user(notification):
                 print("  ⚠ Notification window was closed by user; skipping automated assignment")
                 return False
             if not _click_button_with_image("assign_to_copilot", assign_config):
                 print("  ✗ Could not find or click 'Assign to Copilot' button")
+                active_window_title = _get_active_window_title() or active_window_title
+                _update_notification_status(
+                    notification, "Assign to Copilotボタンを探索中です…まだ見つかりません…", active_window_title
+                )
                 return False
 
+            active_window_title = _get_active_window_title() or active_window_title
+            _update_notification_status(
+                notification, "Assign to Copilotボタンを発見しました。クリックします", active_window_title
+            )
             print("  ✓ Clicked 'Assign to Copilot' button")
 
             # Wait for the assignment UI to appear
@@ -1194,10 +1265,20 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
 
             # Click "Assign" button
             print("  → Looking for 'Assign' button...")
+            active_window_title = _get_active_window_title() or active_window_title
+            _update_notification_status(notification, "緑のAssignボタンを探索中です…", active_window_title)
             if not _click_button_with_image("assign", assign_config):
                 print("  ✗ Could not find or click 'Assign' button")
+                active_window_title = _get_active_window_title() or active_window_title
+                _update_notification_status(
+                    notification, "緑のAssignボタンを探索中です…まだ見つかりません…", active_window_title
+                )
                 return False
 
+            active_window_title = _get_active_window_title() or active_window_title
+            _update_notification_status(
+                notification, "緑のAssignボタンを発見しました。クリックしました。自動assignを正常終了します", active_window_title
+            )
             print("  ✓ Clicked 'Assign' button")
             print("  ✓ [PyAutoGUI] Successfully automated issue assignment to Copilot")
 

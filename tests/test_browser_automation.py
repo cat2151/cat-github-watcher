@@ -268,7 +268,7 @@ class TestAssignIssueToCopilotAutomated:
     def test_fails_if_first_button_not_found(self, mock_click, mock_webbrowser):
         """Test that function fails if first button is not found"""
 
-        def click_side_effect(button_name, config, confidence=0.8):
+        def click_side_effect(button_name, config, **kwargs):
             if button_name == "assign_to_copilot":
                 return False  # First button not found
             return True
@@ -428,7 +428,7 @@ class TestMergePrAutomated:
     def test_succeeds_even_if_delete_branch_button_not_found(self, mock_sleep, mock_click, mock_webbrowser):
         """Test that function succeeds even if Delete branch button is not found"""
 
-        def click_side_effect(button_name, config, confidence=0.8):
+        def click_side_effect(button_name, config, **kwargs):
             if button_name == "delete_branch":
                 return False  # Button not found
             return True
@@ -573,6 +573,61 @@ class TestClickButtonWithImage:
 
             assert result is True
             mock_pyautogui.click.assert_called_once_with((100, 200))
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
+    @patch("src.gh_pr_phase_monitor.browser_automation._maybe_maximize_window", return_value=False)
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_polls_until_max_attempts_with_interval(self, mock_sleep, mock_maximize, mock_get_path):
+        """Polling should repeat locate attempts and sleep between them."""
+        from src.gh_pr_phase_monitor.browser_automation import _click_button_with_image
+
+        mock_get_path.return_value = Path("/tmp/test_button.png")
+
+        with patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui:
+            mock_location = MagicMock()
+            mock_pyautogui.locateOnScreen.side_effect = [None, None, mock_location]
+            mock_pyautogui.center.return_value = (5, 5)
+
+            result = _click_button_with_image(
+                "test_button",
+                {},
+                max_attempts=3,
+                poll_interval=0.1,
+                pre_click_delay=0.0,
+            )
+
+            assert result is True
+            assert mock_pyautogui.locateOnScreen.call_count == 3
+            sleep_args = [call.args[0] for call in mock_sleep.call_args_list]
+            assert sleep_args == [0.1, 0.1, 0.0]
+
+    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
+    @patch("src.gh_pr_phase_monitor.browser_automation._maybe_maximize_window", return_value=False)
+    @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    def test_honors_pre_click_delay(self, mock_sleep, mock_maximize, mock_get_path):
+        """pre_click_delay should be applied before clicking when button is found."""
+        from src.gh_pr_phase_monitor.browser_automation import _click_button_with_image
+
+        mock_get_path.return_value = Path("/tmp/test_button.png")
+
+        with patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui:
+            mock_location = MagicMock()
+            mock_pyautogui.locateOnScreen.return_value = mock_location
+            mock_pyautogui.center.return_value = (7, 8)
+
+            result = _click_button_with_image(
+                "test_button",
+                {},
+                max_attempts=1,
+                poll_interval=0.0,
+                pre_click_delay=0.25,
+            )
+
+            assert result is True
+            sleep_args = [call.args[0] for call in mock_sleep.call_args_list]
+            assert sleep_args == [0.25]
 
 
 class TestGetScreenshotPath:

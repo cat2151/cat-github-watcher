@@ -4,6 +4,7 @@ GitHub PR Phase Monitor
 Monitors PR phases and opens browser for actionable phases
 """
 
+from .auto_updater import maybe_self_update
 from .colors import Colors, colorize_phase
 from .comment_manager import (
     has_copilot_apply_comment,
@@ -44,6 +45,8 @@ __all__ = [
     # Colors
     "Colors",
     "colorize_phase",
+    # Auto update
+    "maybe_self_update",
     # Config
     "get_config_mtime",
     "load_config",

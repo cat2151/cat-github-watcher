@@ -113,7 +113,7 @@ repositories = ["my-repo"]
 assign_good_first_old = true
 
 [assign_to_copilot]
-wait_seconds = 10
+wait_seconds = 2
 confidence = 0.8
 # enable_ocr_detection = true  # デフォルトで有効
 ```
@@ -184,7 +184,7 @@ repositories = ["my-repo"]
 assign_good_first_old = true
 
 [assign_to_copilot]
-wait_seconds = 10
+wait_seconds = 2
 confidence = 0.8
 enable_ocr_detection = true  # 明示的に有効化（デフォルトでも有効）
 debug_dir = "debug_screenshots"

@@ -40,7 +40,7 @@ DEFAULT_PHASE3_MERGE_CONFIG: Dict[str, Any] = {
 # Automated mode is always enabled by default
 DEFAULT_ASSIGN_TO_COPILOT_CONFIG: Dict[str, Any] = {
     "automation_backend": "playwright",
-    "wait_seconds": 10,
+    "wait_seconds": 2,
     "browser": "chromium",
     "headless": False,
     "notification_enabled": True,
@@ -509,7 +509,9 @@ def print_config(config: Dict[str, Any]) -> None:
         print("\n[Auto-assign to Copilot Settings]")
         print(f"  assign_lowest_number_issue: {assign_to_copilot.get('assign_lowest_number_issue', False)}")
         print(f"  automation_backend: {assign_to_copilot.get('automation_backend', 'playwright')}")
-        print(f"  wait_seconds: {assign_to_copilot.get('wait_seconds', 10)}")
+        print(
+            f"  wait_seconds: {assign_to_copilot.get('wait_seconds', DEFAULT_ASSIGN_TO_COPILOT_CONFIG['wait_seconds'])}"
+        )
         print(f"  browser: {assign_to_copilot.get('browser', 'chromium')}")
         print(f"  headless: {assign_to_copilot.get('headless', False)}")
 

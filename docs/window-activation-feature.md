@@ -23,7 +23,7 @@ PyAutoGUIによる自動ボタンクリック機能において、ブラウザ�
 
 ```toml
 [assign_to_copilot]
-wait_seconds = 10
+wait_seconds = 2
 window_title = "GitHub"  # ウィンドウタイトルに "GitHub" を含むウィンドウをアクティブ化
 
 [phase3_merge]

@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from src.gh_pr_phase_monitor.browser_automation import (
     assign_issue_to_copilot_automated,
@@ -223,8 +223,9 @@ class TestAssignIssueToCopilotAutomated:
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser_automation._wait_with_cancellation", return_value=False)
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
-    def test_handles_negative_wait_seconds(self, mock_click, mock_webbrowser):
+    def test_handles_negative_wait_seconds(self, mock_click, mock_wait, mock_webbrowser):
         """Test that function handles negative wait_seconds gracefully"""
         mock_click.return_value = False
 
@@ -232,8 +233,9 @@ class TestAssignIssueToCopilotAutomated:
 
         result = assign_issue_to_copilot_automated("https://github.com/test/repo/issues/1", config)
 
-        # Should use default value (10) instead of -5
+        # Should use default value (2) instead of -5
         assert result is False
+        mock_wait.assert_called_once_with(2, ANY)
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")

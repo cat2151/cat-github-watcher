@@ -216,7 +216,7 @@ cat-github-watcher/
    # - ブラウザ自動操縦で自動的にボタンをクリック
    # - PyAutoGUIを使用した画像認識
    # - 画像認識が失敗した場合、OCRフォールバック（オプション）
-   # - wait_seconds = 10
+   # - wait_seconds = 2
    # 
    # 必須: PyAutoGUIのインストールが必要（pip install pyautogui pillow）
    # オプション: OCRフォールバックにはpytesseractのインストールが必要
@@ -225,7 +225,7 @@ cat-github-watcher/
    # リポジトリごとにrulesetsで assign_ci_failure_old / assign_deploy_pages_failure_old /
    # assign_good_first_old / assign_old を指定して明示的に有効化する必要があります
    [assign_to_copilot]
-   wait_seconds = 10  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
+   wait_seconds = 2  # ブラウザ起動後、ボタンクリック前の待機時間（秒）
    debug_dir = "debug_screenshots"  # 画像認識失敗時のデバッグ情報保存先（デフォルト: "debug_screenshots"）
    confidence = 0.8  # 画像マッチングの信頼度 0.0-1.0（デフォルト: 0.8）
    enable_ocr_detection = true  # OCRフォールバックを有効化（デフォルト: true）

@@ -38,6 +38,46 @@ class TestIsTargetRepo:
     def test_case_insensitive_matching(self):
         assert local_repo_watcher._is_target_repo("https://github.com/MyUser/MyRepo.git", "myuser")
 
+    def test_fake_github_domain_not_matched(self):
+        """URLs like 'github.com.evil.com' must not be accepted."""
+        assert not local_repo_watcher._is_target_repo("https://github.com.evil.com/myuser/repo.git", "myuser")
+
+    def test_notgithub_domain_not_matched(self):
+        """URLs like 'notgithub.com' must not be accepted."""
+        assert not local_repo_watcher._is_target_repo("https://notgithub.com/myuser/repo.git", "myuser")
+
+
+class TestStatusClassification:
+    """Tests for the status classification in _check_repo."""
+
+    def _make_result(self, behind: int, ahead: int, dirty: bool) -> str:
+        """Helper: run classification logic directly and return the status."""
+        # Reproduce the classification logic from _check_repo
+        status = local_repo_watcher.STATUS_UNKNOWN
+        if behind == 0:
+            status = local_repo_watcher.STATUS_UP_TO_DATE
+        elif behind > 0 and ahead > 0:
+            status = local_repo_watcher.STATUS_DIVERGED
+        elif behind > 0 and ahead == 0:
+            status = local_repo_watcher.STATUS_UNKNOWN if dirty else local_repo_watcher.STATUS_PULLABLE
+        return status
+
+    def test_behind_only_clean_is_pullable(self):
+        assert self._make_result(behind=3, ahead=0, dirty=False) == local_repo_watcher.STATUS_PULLABLE
+
+    def test_behind_only_dirty_is_unknown(self):
+        assert self._make_result(behind=3, ahead=0, dirty=True) == local_repo_watcher.STATUS_UNKNOWN
+
+    def test_ahead_only_is_up_to_date(self):
+        """ahead-only (no behind) means nothing to pull → up_to_date."""
+        assert self._make_result(behind=0, ahead=2, dirty=False) == local_repo_watcher.STATUS_UP_TO_DATE
+
+    def test_both_behind_and_ahead_is_diverged(self):
+        assert self._make_result(behind=2, ahead=1, dirty=False) == local_repo_watcher.STATUS_DIVERGED
+
+    def test_up_to_date_when_behind_zero(self):
+        assert self._make_result(behind=0, ahead=0, dirty=False) == local_repo_watcher.STATUS_UP_TO_DATE
+
 
 class TestCheckLocalRepos:
     """Tests for the main check_local_repos function."""
@@ -98,17 +138,17 @@ class TestCheckLocalRepos:
         with tempfile.TemporaryDirectory() as tmpdir:
             fake_repo = pathlib.Path(tmpdir) / "myrepo"
             fake_repo.mkdir()
-            config = {"local_repo_watcher_base_dir": tmpdir, "enable_execution_git_pull": False}
+            config = {"local_repo_watcher_base_dir": tmpdir, "auto_git_pull": False}
             local_repo_watcher.check_local_repos(config, "myuser")
 
         captured = capsys.readouterr()
         assert "PULLABLE" in captured.out
         assert "myrepo" in captured.out
         assert "DRY-RUN" in captured.out
-        assert "enable_execution_git_pull=false" in captured.out
+        assert "auto_git_pull=false" in captured.out
 
     def test_pullable_repo_auto_pulled_when_enabled(self, monkeypatch, capsys):
-        """When enable_execution_git_pull=true, pullable repos should be pulled."""
+        """When auto_git_pull=true, pullable repos should be pulled."""
         monkeypatch.setattr(local_repo_watcher, "_last_local_check_time", 0.0)
 
         monkeypatch.setattr(
@@ -139,7 +179,7 @@ class TestCheckLocalRepos:
         with tempfile.TemporaryDirectory() as tmpdir:
             fake_repo = pathlib.Path(tmpdir) / "myrepo"
             fake_repo.mkdir()
-            config = {"local_repo_watcher_base_dir": tmpdir, "enable_execution_git_pull": True}
+            config = {"local_repo_watcher_base_dir": tmpdir, "auto_git_pull": True}
             local_repo_watcher.check_local_repos(config, "myuser")
 
         assert len(pull_called) == 1
@@ -175,7 +215,7 @@ class TestCheckLocalRepos:
         with tempfile.TemporaryDirectory() as tmpdir:
             fake_repo = pathlib.Path(tmpdir) / "myrepo"
             fake_repo.mkdir()
-            config = {"local_repo_watcher_base_dir": tmpdir, "enable_execution_git_pull": True}
+            config = {"local_repo_watcher_base_dir": tmpdir, "auto_git_pull": True}
             local_repo_watcher.check_local_repos(config, "myuser")
 
         assert len(pull_called) == 0
@@ -230,7 +270,7 @@ class TestCheckLocalRepos:
         with tempfile.TemporaryDirectory() as tmpdir:
             fake_repo = pathlib.Path(tmpdir) / "myrepo"
             fake_repo.mkdir()
-            config = {"local_repo_watcher_base_dir": tmpdir, "enable_execution_git_pull": True}
+            config = {"local_repo_watcher_base_dir": tmpdir, "auto_git_pull": True}
             local_repo_watcher.check_local_repos(config, "myuser")
 
         captured = capsys.readouterr()

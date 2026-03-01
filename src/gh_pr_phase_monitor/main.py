@@ -251,12 +251,14 @@ def main():
                     check_pages_deployments_for_repos(pages_repos, config)
             except Exception as pages_error:
                 log_error_to_file("Failed to check Pages deployment", pages_error)
+                current_user = None
 
             # Check local repository pullable status
             # By default (dry-run), displays repos that can be pulled.
-            # Set enable_execution_git_pull = true in config.toml to auto-pull.
+            # Set auto_git_pull = true in config.toml to auto-pull.
             try:
-                current_user = get_current_user()
+                if current_user is None:
+                    current_user = get_current_user()
                 check_local_repos(config, current_user)
             except Exception as local_repo_error:
                 log_error_to_file("Failed to check local repos", local_repo_error)

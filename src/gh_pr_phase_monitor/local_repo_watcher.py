@@ -10,6 +10,7 @@ Inspired by cat-repo-auditor/github_local_checker.py.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -31,6 +32,8 @@ _last_local_check_time: float = 0.0
 
 def _run_git(args: list[str], cwd: str) -> tuple[int, str, str]:
     """Run a git command and return (returncode, stdout, stderr)."""
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"  # Prevent credential prompts from blocking
     result = subprocess.run(
         ["git"] + args,
         cwd=cwd,
@@ -38,6 +41,8 @@ def _run_git(args: list[str], cwd: str) -> tuple[int, str, str]:
         text=True,
         encoding="utf-8",
         errors="replace",
+        timeout=30,
+        env=env,
     )
     return result.returncode, result.stdout.strip(), result.stderr.strip()
 
@@ -59,12 +64,24 @@ def _is_target_repo(remote_url: str, github_username: str) -> bool:
 
     Supports both HTTPS (https://github.com/<user>/...)
     and SSH (git@github.com:<user>/...) URL formats.
+    Uses strict host matching to avoid false positives from URLs like
+    'github.com.evil.com' or 'notgithub.com'.
     """
-    lower = remote_url.lower()
     user_low = github_username.lower()
-    if "github.com" not in lower:
-        return False
-    return f"github.com/{user_low}/" in lower or f"github.com:{user_low}/" in lower
+    stripped = remote_url.strip().lower()
+
+    # SSH format: git@github.com:<user>/...
+    if stripped.startswith("git@github.com:"):
+        rest = stripped[len("git@github.com:") :]
+        return rest.startswith(f"{user_low}/")
+
+    # HTTPS format: https://github.com/<user>/...
+    for prefix in ("https://github.com/", "http://github.com/"):
+        if stripped.startswith(prefix):
+            rest = stripped[len(prefix) :]
+            return rest.startswith(f"{user_low}/")
+
+    return False
 
 
 def _is_dirty(path: str) -> bool:
@@ -173,12 +190,18 @@ def _check_repo(path: str, github_username: str) -> dict:
     # Classify status (same logic as cat-repo-auditor)
     if behind == 0:
         result["status"] = STATUS_UP_TO_DATE
-    elif ahead > 0:
+    elif behind > 0 and ahead > 0:
         result["status"] = STATUS_DIVERGED
-    elif dirty:
-        result["status"] = STATUS_UNKNOWN  # want to pull but dirty
+    elif behind > 0 and ahead == 0:
+        if dirty:
+            result["status"] = STATUS_UNKNOWN  # want to pull but dirty
+        else:
+            result["status"] = STATUS_PULLABLE
     else:
-        result["status"] = STATUS_PULLABLE
+        # Fallback for any unexpected combination not covered above
+        # (e.g. if _get_behind_ahead returns values outside [0, +inf)).
+        # Treat conservatively as unknown rather than risking incorrect action.
+        result["status"] = STATUS_UNKNOWN
 
     return result
 
@@ -187,7 +210,7 @@ def check_local_repos(config: dict, github_username: str) -> None:
     """Scan local repos in the base directory, display pullable ones, and optionally pull.
 
     By default (dry-run), pullable repos are displayed but not pulled.
-    Set ``enable_execution_git_pull = true`` in config.toml to enable auto-pull.
+    Set ``auto_git_pull = true`` in config.toml to enable auto-pull.
 
     Args:
         config: Configuration dictionary loaded from TOML.
@@ -209,7 +232,7 @@ def check_local_repos(config: dict, github_username: str) -> None:
     if not base_dir.exists() or not base_dir.is_dir():
         return
 
-    enable_pull = config.get("enable_execution_git_pull", False)
+    enable_pull = config.get("auto_git_pull", False)
 
     # Collect candidate directories (siblings in the base dir)
     try:
@@ -244,7 +267,7 @@ def check_local_repos(config: dict, github_username: str) -> None:
             else:
                 print(f"    ✗ pull 失敗: {r['name']}: {msg}")
         else:
-            print(f"    [DRY-RUN] Would pull {r['name']} (enable_execution_git_pull=false)")
+            print(f"    [DRY-RUN] Would pull {r['name']} (auto_git_pull=false)")
 
     for r in diverged:
         detail = f"behind {r['behind']}, ahead {r['ahead']}"

@@ -189,6 +189,41 @@ class TestDeterminePhase:
         pr = {"isDraft": True, "reviews": [], "latestReviews": [], "reviewRequests": [], "comments": []}
         assert determine_phase(pr) == "LLM working"
 
+    def test_phase1_draft_pr_no_review_requests_but_llm_finished(self):
+        """Draft PRs with no reviewRequests but llm_statuses showing finished work should be phase1.
+
+        Scenario: copilot-swe-agent creates a Draft PR without setting review requests,
+        but has finished its work (llm_statuses shows started work then finished work).
+        The watcher should detect this as phase1 to trigger mark-ready-for-review action.
+        This matches the real scenario from cat-repo-auditor/pull/19.
+        """
+        pr = {
+            "isDraft": True,
+            "reviews": [],
+            "latestReviews": [],
+            "reviewRequests": [],
+            "comments": [],
+            "llm_statuses": [
+                "started work",
+                "finished work",
+            ],
+        }
+        assert determine_phase(pr) == "phase1"
+
+    def test_llm_working_draft_pr_no_review_requests_llm_still_working(self):
+        """Draft PRs with no reviewRequests and llm_statuses showing started but not finished should be LLM working."""
+        pr = {
+            "isDraft": True,
+            "reviews": [],
+            "latestReviews": [],
+            "reviewRequests": [],
+            "comments": [],
+            "llm_statuses": [
+                "started work",
+            ],
+        }
+        assert determine_phase(pr) == "LLM working"
+
     def test_llm_working_no_reviews(self):
         """PRs with no reviews should be 'LLM working'"""
         pr = {"isDraft": False, "reviews": [], "latestReviews": [], "comments": []}

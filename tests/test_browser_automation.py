@@ -25,36 +25,36 @@ class TestNotificationTheme:
     """Tests for splash/notification theming"""
 
     def test_dark_mode_uses_dark_background_and_palette(self, monkeypatch):
-        from src.gh_pr_phase_monitor import browser_automation as ba
+        from src.gh_pr_phase_monitor import notification_window as nw
 
-        monkeypatch.setattr(ba, "_is_dark_mode_enabled", lambda: True)
-        monkeypatch.setattr(ba.Colors, "BLUE", "\033[38;2;10;20;30m")
+        monkeypatch.setattr(nw, "_is_dark_mode_enabled", lambda: True)
+        monkeypatch.setattr(nw.Colors, "BLUE", "\033[38;2;10;20;30m")
 
-        theme = ba._get_notification_theme()
+        theme = nw._get_notification_theme()
 
         assert theme["background"] == "#111111"
         assert theme["text"] == "#0a141e"
         assert theme["accent"] == "#0a141e"
 
     def test_light_mode_uses_configured_palette(self, monkeypatch):
-        from src.gh_pr_phase_monitor import browser_automation as ba
+        from src.gh_pr_phase_monitor import notification_window as nw
 
-        monkeypatch.setattr(ba, "_is_dark_mode_enabled", lambda: False)
-        monkeypatch.setattr(ba.Colors, "BLUE", "\033[1;94m")
+        monkeypatch.setattr(nw, "_is_dark_mode_enabled", lambda: False)
+        monkeypatch.setattr(nw.Colors, "BLUE", "\033[1;94m")
 
-        theme = ba._get_notification_theme()
+        theme = nw._get_notification_theme()
 
         assert theme["background"] == "#ffffff"
         assert theme["text"] == "#5555ff"
         assert theme["accent"] == "#5555ff"
 
     def test_light_mode_supports_standard_palette_codes(self, monkeypatch):
-        from src.gh_pr_phase_monitor import browser_automation as ba
+        from src.gh_pr_phase_monitor import notification_window as nw
 
-        monkeypatch.setattr(ba, "_is_dark_mode_enabled", lambda: False)
-        monkeypatch.setattr(ba.Colors, "BLUE", "\033[32m")
+        monkeypatch.setattr(nw, "_is_dark_mode_enabled", lambda: False)
+        monkeypatch.setattr(nw.Colors, "BLUE", "\033[32m")
 
-        theme = ba._get_notification_theme()
+        theme = nw._get_notification_theme()
 
         assert theme["accent"] == "#00ff00"
 
@@ -63,21 +63,20 @@ class TestNotificationWindow:
     """Tests for NotificationWindow behavior"""
 
     def test_user_close_shows_cancel_dialog(self, monkeypatch):
-        from src.gh_pr_phase_monitor import browser_automation as ba
+        from src.gh_pr_phase_monitor import notification_window as nw
 
         fake_root = MagicMock()
         fake_root.quit = MagicMock()
         fake_root.destroy = MagicMock()
 
-        monkeypatch.setattr(ba, "messagebox", MagicMock())
-        monkeypatch.setattr(ba, "_user_cancelled_notification", False)
+        monkeypatch.setattr(nw, "messagebox", MagicMock())
 
-        window = ba.NotificationWindow("msg", 100, 100, 0, 0, cancel_message="auto assignを中断します")
+        window = nw.NotificationWindow("msg", 100, 100, 0, 0, cancel_message="auto assignを中断します")
         window.root = fake_root
 
         window._on_user_close()
 
-        ba.messagebox.showinfo.assert_called_once_with("auto assign", "auto assignを中断します", parent=fake_root)
+        nw.messagebox.showinfo.assert_called_once_with("auto assign", "auto assignを中断します", parent=fake_root)
         assert window.closed_by_user is True
 
 

@@ -8,29 +8,35 @@ import time
 import traceback
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from .auto_updater import UPDATE_CHECK_INTERVAL_SECONDS, maybe_self_update
-from .config import (
-    DEFAULT_ENABLE_AUTO_UPDATE,
-    DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
-    DEFAULT_MAX_LLM_WORKING_PARALLEL,
-    get_config_mtime,
-    load_config,
-    parse_interval,
-    print_config,
-    validate_phase3_merge_config_required,
-)
+from .config import (DEFAULT_ENABLE_AUTO_UPDATE, DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS, DEFAULT_MAX_LLM_WORKING_PARALLEL,
+                     get_config_mtime, load_config, parse_interval, print_config, validate_phase3_merge_config_required)
 from .display import display_issues_from_repos_without_prs, display_status_summary
 from .github_auth import get_current_user
 from .github_client import get_pr_details_batch, get_repositories_with_open_prs
+from .graphql_client import GitHubRateLimitError
 from .monitor import check_no_state_change_timeout
 from .pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
 from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
 from .pr_actions import process_pr
 from .pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
+from .time_utils import format_elapsed_time
 from .wait_handler import wait_with_countdown
 
 LOG_DIR = Path("logs")
+
+
+def _format_rate_limit_reset(reset: Any, now: datetime | None = None) -> tuple[str, str]:
+    """Format rate-limit reset epoch into UTC datetime and remaining duration."""
+    if not isinstance(reset, (int, float)):
+        return "unknown", "unknown"
+
+    current = now or datetime.now(UTC)
+    reset_dt = datetime.fromtimestamp(float(reset), UTC)
+    remaining_seconds = max(0, int(reset_dt.timestamp() - current.timestamp()))
+    return reset_dt.strftime("%Y-%m-%d %H:%M:%S UTC"), format_elapsed_time(remaining_seconds)
 
 
 def log_error_to_file(message: str, exc: Exception | None = None, base_dir: Path | str | None = None) -> None:
@@ -240,6 +246,23 @@ def main():
             # Reset consecutive-failure counter on a successful iteration
             consecutive_failures = 0
 
+        except GitHubRateLimitError as e:
+            print(f"\nError: {e}")
+            rate_limit_info = getattr(e, "rate_limit_info", None)
+            if isinstance(rate_limit_info, dict):
+                used = rate_limit_info.get("used", "unknown")
+                remaining = rate_limit_info.get("remaining", "unknown")
+                limit = rate_limit_info.get("limit", "unknown")
+                reset = rate_limit_info.get("reset")
+                reset_display, reset_in_display = _format_rate_limit_reset(reset)
+                print(
+                    f"GraphQL API利用状況: used={used}, remaining={remaining}, limit={limit}, "
+                    f"reset={reset_display}, reset_in={reset_in_display}"
+                )
+            print("GitHub APIのレート制限に達しています。リセット後に再実行してください。")
+            print("確認コマンド: gh api rate_limit")
+            log_error_to_file("GitHub API rate limit exceeded during monitoring loop", e)
+            consecutive_failures += 1
         except RuntimeError as e:
             print(f"\nError: {e}")
             print("Please ensure you are authenticated with gh CLI")

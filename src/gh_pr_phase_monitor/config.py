@@ -72,6 +72,9 @@ DEFAULT_ENABLE_AUTO_UPDATE = False
 # Default setting for saving pr_phase_snapshots (disabled by default for safety/privacy)
 DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS = False
 
+# Default setting for local repo auto-pull (disabled by default; display only by default)
+DEFAULT_AUTO_GIT_PULL = False
+
 
 def parse_interval(interval_str: str) -> int:
     """Parse interval string like '1m', '30s', '2h' to seconds
@@ -395,6 +398,14 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
             config["enable_auto_update"] = DEFAULT_ENABLE_AUTO_UPDATE
     else:
         config["enable_auto_update"] = DEFAULT_ENABLE_AUTO_UPDATE
+    if "auto_git_pull" in config:
+        try:
+            config["auto_git_pull"] = _validate_boolean_flag(config["auto_git_pull"], "auto_git_pull")
+        except ValueError as e:
+            print(f"Warning: {e}. Using default value: {DEFAULT_AUTO_GIT_PULL}")
+            config["auto_git_pull"] = DEFAULT_AUTO_GIT_PULL
+    else:
+        config["auto_git_pull"] = DEFAULT_AUTO_GIT_PULL
     if "color_scheme" in config:
         try:
             config["color_scheme"] = _validate_color_scheme(config["color_scheme"])

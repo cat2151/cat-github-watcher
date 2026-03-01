@@ -481,7 +481,7 @@ def test_fetch_pr_html_mocked():
 
     with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = mock_html
+        mock_run.return_value.stdout = mock_html + "\n200"
 
         result = _fetch_pr_html("https://github.com/test/repo/pull/123")
         assert result == mock_html
@@ -492,6 +492,18 @@ def test_fetch_pr_html_failure():
     with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 1
         mock_run.return_value.stdout = ""
+
+        result = _fetch_pr_html("https://github.com/test/repo/pull/123")
+        assert result is None
+
+
+def test_fetch_pr_html_non_2xx_returns_none():
+    """Test that HTTP non-2xx responses return None"""
+    error_html = "<html><body>Not Found</body></html>"
+
+    with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = error_html + "\n404"
 
         result = _fetch_pr_html("https://github.com/test/repo/pull/123")
         assert result is None
@@ -518,7 +530,7 @@ def test_save_pr_snapshot_with_html(tmp_path):
 
     with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = mock_html
+        mock_run.return_value.stdout = mock_html + "\n200"
 
         result = save_pr_snapshot(
             _sample_pr(),
@@ -930,7 +942,7 @@ def test_record_reaction_snapshot_across_iterations(tmp_path):
 
     with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = mock_html
+        mock_run.return_value.stdout = mock_html + "\n200"
 
         # First iteration - should record snapshot
         result1 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time1)
@@ -1005,7 +1017,7 @@ def test_record_reaction_snapshot_html_tag_changes_ignored(tmp_path):
     with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run") as mock_run:
         # First iteration - should record snapshot
         mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = mock_html_1
+        mock_run.return_value.stdout = mock_html_1 + "\n200"
 
         result1 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time1)
         assert result1 is not None
@@ -1015,7 +1027,7 @@ def test_record_reaction_snapshot_html_tag_changes_ignored(tmp_path):
         reset_snapshot_cache()
 
         # Second iteration with different HTML tags but SAME content - should NOT record
-        mock_run.return_value.stdout = mock_html_2
+        mock_run.return_value.stdout = mock_html_2 + "\n200"
 
         result2 = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=time2)
         assert result2 is None

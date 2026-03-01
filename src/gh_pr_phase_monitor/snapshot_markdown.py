@@ -116,7 +116,9 @@ def _prepare_markdown_raw(pr: Dict[str, Any]) -> str:
     """Prepare a markdown-friendly representation of the PR with filters applied."""
     pr_copy = json.loads(json.dumps(pr, ensure_ascii=False))
     pr_copy["commentNodes"] = _filter_reactions(pr_copy.get("commentNodes", []))
-    pr_copy["comments"] = _filter_reactions(pr_copy.get("comments", []))
+    comments_value = pr_copy.get("comments")
+    if isinstance(comments_value, list):
+        pr_copy["comments"] = _filter_reactions(comments_value)
 
     return _json_to_markdown(pr_copy)
 

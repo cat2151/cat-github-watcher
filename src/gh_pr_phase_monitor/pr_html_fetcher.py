@@ -14,11 +14,11 @@ def _fetch_pr_html(pr_url: str) -> Optional[str]:
         pr_url: The PR URL to fetch
 
     Returns:
-        HTML content as string, or None if fetch fails
+        HTML content as string, or None if fetch fails or HTTP status is non-2xx
     """
     try:
         result = subprocess.run(
-            ["curl", "-L", "-s", pr_url],
+            ["curl", "-L", "-s", "-w", "\n%{http_code}", pr_url],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -27,7 +27,12 @@ def _fetch_pr_html(pr_url: str) -> Optional[str]:
             check=False,
         )
         if result.returncode == 0 and result.stdout:
-            return result.stdout
+            # The last line is the HTTP status code appended by -w
+            parts = result.stdout.rsplit("\n", 1)
+            body = parts[0]
+            http_code = parts[1].strip() if len(parts) > 1 else ""
+            if body and http_code.startswith("2"):
+                return body
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
         # Silently fail on network/timeout errors - HTML fetch is optional
         pass

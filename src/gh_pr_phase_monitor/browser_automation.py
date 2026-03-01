@@ -1257,9 +1257,7 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
 
             # Click "Assign to Copilot" button
             print("  → Looking for 'Assign to Copilot' button...")
-            _update_notification_status(
-                notification, "Assign to Copilotボタンを探索中です…", active_window_title
-            )
+            _update_notification_status(notification, "Assign to Copilotボタンを探索中です…", active_window_title)
             if _was_closed_by_user(notification):
                 print("  ⚠ Notification window was closed by user; skipping automated assignment")
                 return False
@@ -1313,7 +1311,9 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
 
             active_window_title = _get_active_window_title() or active_window_title
             _update_notification_status(
-                notification, "緑のAssignボタンを発見しました。クリックしました。自動assignを正常終了します", active_window_title
+                notification,
+                "緑のAssignボタンを発見しました。クリックしました。自動assignを正常終了します",
+                active_window_title,
             )
             print("  ✓ Clicked 'Assign' button")
             print("  ✓ [PyAutoGUI] Successfully automated issue assignment to Copilot")

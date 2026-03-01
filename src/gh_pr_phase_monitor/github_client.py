@@ -19,6 +19,9 @@ from .github_auth import get_current_user
 # Re-export issue functions
 from .issue_fetcher import assign_issue_to_copilot, get_issues_from_repositories
 
+# Re-export pages functions
+from .pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
+
 # Re-export PR functions
 from .pr_fetcher import get_pr_data, get_pr_details_batch
 
@@ -39,4 +42,6 @@ __all__ = [
     "get_issues_from_repositories",
     "assign_issue_to_copilot",
     "get_existing_comments",
+    "get_pages_repos_from_config",
+    "check_pages_deployments_for_repos",
 ]

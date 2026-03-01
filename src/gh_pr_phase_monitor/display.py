@@ -153,9 +153,7 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
             effective_llm_working_count = llm_working_count + assigned_issue_count
 
             if assigned_issue_count:
-                print(
-                    f"  Detected {assigned_issue_count} open issue(s) with assignees; treating as LLM working load."
-                )
+                print(f"  Detected {assigned_issue_count} open issue(s) with assignees; treating as LLM working load.")
 
             # Check if auto-assign feature is enabled in config
             # With the new design:

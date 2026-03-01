@@ -202,6 +202,89 @@ def test_draft_pr_without_review_requests_fetches_llm_statuses(tmp_path):
     assert determine_phase(pr) == PHASE_1
 
 
+def test_draft_pr_without_review_requests_refetches_when_only_started_cached(tmp_path):
+    """Draft PR: if cache has only 'started work', re-fetch HTML on next iteration.
+
+    Regression test for issue #266 (re-occurrence): After the first iteration
+    caches only "started work" (because "finished work" hadn't appeared yet),
+    subsequent iterations were reusing the stale cache and never discovering
+    "finished work".  The fix: only use the cache when it already contains a
+    "finished" signal (i.e., llm_working_from_statuses returns False); otherwise
+    re-fetch to check for updates.
+    """
+    html_only_started = """
+    <html><body>
+        <div class="prc-PageLayout-Content-xWL-A">
+            <div class="TimelineItem-body">
+                <strong>Copilot</strong>
+                <a title="View session" href="https://github.com/cat2151/voicevox-playground/agents/pull/126?session_id=abc">started work</a>
+                on behalf of <a href="/cat2151">cat2151</a>
+            </div>
+        </div>
+    </body></html>
+    """
+    html_with_finished = """
+    <html><body>
+        <div class="prc-PageLayout-Content-xWL-A">
+            <div class="TimelineItem-body">
+                <strong>Copilot</strong>
+                <a title="View session" href="https://github.com/cat2151/voicevox-playground/agents/pull/126?session_id=abc">started work</a>
+                on behalf of <a href="/cat2151">cat2151</a>
+            </div>
+            <div class="TimelineItem-body">
+                <strong>Copilot</strong>
+                <!-- Note: 'finished work' uses github.com/copilot/tasks/... domain intentionally;
+                     this matches the real GitHub HTML where 'finished work' links differ from
+                     'started work' links (verified via curl of the actual PR page). -->
+                <a title="View session" href="https://github.com/copilot/tasks/pull/PR_kwDORNCauM7HHgMY?session_id=abc">finished work</a>
+                on behalf of <a href="/cat2151">cat2151</a>
+            </div>
+        </div>
+    </body></html>
+    """
+    pr = {
+        "isDraft": True,
+        "reviews": [],
+        "latestReviews": [],
+        "reviewRequests": [],
+        "commentNodes": [],
+        "title": "Show user-friendly VOICEVOX server connection messages instead of raw Failed to fetch",
+        "url": "https://github.com/cat2151/voicevox-playground/pull/126",
+        "repository": {"owner": "cat2151", "name": "voicevox-playground"},
+    }
+    current_time = datetime(2024, 1, 2, 3, 4, 5)
+
+    # First iteration: only "started work" is available
+    record_reaction_snapshot(
+        pr,
+        phase=PHASE_LLM_WORKING,
+        base_dir=tmp_path,
+        current_time=current_time,
+        html_content=html_only_started,
+    )
+    assert any("started work" in s.lower() for s in (pr.get("llm_statuses") or []))
+    assert not any("finished work" in s.lower() for s in (pr.get("llm_statuses") or []))
+    assert determine_phase(pr) == PHASE_LLM_WORKING
+
+    # Reset per-iteration flag (simulates start of next monitoring iteration)
+    reset_snapshot_cache(clear_content_cache=False)
+
+    # Second iteration: "finished work" is now available in HTML
+    pr2 = {k: v for k, v in pr.items() if k != "llm_statuses"}  # fresh PR dict (no llm_statuses pre-set)
+    record_reaction_snapshot(
+        pr2,
+        phase=PHASE_LLM_WORKING,
+        base_dir=tmp_path,
+        current_time=current_time,
+        html_content=html_with_finished,
+    )
+    # Must detect "finished work" even though cache had "started work" only
+    assert any("finished work" in s.lower() for s in (pr2.get("llm_statuses") or [])), (
+        "Second iteration should detect 'finished work' from HTML, not use stale 'started work' cache"
+    )
+    assert determine_phase(pr2) == PHASE_1
+
+
 def test_record_reaction_snapshot_deduplicates_per_pr(tmp_path):
     pr = _sample_pr()
     current_time = datetime(2024, 1, 2, 3, 4, 5)

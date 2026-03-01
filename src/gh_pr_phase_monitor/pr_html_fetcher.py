@@ -71,8 +71,8 @@ def _html_to_simple_markdown(html: Optional[str]) -> str:
         text = text[: footer_match.start()]
 
     # Remove script and style tags with their content
-    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<script[^>]*>.*?</\s*script(?:\s[^>]*)?>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<style[^>]*>.*?</\s*style(?:\s[^>]*)?>", "", text, flags=re.DOTALL | re.IGNORECASE)
 
     # Convert common HTML elements to markdown
     # Headers

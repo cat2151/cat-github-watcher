@@ -134,6 +134,13 @@ class TestPhase3Merge:
                     "wait_seconds": 10,
                     "browser": "chromium",
                     "headless": False,
+                    "notification_enabled": True,
+                    "notification_message": "ブラウザを開いてMergeボタンを探索中...",
+                    "notification_width": 400,
+                    "notification_height": 150,
+                    "notification_position_x": 100,
+                    "notification_position_y": 100,
+                    "maximize_on_first_fail": True,
                 }
             }
             mock_merge_auto.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1", expected_config)

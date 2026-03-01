@@ -266,20 +266,10 @@ def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
     # Phase 1: Draft状態 (ただし、reviewRequestsが空の場合はLLM working)
     if is_draft:
         # reviewRequestsが空でも、LLMステータスが完了済みならphase1と判定
-        # "finished work"が最後の"started work"より後にあればwork完了とみなす
-        # ("started work"がない場合でも"finished work"があれば完了とみなす)
         if not review_requests:
-            if llm_statuses:
-                last_finished = max(
-                    (i for i, s in enumerate(llm_statuses) if "finished work" in s.lower()),
-                    default=-1,
-                )
-                last_started = max(
-                    (i for i, s in enumerate(llm_statuses) if "started work" in s.lower()),
-                    default=-1,
-                )
-                if last_finished >= 0 and last_finished > last_started:
-                    return PHASE_1
+            llm_working = llm_working_from_statuses(llm_statuses)
+            if llm_working is False:
+                return PHASE_1
             return PHASE_LLM_WORKING
         return PHASE_1
 

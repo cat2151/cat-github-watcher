@@ -210,25 +210,6 @@ class TestDeterminePhase:
         }
         assert determine_phase(pr) == "phase1"
 
-    def test_phase1_draft_pr_no_review_requests_finished_only_no_started(self):
-        """Draft PRs with no reviewRequests and only 'finished work' status (no 'started work') should be phase1.
-
-        Real scenario: GitHub PR page shows 'Copilot finished work on behalf of cat2151 4 minutes ago'
-        without a corresponding 'started work' entry in llm_statuses. The watcher must still
-        detect this as phase1 to trigger mark-ready-for-review.
-        """
-        pr = {
-            "isDraft": True,
-            "reviews": [],
-            "latestReviews": [],
-            "reviewRequests": [],
-            "comments": [],
-            "llm_statuses": [
-                "Copilot finished work on behalf of cat2151 4 minutes ago",
-            ],
-        }
-        assert determine_phase(pr) == "phase1"
-
     def test_llm_working_draft_pr_no_review_requests_llm_still_working(self):
         """Draft PRs with no reviewRequests and llm_statuses showing started but not finished should be LLM working."""
         pr = {

@@ -16,7 +16,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from . import button_clicker as _button_clicker
 from .button_clicker import (
     PYAUTOGUI_AVAILABLE,
     _click_button_with_image,  # noqa: F401 (re-exported for backward compatibility)
@@ -25,6 +24,8 @@ from .button_clicker import (
     _save_debug_info,  # noqa: F401 (re-exported for backward compatibility)
     _validate_button_delay,
     _validate_wait_seconds,
+    reset_user_cancelled_notification,
+    set_user_cancelled_notification,
 )
 from .config import (
     DEFAULT_ASSIGN_TO_COPILOT_CONFIG,
@@ -89,7 +90,7 @@ def _log_error(message: str, exc: Exception | BaseException | None = None) -> No
 
 def _set_user_cancelled() -> None:
     """Set the global user-cancelled flag (called back from NotificationWindow)."""
-    _button_clicker._user_cancelled_notification = True
+    set_user_cancelled_notification()
 
 
 def is_pyautogui_available() -> bool:
@@ -206,7 +207,7 @@ def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str,
         print("  ✗ PyAutoGUI is not installed. Install with: pip install pyautogui pillow")
         return False
 
-    _button_clicker._user_cancelled_notification = False
+    reset_user_cancelled_notification()
 
     # Check if assignment has already been attempted for this issue recently
     if issue_url in _issue_assign_attempted:
@@ -404,7 +405,7 @@ def merge_pr_automated(pr_url: str, config: Optional[Dict[str, Any]] = None) -> 
         print("  ✗ PyAutoGUI is not installed. Install with: pip install pyautogui pillow")
         return False
 
-    _button_clicker._user_cancelled_notification = False
+    reset_user_cancelled_notification()
 
     # Check if enough time has passed since the last browser open
     if not _can_open_browser():

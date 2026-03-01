@@ -36,6 +36,18 @@ except ImportError:
 # Track whether the notification window was explicitly closed by the user
 _user_cancelled_notification = False
 
+
+def set_user_cancelled_notification() -> None:
+    """Set the user-cancelled flag (call this when the notification window is closed by the user)."""
+    global _user_cancelled_notification
+    _user_cancelled_notification = True
+
+
+def reset_user_cancelled_notification() -> None:
+    """Reset the user-cancelled flag (call this before starting a new automation sequence)."""
+    global _user_cancelled_notification
+    _user_cancelled_notification = False
+
 # Debug candidate detection settings
 # These thresholds are only used when image recognition fails with the original confidence threshold
 # The search stops after finding DEBUG_MAX_CANDIDATES candidates
@@ -486,6 +498,8 @@ def _click_button_with_image(
             if _user_cancelled_notification:
                 print("  ⚠ Notification window was closed by user; skipping button search")
                 return False
+            if pre_click_delay > 0:
+                time.sleep(pre_click_delay)
             pyautogui.click(center)
             print(f"  ✓ Clicked button '{button_name}' at position {center}")
             return True

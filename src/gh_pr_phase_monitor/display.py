@@ -4,6 +4,7 @@ Display and UI functions for status summary and issues
 
 import time
 import traceback
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from . import github_client
@@ -84,6 +85,22 @@ def display_status_summary(
             print(f"{base_line} (現在、検知してから{elapsed_str}経過)")
         else:
             print(base_line)
+
+        # Show warning for LLM working PRs older than 30 minutes since creation
+        if phase == PHASE_LLM_WORKING:
+            created_at = pr.get("createdAt", "")
+            if created_at:
+                try:
+                    # GitHub API returns ISO 8601 UTC timestamps ending with "Z"
+                    # e.g. "2024-01-15T10:30:00Z"; replace Z with +00:00 for fromisoformat()
+                    created_ts = datetime.fromisoformat(created_at.replace("Z", "+00:00")).timestamp()
+                    if current_time - created_ts >= 1800:
+                        print(
+                            "    ⚠️  バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります。"
+                            "PRを人力で開いてチェックしてください"
+                        )
+                except (ValueError, AttributeError):
+                    pass
 
     # Clean up old PR states that are no longer present
     cleanup_old_pr_states(current_states)

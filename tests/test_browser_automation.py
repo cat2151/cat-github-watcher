@@ -538,7 +538,7 @@ class TestClickButtonWithImage:
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation._get_screenshot_path")
-    @patch("src.gh_pr_phase_monitor.browser_automation._maximize_window")
+    @patch("src.gh_pr_phase_monitor.browser_automation._maybe_maximize_window")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
     def test_skip_maximize_when_config_disabled(self, mock_sleep, mock_maximize, mock_get_path):
         """Test that maximize retry can be disabled via config"""
@@ -547,7 +547,7 @@ class TestClickButtonWithImage:
         with patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui:
             mock_get_path.return_value = Path("/tmp/test_button.png")
             mock_pyautogui.locateOnScreen.return_value = None
-            mock_maximize.return_value = True
+            mock_maximize.return_value = False
 
             with (
                 patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_ocr", return_value=False),
@@ -556,7 +556,7 @@ class TestClickButtonWithImage:
                 result = _click_button_with_image("test_button", {"maximize_on_first_fail": False})
 
             assert result is False
-            mock_maximize.assert_not_called()
+            mock_maximize.assert_called_once()
             assert mock_pyautogui.locateOnScreen.call_count == 1
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
@@ -1003,7 +1003,7 @@ class TestBrowserCooldown:
 class TestActivateWindowByTitle:
     """Tests for _activate_window_by_title function"""
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", False)
+    @patch("src.gh_pr_phase_monitor.window_manager.PYGETWINDOW_AVAILABLE", False)
     def test_exits_when_pygetwindow_unavailable_and_window_title_configured(self):
         """Test that function exits with error when PyGetWindow is not available but window_title is configured"""
         import pytest
@@ -1015,8 +1015,8 @@ class TestActivateWindowByTitle:
 
         assert exc_info.value.code == 1
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser_automation.gw")
+    @patch("src.gh_pr_phase_monitor.window_manager.PYGETWINDOW_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.window_manager.gw")
     def test_returns_false_when_window_title_is_none(self, mock_gw):
         """Test that function returns False when window_title is None"""
         from src.gh_pr_phase_monitor.browser_automation import _activate_window_by_title
@@ -1024,8 +1024,8 @@ class TestActivateWindowByTitle:
         result = _activate_window_by_title(None, {})
         assert result is False
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser_automation.gw")
+    @patch("src.gh_pr_phase_monitor.window_manager.PYGETWINDOW_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.window_manager.gw")
     def test_returns_false_when_window_title_is_empty(self, mock_gw):
         """Test that function returns False when window_title is empty string"""
         from src.gh_pr_phase_monitor.browser_automation import _activate_window_by_title
@@ -1033,8 +1033,8 @@ class TestActivateWindowByTitle:
         result = _activate_window_by_title("", {})
         assert result is False
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser_automation.gw")
+    @patch("src.gh_pr_phase_monitor.window_manager.PYGETWINDOW_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.window_manager.gw")
     def test_activates_matching_window(self, mock_gw):
         """Test that function activates a window matching the title"""
         from src.gh_pr_phase_monitor.browser_automation import _activate_window_by_title
@@ -1056,8 +1056,8 @@ class TestActivateWindowByTitle:
         mock_window_1.activate.assert_called_once()
         mock_window_2.activate.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser_automation.gw")
+    @patch("src.gh_pr_phase_monitor.window_manager.PYGETWINDOW_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.window_manager.gw")
     def test_restores_minimized_window_before_activating(self, mock_gw):
         """Test that function restores a minimized window before activating"""
         from src.gh_pr_phase_monitor.browser_automation import _activate_window_by_title
@@ -1075,8 +1075,8 @@ class TestActivateWindowByTitle:
         mock_window.restore.assert_called_once()
         mock_window.activate.assert_called_once()
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser_automation.gw")
+    @patch("src.gh_pr_phase_monitor.window_manager.PYGETWINDOW_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.window_manager.gw")
     def test_returns_false_when_no_matching_window_found(self, mock_gw):
         """Test that function returns False when no window matches the title"""
         from src.gh_pr_phase_monitor.browser_automation import _activate_window_by_title
@@ -1092,8 +1092,8 @@ class TestActivateWindowByTitle:
         assert result is False
         mock_window.activate.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser_automation.gw")
+    @patch("src.gh_pr_phase_monitor.window_manager.PYGETWINDOW_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.window_manager.gw")
     def test_handles_exception_gracefully(self, mock_gw):
         """Test that function handles exceptions gracefully"""
         from src.gh_pr_phase_monitor.browser_automation import _activate_window_by_title
@@ -1105,8 +1105,8 @@ class TestActivateWindowByTitle:
 
         assert result is False
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser_automation.gw")
+    @patch("src.gh_pr_phase_monitor.window_manager.PYGETWINDOW_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.window_manager.gw")
     def test_case_insensitive_matching(self, mock_gw):
         """Test that window title matching is case-insensitive"""
         from src.gh_pr_phase_monitor.browser_automation import _activate_window_by_title
@@ -1123,8 +1123,8 @@ class TestActivateWindowByTitle:
         assert result is True
         mock_window.activate.assert_called_once()
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser_automation.gw")
+    @patch("src.gh_pr_phase_monitor.window_manager.PYGETWINDOW_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.window_manager.gw")
     def test_skips_search_when_active_window_matches(self, mock_gw):
         """Return early when the active window already matches the title."""
         from src.gh_pr_phase_monitor.browser_automation import _activate_window_by_title

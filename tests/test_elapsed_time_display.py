@@ -7,6 +7,7 @@ to show something like '現在、検知してから3分20秒経過' (Currently, 
 """
 
 import time
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.display import display_status_summary
@@ -201,6 +202,127 @@ class TestElapsedTimeDisplay:
             assert "現在、検知してから" in output
             assert "経過" in output
             assert "1分0秒" in output  # Should be exactly 1 minute
+
+
+class TestLLMWorkingCreatedAtWarning:
+    """Test the warning display for LLM working PRs older than 30 minutes since creation"""
+
+    def setup_method(self):
+        """Reset PR state times before each test"""
+        _pr_state_times.clear()
+
+    def _make_created_at(self, seconds_ago: float) -> str:
+        """Return an ISO 8601 UTC timestamp for a time in the past"""
+        dt = datetime.now(timezone.utc) - timedelta(seconds=seconds_ago)
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def test_warning_shown_for_llm_working_pr_older_than_30_minutes(self):
+        """Warning should be shown for LLM working PRs created more than 30 minutes ago"""
+        all_prs = [
+            {
+                "title": "Old LLM PR",
+                "url": "https://github.com/owner/repo1/pulls/1",
+                "repository": {"name": "repo1", "owner": "owner"},
+                "createdAt": self._make_created_at(1801),  # 30 min 1 sec ago
+            }
+        ]
+        pr_phases = [PHASE_LLM_WORKING]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
+
+        with patch("builtins.print") as mock_print:
+            display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+            calls = [str(call) for call in mock_print.call_args_list]
+            output = " ".join(calls)
+
+            assert "バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります" in output
+            assert "PRを人力で開いてチェックしてください" in output
+
+    def test_warning_not_shown_for_llm_working_pr_younger_than_30_minutes(self):
+        """Warning should NOT be shown for LLM working PRs created less than 30 minutes ago"""
+        all_prs = [
+            {
+                "title": "New LLM PR",
+                "url": "https://github.com/owner/repo1/pulls/1",
+                "repository": {"name": "repo1", "owner": "owner"},
+                "createdAt": self._make_created_at(1799),  # 29 min 59 sec ago
+            }
+        ]
+        pr_phases = [PHASE_LLM_WORKING]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
+
+        with patch("builtins.print") as mock_print:
+            display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+            calls = [str(call) for call in mock_print.call_args_list]
+            output = " ".join(calls)
+
+            assert "バグって" not in output
+            assert "PRを人力で開いてチェックしてください" not in output
+
+    def test_warning_not_shown_for_non_llm_working_phase(self):
+        """Warning should NOT be shown for PRs not in LLM working phase, even if old"""
+        all_prs = [
+            {
+                "title": "Old Phase1 PR",
+                "url": "https://github.com/owner/repo1/pulls/1",
+                "repository": {"name": "repo1", "owner": "owner"},
+                "createdAt": self._make_created_at(3600),  # 1 hour ago
+            }
+        ]
+        pr_phases = [PHASE_1]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
+
+        with patch("builtins.print") as mock_print:
+            display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+            calls = [str(call) for call in mock_print.call_args_list]
+            output = " ".join(calls)
+
+            assert "バグって" not in output
+            assert "PRを人力で開いてチェックしてください" not in output
+
+    def test_warning_not_shown_when_created_at_missing(self):
+        """Warning should NOT be shown when createdAt field is absent"""
+        all_prs = [
+            {
+                "title": "No Date PR",
+                "url": "https://github.com/owner/repo1/pulls/1",
+                "repository": {"name": "repo1", "owner": "owner"},
+                # no createdAt field
+            }
+        ]
+        pr_phases = [PHASE_LLM_WORKING]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
+
+        with patch("builtins.print") as mock_print:
+            display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+            calls = [str(call) for call in mock_print.call_args_list]
+            output = " ".join(calls)
+
+            assert "バグって" not in output
+
+    def test_warning_shown_at_exactly_30_minutes(self):
+        """Warning should be shown at exactly 30 minutes (boundary condition)"""
+        all_prs = [
+            {
+                "title": "Boundary PR",
+                "url": "https://github.com/owner/repo1/pulls/1",
+                "repository": {"name": "repo1", "owner": "owner"},
+                "createdAt": self._make_created_at(1800),  # exactly 30 minutes ago
+            }
+        ]
+        pr_phases = [PHASE_LLM_WORKING]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
+
+        with patch("builtins.print") as mock_print:
+            display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+            calls = [str(call) for call in mock_print.call_args_list]
+            output = " ".join(calls)
+
+            assert "バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります" in output
 
 
 class TestWaitWithCountdown:

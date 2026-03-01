@@ -57,6 +57,7 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                   title
                   url
                   isDraft
+                  createdAt
                   author {{
                     login
                   }}
@@ -203,6 +204,7 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                         "title": pr.get("title", ""),
                         "url": pr.get("url", ""),
                         "isDraft": pr.get("isDraft", False),
+                        "createdAt": pr.get("createdAt", ""),
                         "author": author,
                         "reviews": reviews,
                         "latestReviews": latest_reviews,

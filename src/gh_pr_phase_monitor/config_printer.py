@@ -4,17 +4,6 @@ Configuration printing utilities
 
 from typing import Any, Dict
 
-from .config import (
-    DEFAULT_ASSIGN_TO_COPILOT_CONFIG,
-    DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE,
-    DEFAULT_COLOR_SCHEME,
-    DEFAULT_DISPLAY_LLM_STATUS_TIMELINE,
-    DEFAULT_DISPLAY_PR_AUTHOR,
-    DEFAULT_ENABLE_AUTO_UPDATE,
-    DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
-    DEFAULT_MAX_LLM_WORKING_PARALLEL,
-)
-
 
 def print_config(config: Dict[str, Any]) -> None:
     """Print all configuration settings in a readable format
@@ -22,6 +11,17 @@ def print_config(config: Dict[str, Any]) -> None:
     Args:
         config: Configuration dictionary loaded from TOML
     """
+    from .config import (
+        DEFAULT_ASSIGN_TO_COPILOT_CONFIG,
+        DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE,
+        DEFAULT_COLOR_SCHEME,
+        DEFAULT_DISPLAY_LLM_STATUS_TIMELINE,
+        DEFAULT_DISPLAY_PR_AUTHOR,
+        DEFAULT_ENABLE_AUTO_UPDATE,
+        DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
+        DEFAULT_MAX_LLM_WORKING_PARALLEL,
+    )
+
     print("\n" + "=" * 50)
     print("Configuration Settings:")
     print("=" * 50)

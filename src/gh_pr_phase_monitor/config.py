@@ -338,10 +338,18 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
     return config
 
 
-from .config_printer import (  # noqa: E402, F401 - Re-exported for backwards compatibility
-    print_config,
-    print_repo_execution_config,
-)
+def print_config(*args, **kwargs):
+    """Backward-compatible wrapper – lazily imports config_printer to avoid circular imports."""
+    from . import config_printer
+
+    return config_printer.print_config(*args, **kwargs)
+
+
+def print_repo_execution_config(*args, **kwargs):
+    """Backward-compatible wrapper – lazily imports config_printer to avoid circular imports."""
+    from . import config_printer
+
+    return config_printer.print_repo_execution_config(*args, **kwargs)
 
 
 def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, repo_name: str) -> Dict[str, Any]:

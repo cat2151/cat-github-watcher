@@ -222,11 +222,10 @@ def record_reaction_snapshot(
         is_draft = pr.get("isDraft", False)
         review_requests = pr.get("reviewRequests", [])
         if is_draft and not review_requests:
-            cached = _previous_pr_content.get(pr_key, {}).get("llm_statuses")
-            if cached and llm_working_from_statuses(cached) is False:
-                # Terminal state cached (finished work confirmed): skip re-fetch.
-                pr["llm_statuses"] = cached
-                return None
+            # Always fetch fresh HTML every iteration so we never miss a newly-posted
+            # "finished work" event.  Cross-iteration caching here was the root cause of
+            # #266 re-occurring: a "started work"-only cached value would suppress all
+            # future re-fetches, preventing "finished work" from ever being detected.
             pr_url = pr.get("url", "")
             if html_content:
                 fetched = html_content
@@ -239,8 +238,6 @@ def record_reaction_snapshot(
                 captured = _capture_llm_statuses(fetched, html_md)
                 if captured.get("statuses"):
                     pr["llm_statuses"] = captured["statuses"]
-                    pr_cache = _previous_pr_content.setdefault(pr_key, {})
-                    pr_cache["llm_statuses"] = captured["statuses"]
         return None
 
     # Check once flag: prevent duplicate recording within the same iteration

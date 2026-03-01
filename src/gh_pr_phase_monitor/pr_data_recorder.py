@@ -223,7 +223,8 @@ def record_reaction_snapshot(
         review_requests = pr.get("reviewRequests", [])
         if is_draft and not review_requests:
             cached = _previous_pr_content.get(pr_key, {}).get("llm_statuses")
-            if cached:
+            if cached and llm_working_from_statuses(cached) is False:
+                # Terminal state cached (finished work confirmed): skip re-fetch.
                 pr["llm_statuses"] = cached
                 return None
             pr_url = pr.get("url", "")

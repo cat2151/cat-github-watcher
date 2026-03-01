@@ -364,7 +364,9 @@ def _start_button_notification(
     )
     message = _sanitize_notification_text(str(config.get("notification_message", default_message)))
 
-    window = NotificationWindow(message, width, height, pos_x, pos_y, cancel_message=cancel_message, on_user_cancel=on_user_cancel)
+    window = NotificationWindow(
+        message, width, height, pos_x, pos_y, cancel_message=cancel_message, on_user_cancel=on_user_cancel
+    )
     try:
         window.show()
         return window

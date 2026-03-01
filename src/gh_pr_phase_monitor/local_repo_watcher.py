@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from .auto_updater import REPO_ROOT, restart_application
 from .colors import Colors
 
 # Status constants (same classification as cat-repo-auditor)
@@ -264,6 +265,9 @@ def check_local_repos(config: dict, github_username: str) -> None:
             ok, msg = _pull_repo(r["path"])
             if ok:
                 print(f"    ✓ pull 完了: {r['name']}")
+                if Path(r["path"]).resolve() == REPO_ROOT:
+                    print("    自分自身が更新されました。アプリケーションを再起動します...")
+                    restart_application()
             else:
                 print(f"    ✗ pull 失敗: {r['name']}: {msg}")
         else:

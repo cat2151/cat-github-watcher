@@ -3,10 +3,21 @@
 from __future__ import annotations
 
 import importlib
+import os
 import pathlib
+import sys
 import tempfile
+import types
 
 import pytest
+
+sys.modules.setdefault("mouseinfo", types.SimpleNamespace(MouseInfoWindow=lambda: None))
+sys.modules.setdefault("pyautogui", types.ModuleType("pyautogui"))
+sys.modules.setdefault("pygetwindow", types.ModuleType("pygetwindow"))
+sys.modules.setdefault("pytesseract", types.ModuleType("pytesseract"))
+sys.modules.setdefault("tkinter", types.ModuleType("tkinter"))
+sys.modules.setdefault("tkinter.messagebox", types.ModuleType("tkinter.messagebox"))
+os.environ.setdefault("DISPLAY", ":0")
 
 local_repo_watcher = importlib.import_module("src.gh_pr_phase_monitor.local_repo_watcher")
 
@@ -276,3 +287,75 @@ class TestCheckLocalRepos:
         captured = capsys.readouterr()
         assert "pull 失敗" in captured.out
         assert "conflict detected" in captured.out
+
+
+class TestSelfUpdateOnPull:
+    """Tests for auto-restart when cat-github-watcher itself is pulled."""
+
+    def test_restarts_when_self_repo_is_pulled(self, monkeypatch, capsys):
+        """When the pulled repo is REPO_ROOT, restart_application should be called."""
+        monkeypatch.setattr(local_repo_watcher, "_last_local_check_time", 0.0)
+
+        repo_root = local_repo_watcher.REPO_ROOT
+
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_check_repo",
+            lambda path, user: {
+                "name": "cat-github-watcher",
+                "path": str(repo_root),
+                "remote_url": "https://github.com/cat2151/cat-github-watcher.git",
+                "branch": "main",
+                "dirty": False,
+                "behind": 1,
+                "ahead": 0,
+                "status": local_repo_watcher.STATUS_PULLABLE,
+                "error": None,
+                "is_target": True,
+            },
+        )
+        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (True, "Updated."))
+
+        restarted = []
+        monkeypatch.setattr(local_repo_watcher, "restart_application", lambda: restarted.append(True))
+
+        base_dir = repo_root.parent
+        config = {"local_repo_watcher_base_dir": str(base_dir), "auto_git_pull": True}
+        local_repo_watcher.check_local_repos(config, "cat2151")
+
+        assert restarted, "restart_application should have been called"
+        captured = capsys.readouterr()
+        assert "再起動します" in captured.out
+
+    def test_does_not_restart_for_other_repos(self, monkeypatch, capsys):
+        """When the pulled repo is NOT REPO_ROOT, restart_application should NOT be called."""
+        monkeypatch.setattr(local_repo_watcher, "_last_local_check_time", 0.0)
+
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_check_repo",
+            lambda path, user: {
+                "name": "myrepo",
+                "path": path,
+                "remote_url": "https://github.com/myuser/myrepo.git",
+                "branch": "main",
+                "dirty": False,
+                "behind": 1,
+                "ahead": 0,
+                "status": local_repo_watcher.STATUS_PULLABLE,
+                "error": None,
+                "is_target": True,
+            },
+        )
+        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (True, "Updated."))
+
+        restarted = []
+        monkeypatch.setattr(local_repo_watcher, "restart_application", lambda: restarted.append(True))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_repo = pathlib.Path(tmpdir) / "myrepo"
+            fake_repo.mkdir()
+            config = {"local_repo_watcher_base_dir": tmpdir, "auto_git_pull": True}
+            local_repo_watcher.check_local_repos(config, "myuser")
+
+        assert not restarted, "restart_application should NOT have been called"

@@ -40,9 +40,7 @@ def _parse_remote_url(remote_url: str) -> Optional[Tuple[str, str]]:
 
 def _get_tracking_branch(repo_root: Path) -> Optional[Tuple[str, str]]:
     """Return (remote, branch) for the current upstream if configured."""
-    result = _run_command(
-        ["git", "-C", str(repo_root), "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]
-    )
+    result = _run_command(["git", "-C", str(repo_root), "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
     if result.returncode != 0:
         return None
 

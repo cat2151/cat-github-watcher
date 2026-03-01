@@ -48,9 +48,7 @@ def test_skips_when_remote_matches_local(monkeypatch):
     monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: "abc")
     monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "abc")
     monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
-    monkeypatch.setattr(
-        auto_updater, "_pull_fast_forward", lambda *_args, **_kwargs: calls.update(pulled=True) or True
-    )
+    monkeypatch.setattr(auto_updater, "_pull_fast_forward", lambda *_args, **_kwargs: calls.update(pulled=True) or True)
     monkeypatch.setattr(auto_updater, "restart_application", lambda: calls.update(restarted=True))
 
     assert auto_updater.maybe_self_update(repo_root=auto_updater.REPO_ROOT) is False

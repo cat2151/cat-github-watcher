@@ -477,6 +477,7 @@ def print_config(config: Dict[str, Any]) -> None:
                 print(
                     f"    enable_execution_phase3_to_merge: {ruleset.get('enable_execution_phase3_to_merge', 'not set')}"
                 )
+                print(f"    enable_execution_pages_open: {ruleset.get('enable_execution_pages_open', 'not set')}")
     else:
         print("\n[Rulesets]")
         print("  No rulesets configured")
@@ -548,6 +549,7 @@ def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, r
         "enable_execution_phase3_send_ntfy": False,
         "enable_execution_phase3_to_merge": False,
         "enable_execution_pr_title_fix_comment": False,  # Post comment when problematic PR title detected
+        "enable_execution_pages_open": False,  # Open browser when GitHub Pages deployment completes
         "assign_good_first_old": False,  # Assign one old "good first issue"
         "assign_ci_failure_old": False,  # Assign one old "ci-failure" issue
         "assign_deploy_pages_failure_old": False,  # Assign one old "deploy-pages-failure" issue
@@ -604,6 +606,10 @@ def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, r
                 result["enable_execution_pr_title_fix_comment"] = _validate_boolean_flag(
                     ruleset["enable_execution_pr_title_fix_comment"], "enable_execution_pr_title_fix_comment"
                 )
+            if "enable_execution_pages_open" in ruleset:
+                result["enable_execution_pages_open"] = _validate_boolean_flag(
+                    ruleset["enable_execution_pages_open"], "enable_execution_pages_open"
+                )
 
             # Apply auto-assign flags
             if "assign_good_first_old" in ruleset:
@@ -640,6 +646,7 @@ def print_repo_execution_config(repo_owner: str, repo_name: str, exec_config: Di
     print(
         f"      enable_execution_pr_title_fix_comment: {exec_config.get('enable_execution_pr_title_fix_comment', False)}"
     )
+    print(f"      enable_execution_pages_open: {exec_config.get('enable_execution_pages_open', False)}")
     print(f"      assign_good_first_old: {exec_config.get('assign_good_first_old', False)}")
     print(f"      assign_ci_failure_old: {exec_config.get('assign_ci_failure_old', False)}")
     print(f"      assign_deploy_pages_failure_old: {exec_config.get('assign_deploy_pages_failure_old', False)}")

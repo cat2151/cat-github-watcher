@@ -68,7 +68,7 @@ def test_load_config_applies_custom_hex_colors():
     """Custom hex color codes should override scheme values."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
         f.write(
-            '\n'.join(
+            "\n".join(
                 [
                     'color_scheme = "classic"',
                     "[colors]",
@@ -94,7 +94,7 @@ def test_load_config_ignores_invalid_custom_colors():
     """Invalid custom colors should be ignored without breaking defaults."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
         f.write(
-            '\n'.join(
+            "\n".join(
                 [
                     'interval = "1m"',
                     "[colors]",
@@ -117,7 +117,7 @@ def test_load_config_accepts_ansi_sequences():
     """ANSI escape sequences should be accepted when valid SGR codes."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
         f.write(
-            '\n'.join(
+            "\n".join(
                 [
                     'interval = "1m"',
                     "[colors]",

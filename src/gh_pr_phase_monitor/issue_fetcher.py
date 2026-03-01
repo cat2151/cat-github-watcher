@@ -128,7 +128,9 @@ def get_issues_from_repositories(
                     label_nodes = issue.get("labels", {}).get("nodes", [])
                     label_names = [label.get("name", "") for label in label_nodes]
                     assignee_nodes = issue.get("assignees", {}).get("nodes", [])
-                    assignee_logins = [assignee.get("login", "") for assignee in assignee_nodes if assignee.get("login")]
+                    assignee_logins = [
+                        assignee.get("login", "") for assignee in assignee_nodes if assignee.get("login")
+                    ]
 
                     issue_with_repo = {
                         "title": issue.get("title", ""),

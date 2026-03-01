@@ -21,8 +21,10 @@ from .config import (
     validate_phase3_merge_config_required,
 )
 from .display import display_issues_from_repos_without_prs, display_status_summary
+from .github_auth import get_current_user
 from .github_client import get_pr_details_batch, get_repositories_with_open_prs
 from .monitor import check_no_state_change_timeout
+from .pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
 from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
 from .pr_actions import process_pr
 from .pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
@@ -157,9 +159,7 @@ def main():
                     print("Processing PRs:")
                     print(f"{'=' * 50}")
 
-                    snapshots_enabled = config.get(
-                        "enable_pr_phase_snapshots", DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS
-                    )
+                    snapshots_enabled = config.get("enable_pr_phase_snapshots", DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS)
                     # Track phases to detect if all PRs are in "LLM working"
                     for pr in all_prs:
                         try:
@@ -223,6 +223,19 @@ def main():
                         # Display issues and potentially auto-assign new work
                         # Throttling is applied inside the function based on llm_working_count
                         display_issues_from_repos_without_prs(config, llm_working_count=llm_working_count)
+
+            # Check GitHub Pages deployment status for configured repos
+            # This runs regardless of whether there are open PRs (covers post-merge case)
+            try:
+                current_user = get_current_user()
+                pages_repos = get_pages_repos_from_config(config, current_user)
+                if pages_repos:
+                    print(f"\n{'=' * 50}")
+                    print("GitHub Pages deployment check:")
+                    print(f"{'=' * 50}")
+                    check_pages_deployments_for_repos(pages_repos, config)
+            except Exception as pages_error:
+                log_error_to_file("Failed to check Pages deployment", pages_error)
 
             # Reset consecutive-failure counter on a successful iteration
             consecutive_failures = 0

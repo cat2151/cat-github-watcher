@@ -114,6 +114,7 @@ agent_name = "@copilot"
 # enable_execution_phase2_to_phase3 = false  # Set to true to post phase2 comments
 # enable_execution_phase3_send_ntfy = false  # Set to true to send ntfy notifications
 # enable_execution_phase3_to_merge = false   # Set to true to merge phase3 PRs
+# enable_execution_pages_open = false        # Set to true to open browser when GitHub Pages deploys
 #
 # [[rulesets]]
 # name = "Enable automation for test repository"
@@ -196,6 +197,28 @@ notification_position_x = 100
 notification_position_y = 100
 maximize_on_first_fail = true  # Maximize the target window and retry if the first search fails
 # Note: Feature branch is automatically deleted after successful merge
+
+# GitHub Pages deployment monitoring (no dedicated section needed)
+# Monitors whether the latest main branch commit has been deployed to GitHub Pages.
+# Enabled per repository using enable_execution_pages_open in rulesets.
+#
+# Detection logic:
+# 1. Fetch latest commit SHA on main branch
+# 2. Fetch latest GitHub Pages build
+# 3. If build.status == "built" and build.commit == main SHA → deploy complete → open Pages URL
+# 4. If build.status == "errored" → open GitHub Actions page in browser
+# 5. Otherwise, continue polling (using existing interval)
+#
+# Usage in rulesets:
+# [[rulesets]]
+# name = "Monitor Pages deployment for my-repo"
+# repositories = ["my-repo"]
+# enable_execution_pages_open = true   # Set to true to open browser; false = dry-run detection only
+#
+# IMPORTANT: Feature is DISABLED by default for safety.
+# Set enable_execution_pages_open = true in a ruleset to enable browser opening.
+# Set enable_execution_pages_open = false (or omit) to enable detection-only (dry-run) mode.
+# Note: Repositories with pattern "all" are not supported for Pages monitoring.
 
 # Auto-assign issues to Copilot (optional - this entire section is optional!)
 # 

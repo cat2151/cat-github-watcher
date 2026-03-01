@@ -72,6 +72,9 @@ DEFAULT_ENABLE_AUTO_UPDATE = False
 # Default setting for saving pr_phase_snapshots (disabled by default for safety/privacy)
 DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS = False
 
+# Default setting for local repo auto-pull (disabled by default; display only by default)
+DEFAULT_ENABLE_EXECUTION_GIT_PULL = False
+
 
 def parse_interval(interval_str: str) -> int:
     """Parse interval string like '1m', '30s', '2h' to seconds

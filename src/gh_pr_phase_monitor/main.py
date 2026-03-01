@@ -11,12 +11,21 @@ from pathlib import Path
 from typing import Any
 
 from .auto_updater import UPDATE_CHECK_INTERVAL_SECONDS, maybe_self_update
-from .config import (DEFAULT_ENABLE_AUTO_UPDATE, DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS, DEFAULT_MAX_LLM_WORKING_PARALLEL,
-                     get_config_mtime, load_config, parse_interval, print_config, validate_phase3_merge_config_required)
+from .config import (
+    DEFAULT_ENABLE_AUTO_UPDATE,
+    DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
+    DEFAULT_MAX_LLM_WORKING_PARALLEL,
+    get_config_mtime,
+    load_config,
+    parse_interval,
+    print_config,
+    validate_phase3_merge_config_required,
+)
 from .display import display_issues_from_repos_without_prs, display_status_summary
 from .github_auth import get_current_user
 from .github_client import get_pr_details_batch, get_repositories_with_open_prs
 from .graphql_client import GitHubRateLimitError
+from .local_repo_watcher import check_local_repos
 from .monitor import check_no_state_change_timeout
 from .pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
 from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
@@ -242,6 +251,15 @@ def main():
                     check_pages_deployments_for_repos(pages_repos, config)
             except Exception as pages_error:
                 log_error_to_file("Failed to check Pages deployment", pages_error)
+
+            # Check local repository pullable status
+            # By default (dry-run), displays repos that can be pulled.
+            # Set enable_execution_git_pull = true in config.toml to auto-pull.
+            try:
+                current_user = get_current_user()
+                check_local_repos(config, current_user)
+            except Exception as local_repo_error:
+                log_error_to_file("Failed to check local repos", local_repo_error)
 
             # Reset consecutive-failure counter on a successful iteration
             consecutive_failures = 0

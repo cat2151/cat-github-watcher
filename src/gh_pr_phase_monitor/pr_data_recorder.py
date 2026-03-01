@@ -734,6 +734,24 @@ def record_reaction_snapshot(
 
     comment_nodes = pr.get("commentNodes", pr.get("comments", []))
     if not has_comments_with_reactions(comment_nodes):
+        # Fetch HTML for Draft PRs without review requests to detect 'finished work' (#266).
+        # When Copilot starts from an issue, 'started work' is on the issue page while only
+        # 'finished work' appears on the PR timeline, so reactions are never added.
+        is_draft = pr.get("isDraft", False)
+        review_requests = pr.get("reviewRequests", [])
+        if is_draft and not review_requests:
+            pr_url = pr.get("url", "")
+            if html_content:
+                fetched = html_content
+            elif pr_url:
+                fetched = _fetch_pr_html(pr_url)
+            else:
+                fetched = None
+            if fetched:
+                html_md = _html_to_simple_markdown(fetched)
+                captured = _capture_llm_statuses(fetched, html_md)
+                if captured.get("statuses"):
+                    pr["llm_statuses"] = captured["statuses"]
         return None
 
     pr_key = pr.get("url") or _build_snapshot_dir_name(pr)

@@ -296,36 +296,41 @@ class TestSelfUpdateOnPull:
         """When the pulled repo is REPO_ROOT, restart_application should be called."""
         monkeypatch.setattr(local_repo_watcher, "_last_local_check_time", 0.0)
 
-        repo_root = local_repo_watcher.REPO_ROOT
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base_dir = pathlib.Path(tmpdir)
+            self_repo_dir = base_dir / "cat-github-watcher"
+            self_repo_dir.mkdir()
 
-        monkeypatch.setattr(
-            local_repo_watcher,
-            "_check_repo",
-            lambda path, user: {
-                "name": "cat-github-watcher",
-                "path": str(repo_root),
-                "remote_url": "https://github.com/cat2151/cat-github-watcher.git",
-                "branch": "main",
-                "dirty": False,
-                "behind": 1,
-                "ahead": 0,
-                "status": local_repo_watcher.STATUS_PULLABLE,
-                "error": None,
-                "is_target": True,
-            },
-        )
-        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (True, "Updated."))
+            # Treat the temporary self_repo_dir as the application REPO_ROOT.
+            monkeypatch.setattr(local_repo_watcher, "REPO_ROOT", self_repo_dir)
 
-        restarted = []
-        monkeypatch.setattr(local_repo_watcher, "restart_application", lambda: restarted.append(True))
+            monkeypatch.setattr(
+                local_repo_watcher,
+                "_check_repo",
+                lambda path, user: {
+                    "name": "cat-github-watcher",
+                    "path": str(self_repo_dir),
+                    "remote_url": "https://github.com/cat2151/cat-github-watcher.git",
+                    "branch": "main",
+                    "dirty": False,
+                    "behind": 1,
+                    "ahead": 0,
+                    "status": local_repo_watcher.STATUS_PULLABLE,
+                    "error": None,
+                    "is_target": True,
+                },
+            )
+            monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (True, "Updated."))
 
-        base_dir = repo_root.parent
-        config = {"local_repo_watcher_base_dir": str(base_dir), "auto_git_pull": True}
-        local_repo_watcher.check_local_repos(config, "cat2151")
+            restarted = []
+            monkeypatch.setattr(local_repo_watcher, "restart_application", lambda: restarted.append(True))
 
-        assert restarted, "restart_application should have been called"
-        captured = capsys.readouterr()
-        assert "再起動します" in captured.out
+            config = {"local_repo_watcher_base_dir": str(base_dir), "auto_git_pull": True}
+            local_repo_watcher.check_local_repos(config, "cat2151")
+
+            assert restarted, "restart_application should have been called"
+            captured = capsys.readouterr()
+            assert "再起動します" in captured.out
 
     def test_does_not_restart_for_other_repos(self, monkeypatch, capsys):
         """When the pulled repo is NOT REPO_ROOT, restart_application should NOT be called."""

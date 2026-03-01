@@ -8,6 +8,7 @@ import subprocess
 from unittest.mock import MagicMock, patch
 
 import src.gh_pr_phase_monitor.browser_automation as browser_automation
+import src.gh_pr_phase_monitor.browser_cooldown as browser_cooldown
 from src.gh_pr_phase_monitor.config import (
     DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE,
     is_process_running,
@@ -183,7 +184,7 @@ class TestBrowserAutomationIntegration:
 
     def setup_method(self):
         """Reset browser cooldown state before each test"""
-        browser_automation._last_browser_open_time = None
+        browser_cooldown._last_browser_open_time = None
         browser_automation._issue_assign_attempted.clear()
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
@@ -264,7 +265,7 @@ class TestOpenBrowserIntegration:
 
     def setup_method(self):
         """Reset browser cooldown state before each test"""
-        browser_automation._last_browser_open_time = None
+        browser_cooldown._last_browser_open_time = None
         browser_automation._issue_assign_attempted.clear()
 
     @patch("src.gh_pr_phase_monitor.pr_actions.webbrowser")

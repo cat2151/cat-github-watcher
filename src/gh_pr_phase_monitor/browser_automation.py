@@ -16,6 +16,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .browser_cooldown import (
+    BROWSER_OPEN_COOLDOWN_SECONDS,  # noqa: F401 (re-exported for backward compatibility)
+    _can_open_browser,
+    _get_remaining_cooldown,
+    _record_browser_open,
+)
 from .button_clicker import (
     PYAUTOGUI_AVAILABLE,
     _click_button_with_image,  # noqa: F401 (re-exported for backward compatibility)
@@ -46,14 +52,6 @@ from .window_manager import (
     _activate_window_by_title,  # noqa: F401 (re-exported for backward compatibility)
     _get_active_window_title,
 )
-
-# Global state to track the last time a browser was opened
-# This prevents opening multiple pages simultaneously which can cause issues
-# with automated merge and assign operations
-_last_browser_open_time: Optional[float] = None
-
-# Minimum time (in seconds) to wait between opening browser pages
-BROWSER_OPEN_COOLDOWN_SECONDS = 60
 
 # Track which issue URLs have had assignment attempted with timestamp: dict of URL -> timestamp
 # This prevents repeatedly trying to assign the same issue when automation fails
@@ -100,39 +98,6 @@ def is_pyautogui_available() -> bool:
         True if PyAutoGUI is installed and available, False otherwise
     """
     return PYAUTOGUI_AVAILABLE
-
-
-def _can_open_browser() -> bool:
-    """Check if enough time has passed since the last browser open
-
-    Returns:
-        True if a browser can be opened (cooldown period has passed), False otherwise
-    """
-    global _last_browser_open_time
-    if _last_browser_open_time is None:
-        return True
-    elapsed = time.time() - _last_browser_open_time
-    return elapsed >= BROWSER_OPEN_COOLDOWN_SECONDS
-
-
-def _record_browser_open() -> None:
-    """Record the current time as the last browser open time"""
-    global _last_browser_open_time
-    _last_browser_open_time = time.time()
-
-
-def _get_remaining_cooldown() -> float:
-    """Get the remaining cooldown time in seconds
-
-    Returns:
-        Remaining seconds until next browser can be opened, or 0 if ready
-    """
-    global _last_browser_open_time
-    if _last_browser_open_time is None:
-        return 0.0
-    elapsed = time.time() - _last_browser_open_time
-    remaining = BROWSER_OPEN_COOLDOWN_SECONDS - elapsed
-    return max(0.0, remaining)
 
 
 def _should_autoraise_window(config: Optional[Dict[str, Any]] = None) -> bool:

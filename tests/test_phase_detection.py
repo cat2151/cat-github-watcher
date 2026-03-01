@@ -224,6 +224,27 @@ class TestDeterminePhase:
         }
         assert determine_phase(pr) == "LLM working"
 
+    def test_phase1_draft_pr_no_review_requests_finished_without_started(self):
+        """Draft PRs with only 'finished work' status (no preceding 'started work') should be phase1.
+
+        Scenario: the watcher starts monitoring after Copilot's session already began,
+        so only the 'finished work' timeline entry is captured (e.g. 'Copilot finished
+        work on behalf of cat2151').  Without this fix the status would be misread as
+        LLM working because the earlier 'started work' was never seen.
+        Regression test for issue #266 (cat-repo-auditor/pull/19).
+        """
+        pr = {
+            "isDraft": True,
+            "reviews": [],
+            "latestReviews": [],
+            "reviewRequests": [],
+            "comments": [],
+            "llm_statuses": [
+                "Copilot finished work on behalf of cat2151",
+            ],
+        }
+        assert determine_phase(pr) == "phase1"
+
     def test_llm_working_no_reviews(self):
         """PRs with no reviews should be 'LLM working'"""
         pr = {"isDraft": False, "reviews": [], "latestReviews": [], "comments": []}

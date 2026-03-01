@@ -176,8 +176,10 @@ def llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
     """Determine LLM working state from ordered LLM statuses.
 
     Returns True when the most recent state after any 'started work' entry has
-    no subsequent 'finished work' entry, False when a later 'finished work'
-    exists, and None when the statuses do not provide a signal.
+    no subsequent 'finished work' entry, False when a 'finished work' entry
+    exists with no later 'started work' (including when only 'finished work'
+    is present without any preceding 'started work'), and None when the
+    statuses do not provide a signal.
     """
     if not llm_statuses:
         return None
@@ -202,7 +204,7 @@ def llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
             if started_after_review_idx is not None and idx > started_after_review_idx:
                 reviewing_chain_finished_idx = idx
 
-    if last_finished_idx is not None and last_started_idx is not None and last_finished_idx > last_started_idx:
+    if last_finished_idx is not None and (last_started_idx is None or last_finished_idx > last_started_idx):
         return False
 
     if reviewing_chain_finished_idx is not None and (

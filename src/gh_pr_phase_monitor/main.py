@@ -63,8 +63,15 @@ def _display_rate_limit_usage(
     status = f"残={remaining}/{limit}, リセット={reset_display} (あと{reset_in_display})"
 
     if before is not None and isinstance(before.get("remaining"), int) and isinstance(after.get("remaining"), int):
-        consumed = before["remaining"] - after["remaining"]
-        print(f"\nGraphQL API使用状況: 今回消費={consumed}点, {status}")
+        raw_consumed = before["remaining"] - after["remaining"]
+        if raw_consumed < 0:
+            # レートリミットウィンドウがリセットされ、単純差分が負になるケース
+            consumed = 0
+            reset_note = " (リセット後)"
+        else:
+            consumed = raw_consumed
+            reset_note = ""
+        print(f"\nGraphQL API使用状況: 今回消費={consumed}点{reset_note}, {status}")
     else:
         print(f"\nGraphQL API使用状況: {status}")
 
@@ -152,7 +159,11 @@ def main():
         print(f"{'=' * 50}")
 
         # Capture rate limit before API calls for per-iteration consumption tracking
-        before_rate_limit = get_rate_limit_info()
+        try:
+            before_rate_limit = get_rate_limit_info()
+        except Exception as rate_limit_error:
+            log_error_to_file("Failed to fetch pre-iteration rate limit info", rate_limit_error)
+            before_rate_limit = None
 
         # Reset snapshot cache to allow recording new snapshots in this iteration
         reset_snapshot_cache()

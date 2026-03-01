@@ -55,3 +55,18 @@ def test_display_rate_limit_usage_zero_consumed(capsys):
 
     captured = capsys.readouterr()
     assert "今回消費=0点" in captured.out
+
+
+def test_display_rate_limit_usage_negative_consumed_shows_reset_note(capsys):
+    # レートリミットウィンドウがリセットされ after.remaining > before.remaining になるケース
+    before = _make_rate_limit(remaining=100)
+    after = _make_rate_limit(remaining=4900)
+
+    with patch(
+        "src.gh_pr_phase_monitor.main._format_rate_limit_reset", return_value=("2026-03-01 01:00:00 UTC", "60分")
+    ):
+        _display_rate_limit_usage(before, after)
+
+    captured = capsys.readouterr()
+    assert "今回消費=0点" in captured.out
+    assert "リセット後" in captured.out

@@ -41,7 +41,7 @@ def get_rate_limit_info() -> Dict[str, Any] | None:
         if isinstance(graphql_info, dict):
             return graphql_info
         return None
-    except (subprocess.CalledProcessError, json.JSONDecodeError):
+    except (subprocess.CalledProcessError, json.JSONDecodeError, OSError):
         return None
 
 

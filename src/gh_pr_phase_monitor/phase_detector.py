@@ -416,6 +416,6 @@ def get_llm_working_progress_label(pr: Dict[str, Any]) -> str:
         return "Phase 2 completed"
 
     if base_phase == PHASE_2:
-        return "Phase 1 completed"
+        return "Phase 2 in progress"
 
     return "Phase 1 completed"

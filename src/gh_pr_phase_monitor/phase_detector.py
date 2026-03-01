@@ -263,9 +263,12 @@ def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
     review_threads = pr.get("reviewThreads", [])
     llm_statuses = pr.get("llm_statuses") or []
 
-    # Phase 1: Draft状態 (ただし、reviewRequestsが空の場合はLLM working)
+    # Phase 1: Draft状態
+    # - reviewRequests が1件以上ある場合: 常に phase1
+    # - reviewRequests が空の場合:
+    #     - LLM が未完了 (llm_working_from_statuses(...) が True または None): LLM working
+    #     - LLM が完了済み (llm_working_from_statuses(...) が False): phase1
     if is_draft:
-        # reviewRequestsが空でも、LLMステータスが完了済みならphase1と判定
         if not review_requests:
             llm_working = llm_working_from_statuses(llm_statuses)
             if llm_working is False:

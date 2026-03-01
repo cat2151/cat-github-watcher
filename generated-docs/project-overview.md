@@ -1,39 +1,21 @@
-Last updated: 2026-02-15
+Last updated: 2026-03-02
 
 # Project Overview
 
 ## プロジェクト概要
-- GitHub Copilotによる自動実装フェーズのPRを監視し、適切な通知とアクションを行うPythonツールです。
-- 認証済みGitHubユーザーのユーザー所有リポジトリを対象に、GraphQL APIで効率的にPRの状態を判定し、自動化されたワークフローを支援します。
-- PRのReady化、コメント投稿、モバイル通知、自動マージ、Issue割り当てなど、開発プロセスを自動化・効率化する多様な機能を提供します。
+- GitHub CopilotなどAIエージェントによる自動実装のプルリクエスト(PR)監視に特化したPythonツールです。
+- 認証済みユーザーの全リポジトリを対象に、PRの進捗フェーズを自動検知し、適切な通知やアクションを実行します。
+- GraphQL APIによる効率的な監視と、Dry-runモードや自動更新などの豊富な機能で開発フローを支援します。
 
 ## 技術スタック
-- フロントエンド: なし（本プロジェクトはコマンドラインインターフェース（CLI）ツールとして動作し、直接的なGUIは持ちません。）
-- 音楽・オーディオ: なし
-- 開発ツール:
-    - GitHub CLI (gh): GitHubの認証、API操作（GraphQL/REST）のためのコマンドラインインターフェースツール。
-    - Pytest: Pythonアプリケーションのテストコードを記述し、実行するためのフレームワーク。
-    - Ruff: Pythonコードのフォーマットと静的解析（リンティング）を行う高速なツール。`ruff.toml`でルールを設定。
-    - Git: バージョン管理システム。自己更新機能でGitHubリポジトリの変更を検知・同期するために使用されます。
-    - PyAutoGUI: マウスやキーボードの操作を自動化し、ブラウザのUI（ボタンなど）をプログラムで操作するために使用されます。
-    - Pillow: PyAutoGUIの依存ライブラリとして、画像処理機能（スクリーンショットの取得、画像マッチングなど）を提供します。
-    - Pygetwindow: PyAutoGUIの依存ライブラリとして、ウィンドウの検出、アクティブ化、操作を行うために使用されます。
-    - PyTesseract: Tesseract OCRエンジンと連携し、画像からテキストを抽出するPythonラッパー。ブラウザ自動化のフォールバックとして使用されます。
-    - Tesseract OCR: 画像からテキストを認識する光学文字認識（OCR）エンジン。PyTesseractが利用するためにシステムレベルでインストールが必要です。
-- テスト:
-    - Pytest: 上記の通り、プロジェクトの各種機能の単体テストや統合テストに使用されます。
-- ビルドツール: なし（Pythonスクリプトとして直接実行されるため、特定のビルドツールは使用していません。）
-- 言語機能:
-    - Python 3.10以上: プロジェクトの主要な開発言語。
-    - GraphQL API: GitHub APIとの通信に利用される効率的なデータ取得プロトコル。
-    - TOML: 設定ファイル（`config.toml`）の記述形式として使用され、構造化された設定を人間が読み書きしやすい形で提供します。
-- 自動化・CI/CD:
-    - GitHub Actions: README.mdの自動翻訳など、プロジェクトの補助的な自動化（本プロジェクトのコア機能とは別）。
-    - ntfy.sh: モバイル端末へのリアルタイム通知を送信するためのシンプルなプッシュ通知サービス。
-    - 自己更新機能 (auto_updater.py): ツール自体がGitHubリポジトリの更新を検知し、自動的に最新版に更新・再起動する機能。
-- 開発標準:
-    - EditorConfig: 異なるエディタやIDE間で一貫したコーディングスタイル（インデント、改行コードなど）を維持するための設定ファイル。
-    - Ruff: 上記の通り、コードの品質と一貫性を保つためのリンティングおよびフォーマットルール。
+- フロントエンド: PyAutoGUI (ブラウザ自動操作), Pillow (画像処理), PyGetWindow (ウィンドウ管理), Pytesseract (OCRによるテキスト検出), Tesseract-OCR (OCRエンジン)
+- 音楽・オーディオ: 該当なし
+- 開発ツール: GitHub CLI (`gh`コマンドラインツール), Git (バージョン管理システム), pytest (テストフレームワーク)
+- テスト: pytest (Python向けテストフレームワーク)
+- ビルドツール: Python (実行環境), pip (パッケージ管理。特定のビルドツールは使用せず、Python標準の実行環境で動作)
+- 言語機能: Python 3.10以上 (主要開発言語)
+- 自動化・CI/CD: ntfy.sh (モバイル通知サービス), 自己更新機能 (Gitベースの自動アップデート), ブラウザ自動化 (PRマージ、Issue割り当て)
+- 開発標準: Ruff (Pythonコードリンター・フォーマッター), EditorConfig (コードスタイル定義)
 
 ## ファイル階層ツリー
 ```
@@ -52,79 +34,141 @@ cat-github-watcher/
 ```
 
 ## ファイル詳細説明
-- `cat-github-watcher.py`: プロジェクトのメインエントリーポイントとなるスクリプト。アプリケーションの起動と主要な処理フローを制御します。
-- `.editorconfig`: 様々なテキストエディタやIDE間でコードのインデントスタイル、文字エンコーディングなどの設定を統一するためのファイルです。
-- `.gitignore`: Gitのバージョン管理から除外するファイルやディレクトリ（例: 実行時のキャッシュファイル、ローカル設定ファイルなど）を指定するファイルです。
-- `.vscode/settings.json`: Visual Studio Codeエディタ用の設定ファイル。プロジェクト固有のワークスペース設定や拡張機能の設定が記述されます。
-- `LICENSE`: プロジェクトがMIT Licenseで公開されていることを示すライセンス情報ファイルです。
-- `MERGE_CONFIGURATION_EXAMPLES.md`: PRの自動マージ機能に関する設定例や使用方法について説明するMarkdown形式のドキュメントです。
-- `PHASE3_MERGE_IMPLEMENTATION.md`: Phase3におけるPR自動マージ機能の実装詳細や内部動作について説明するMarkdownドキュメントです。
-- `README.ja.md`: プロジェクトの概要、特徴、セットアップ方法、使い方などが日本語で記述されたメインドキュメントです。
-- `README.md`: `README.ja.md`の英語版であり、同様のプロジェクト情報が英語で記述されています。
-- `STRUCTURE.md`: プロジェクト全体のディレクトリ構成やモジュール間の関係など、構造に関する情報を提供するMarkdownドキュメントです。
-- `_config.yml`: GitHub Pagesなどで使用されるJekyllのサイト設定ファイル。ドキュメントサイトのビルド設定などが含まれることがあります。
-- `config.toml.example`: `config.toml`を作成する際のテンプレートとして提供されるファイル。利用者はこれをコピーして自分の設定を記述します。
-- `demo_automation.py`: ブラウザ自動化機能（PyAutoGUIなど）の動作をデモンストレーションするための補助スクリプトです。
-- `docs/`: プロジェクトの追加ドキュメントを格納するディレクトリ。
-    - `RULESETS.md`: 監視ルールセット（rulesets）の詳細な設定方法や機能について説明するドキュメントです。
-    - `button-detection-improvements.ja.md`: ブラウザ自動化におけるボタン検出機能の改善点や技術詳細を説明するドキュメントです。
-    - `window-activation-feature.md`: ウィンドウのアクティブ化機能に関する詳細情報を提供するドキュメントです。
-- `generated-docs/`: 自動生成されたドキュメントやレポートを格納するためのディレクトリです。
-- `pytest.ini`: pytestテストフレームワークの設定ファイル。テストの実行オプションやカバレッジ設定などが記述されます。
-- `requirements-automation.txt`: ブラウザ自動化機能（PyAutoGUI, PyTesseractなど）に必要なPythonパッケージとそのバージョンを列挙したファイルです。
-- `ruff.toml`: Ruffリンターおよびフォーマッターの設定ファイル。Pythonコードの品質と一貫性を保つためのルールが定義されています。
-- `screenshots/`: ブラウザ自動化機能がボタンを識別するために使用するスクリーンショット画像ファイルを保存するディレクトリです。
-- `src/`: プロジェクトの主要なソースコードを格納するディレクトリ。
-    - `gh_pr_phase_monitor/`: プロジェクトのコアロジックを構成するPythonモジュール群。
-        - `__init__.py`: Pythonパッケージであることを示すファイル。
-        - `auto_updater.py`: ツールの自己更新ロジックを実装。GitHubリポジトリの更新を検知し、自動でpullして再起動します。
-        - `browser_automation.py`: PyAutoGUIなどを使用してブラウザのUIを自動操作する機能（ボタンクリック、ウィンドウ操作など）を提供します。
-        - `colors.py`: ターミナル出力に色付けを行うためのANSIカラーコード定義と色付けユーティリティ関数を提供します。
-        - `comment_fetcher.py`: GitHub PRからコメント履歴を取得し、特定の条件（例: LLMエージェントからのコメント）に合致するコメントを抽出します。
-        - `comment_manager.py`: GitHub PRへのコメント投稿、および既存コメントの存在確認を行う機能を提供します。
-        - `config.py`: `config.toml`ファイルから設定を読み込み、解析、バリデーションを行う責任を持つモジュールです。
-        - `display.py`: CLI（コマンドラインインターフェース）に情報を表示する際のフォーマットやレイアウト、色付けなどを管理します。
-        - `github_auth.py`: GitHub CLI (`gh`) を利用してGitHubへの認証情報（トークンなど）を取得・管理する機能を提供します。
-        - `github_client.py`: GitHub REST APIおよびGraphQL APIと連携するための低レベルクライアント。リクエストの送信、レスポンスの処理を行います。
-        - `graphql_client.py`: GitHub GraphQL APIに特化したクライアント。効率的なPR情報やリポジトリ情報のクエリを構築し実行します。
-        - `issue_fetcher.py`: GitHubリポジトリからIssueの情報を取得する機能を提供します。
-        - `main.py`: アプリケーションのメイン実行ループを構築し、各モジュールをオーケストレーションして監視プロセス全体を制御します。
-        - `monitor.py`: 定期的にGitHub PRの状態を監視し、`phase_detector`や`pr_actions`を呼び出す監視ロジックをカプセル化します。
-        - `notifier.py`: ntfy.shなどのサービスを利用して、特定のイベント（例: PRがレビュー待ちになった際）のモバイル通知を送信します。
-        - `phase_detector.py`: プルリクエストの現在の状態（Draft、レビュー指摘対応中、レビュー待ち、LLM作業中）を詳細なロジックに基づいて判定します。
-        - `pr_actions.py`: プルリクエストに対する具体的なアクション（Ready化、ブラウザ起動、自動マージ、Issue割り当てなど）を実行します。
-        - `pr_data_recorder.py`: プルリクエストの履歴データや状態変化を記録し、長期的な追跡や分析に利用するための機能を提供します。
-        - `pr_fetcher.py`: 指定されたリポジトリのプルリクエスト（PR）情報を取得する機能を提供します。
-        - `repository_fetcher.py`: 認証済みGitHubユーザーが所有するリポジトリの一覧を取得する機能を提供します。
-        - `state_tracker.py`: 各PRの現在のフェーズや以前のフェーズを追跡し、状態変化がない場合に省電力モードへ移行するロジックを管理します。
-        - `time_utils.py`: 時間に関するユーティリティ関数（例: 時間間隔文字列のパース、スリープ処理）を提供します。
-        - `wait_handler.py`: 監視間隔、`no_change_timeout`、`reduced_frequency_interval`などの設定に基づいて、次の監視サイクルまでの待機時間を管理します。
-- `tests/`: プロジェクトのテストスイートを格納するディレクトリ。
-    - `test_auto_update_config.py` 他、多数の`test_*.py`ファイル: 各モジュールや機能（設定の読み込み、フェーズ検出、PRアクション、通知など）に対する単体テストや統合テストが含まれています。
+- **`.editorconfig`**: 異なるエディタやIDE間で一貫したコーディングスタイルを維持するための設定ファイル。
+- **`.gitignore`**: Gitがバージョン管理の対象としないファイルやディレクトリを指定するファイル。
+- **`.vscode/settings.json`**: Visual Studio Codeのワークスペース固有の設定ファイル。
+- **`LICENSE`**: このプロジェクトのライセンス情報（MIT License）を記載したファイル。
+- **`MERGE_CONFIGURATION_EXAMPLES.md`**: 自動マージ機能の設定例を説明するドキュメント。
+- **`PHASE3_MERGE_IMPLEMENTATION.md`**: Phase3マージ機能の実装詳細に関するドキュメント。
+- **`README.ja.md`**: プロジェクトの日本語版READMEファイル。
+- **`README.md`**: プロジェクトの英語版READMEファイル。
+- **`STRUCTURE.md`**: プロジェクトのアーキテクチャや構造に関するドキュメント。
+- **`_config.yml`**: GitHub Pagesなどのサイト設定に使われる可能性のある設定ファイル。
+- **`cat-github-watcher.py`**: プログラムのメインエントリーポイントとなるスクリプト。
+- **`config.toml.example`**: ユーザーが`config.toml`を作成する際のテンプレートとなる設定ファイルの例。
+- **`demo_automation.py`**: 自動化機能のデモンストレーション用スクリプト。
+- **`docs/`**: プロジェクトに関する追加ドキュメントを格納するディレクトリ。
+    - **`RULESETS.md`**: 設定ファイルにおけるルールセットの定義と使用方法に関するドキュメント。
+    - **`button-detection-improvements.ja.md`**: ボタン検出改善に関する日本語ドキュメント。
+    - **`window-activation-feature.md`**: ウィンドウアクティベーション機能に関するドキュメント。
+- **`generated-docs/`**: 自動生成されたドキュメントを格納するディレクトリ（もしあれば）。
+- **`pytest.ini`**: pytestのテスト設定ファイル。
+- **`requirements-automation.txt`**: 自動化機能に必要なPythonパッケージのリスト。
+- **`ruff.toml`**: Pythonのリンター/フォーマッターであるRuffの設定ファイル。
+- **`screenshots/`**: ブラウザ自動操作で使用するボタンのスクリーンショット画像を格納するディレクトリ。
+    - **`assign.png`**: "Assign"ボタンのスクリーンショット。
+    - **`assign_to_copilot.png`**: "Assign to Copilot"ボタンのスクリーンショット。
+- **`src/`**: プロジェクトの主要なソースコードを格納するディレクトリ。
+    - **`__init__.py`**: Pythonパッケージとして認識させるためのファイル。
+    - **`gh_pr_phase_monitor/`**: PR監視ロジックの中核をなすパッケージ。
+        - **`auto_updater.py`**: アプリケーション自身の自動更新ロジックを管理するファイル。
+        - **`browser_automation.py`**: PyAutoGUIなどを用いたブラウザ操作の共通ロジックを定義するファイル。
+        - **`browser_cooldown.py`**: ブラウザ自動操作後に一定時間待機するクールダウン処理を管理するファイル。
+        - **`button_clicker.py`**: 画像認識やOCRを駆使してブラウザ上の特定のボタンをクリックする機能を提供するファイル。
+        - **`colors.py`**: ターミナル出力の色付けに使用するANSIカラーコードと関連ユーティリティを定義するファイル。
+        - **`comment_fetcher.py`**: GitHubのプルリクエストコメントを取得するためのロジックを格納するファイル。
+        - **`comment_manager.py`**: プルリクエストへのコメント投稿や管理を行うファイル。
+        - **`config.py`**: `config.toml`から設定を読み込み、解析し、プログラム全体で利用可能な形式にするファイル。
+        - **`config_printer.py`**: verboseモードで現在の設定情報をターミナルに出力する機能を提供するファイル。
+        - **`display.py`**: ターミナルに監視状況やPRの状態を表示するためのユーティリティ関数を集めたファイル。
+        - **`github_auth.py`**: GitHub CLI (`gh`) を利用した認証プロセスを管理するファイル。
+        - **`github_client.py`**: GitHubのGraphQL APIと連携し、高レベルなリクエストを処理するクライアント。
+        - **`graphql_client.py`**: 低レベルなGraphQL APIリクエストの送信を担当するファイル。
+        - **`interval_parser.py`**: "30s", "1m"のような文字列で指定された時間間隔を解析するファイル。
+        - **`issue_fetcher.py`**: GitHub Issueの情報を取得するロジックを格納するファイル。
+        - **`llm_status_extractor.py`**: PRコメントからLLM（大規模言語モデル）の作業状況（例: "LLM working"）を抽出するファイル。
+        - **`local_repo_watcher.py`**: ローカルのGitリポジトリを監視し、`git pull`が必要な場合に通知または自動実行する機能を提供するファイル。
+        - **`main.py`**: `gh_pr_phase_monitor`パッケージの主要な実行ロジックと監視ループを定義するファイル。
+        - **`monitor.py`**: GitHubリポジトリとPRの監視、フェーズ判定、アクション実行の中心的な調整を行うファイル。
+        - **`notification_window.py`**: ブラウザ自動操作中に画面に一時的に表示される通知ウィンドウを管理するファイル。
+        - **`notifier.py`**: ntfy.shサービスを利用してモバイル通知を送信する機能を提供するファイル。
+        - **`pages_watcher.py`**: GitHub Pagesのデプロイ状況などを監視する機能を提供するファイル。
+        - **`phase_detector.py`**: プルリクエストの現在のフェーズ（phase1, phase2, phase3, LLM working）を判定するコアロジックを格納するファイル。
+        - **`pr_actions.py`**: プルリクエストに対する様々なアクション（Ready化、ブラウザ起動、マージなど）を実行するファイル。
+        - **`pr_data_recorder.py`**: PRデータを記録し、スナップショットなどの形式で保存するファイル。
+        - **`pr_fetcher.py`**: GitHubからプルリクエストのリストとその詳細情報を取得するロジックを格納するファイル。
+        - **`pr_html_fetcher.py`**: プルリクエストページのHTMLコンテンツを取得するファイル（ブラウザ自動操作の補助など）。
+        - **`process_utils.py`**: プロセス管理に関するユーティリティ関数を集めたファイル。
+        - **`repository_fetcher.py`**: 認証済みユーザーが所有するGitHubリポジトリのリストを取得するファイル。
+        - **`snapshot_markdown.py`**: PRデータのスナップショットをMarkdown形式で生成するファイル。
+        - **`snapshot_path_utils.py`**: スナップショットファイルやディレクトリのパス管理ユーティリティ。
+        - **`state_tracker.py`**: PRの監視状態を追跡し、変更がない場合の省電力モード移行などを管理するファイル。
+        - **`time_utils.py`**: 時間計算やフォーマットに関するユーティリティ関数。
+        - **`wait_handler.py`**: 非同期処理や指定された待機時間を処理するためのハンドラ。
+        - **`window_manager.py`**: オペレーティングシステム上のウィンドウを操作（アクティブ化、最大化など）する機能を提供するファイル。
+- **`tests/`**: プロジェクトのユニットテストおよび結合テストを格納するディレクトリ。
+    - **`test_*.py`**: 各機能に対応するテストスクリプト。
 
 ## 関数詳細説明
-- `main()`: (定義元: `src/gh_pr_phase_monitor/main.py`) プログラムのエントリーポイントであり、全体の実行フローを統括します。設定の読み込み、監視ループの初期化と開始を行います。
-- `load_config(config_path)`: (定義元: `src/gh_pr_phase_monitor/config.py`) 指定されたパスからTOML形式の設定ファイルを読み込み、パースして設定オブジェクトを返します。設定のバリデーションも行います。
-- `fetch_repositories()`: (定義元: `src/gh_pr_phase_monitor/repository_fetcher.py`) GitHub CLIを通じて、現在認証されているユーザーが所有する全リポジトリのリストを取得します。
-- `fetch_pull_requests(repository_id)`: (定義元: `src/gh_pr_phase_monitor/pr_fetcher.py`) 指定されたGitHubリポジトリIDに関連付けられたオープンなプルリクエストのリストとその詳細情報をGraphQL API経由で取得します。
-- `detect_phase(pr_data, config)`: (定義元: `src/gh_pr_phase_monitor/phase_detector.py`) プルリクエストの各種データ（Draft状態、レビューリクエスト、コメント内容など）を分析し、現在のフェーズ（phase1, phase2, phase3, LLM working）を判定します。
-- `post_comment(pr_id, body, config)`: (定義元: `src/gh_pr_phase_monitor/comment_manager.py`) 指定されたプルリクエストIDに対して、提供された本文（body）でコメントを投稿します。
-- `mark_pr_as_ready_for_review(pr_id)`: (定義元: `src/gh_pr_phase_monitor/pr_actions.py`) 指定されたプルリクエストをDraft状態から「レビュー準備完了」状態に切り替えます。
-- `send_ntfy_notification(message, url, topic, priority)`: (定義元: `src/gh_pr_phase_monitor/notifier.py`) ntfy.shサービスを利用して、指定されたメッセージとPRのURLを含む通知をモバイル端末に送信します。
-- `merge_pull_request(pr_id, commit_headline, config)`: (定義元: `src/gh_pr_phase_monitor/pr_actions.py`) 指定されたプルリクエストを自動的にマージします。ブラウザ自動化機能を使用する場合もあります。
-- `assign_issue_to_copilot(issue_url, config)`: (定義元: `src/gh_pr_phase_monitor/pr_actions.py`) 指定されたIssueのURLを開き、ブラウザ自動化を用いて「Assign to Copilot」ボタンをクリックし、IssueをCopilotに割り当てます。
-- `check_for_updates(repo_path, config)`: (定義元: `src/gh_pr_phase_monitor/auto_updater.py`) ローカルリポジトリがクリーンであり、GitHubリモートリポジトリに新しいコミットがあるかを確認し、可能であれば自動でpullしてツールを再起動します。
-- `track_pr_state(repo_full_name, pr_id, current_phase)`: (定義元: `src/gh_pr_phase_monitor/state_tracker.py`) 各プルリクエストの現在のフェーズを記録し、前回の状態と比較して変更があったかを追跡します。
-- `run_monitor_loop(config)`: (定義元: `src/gh_pr_phase_monitor/monitor.py`) 監視間隔に基づいて定期的にGitHubリポジトリとPRの状態をチェックし、フェーズ判定、アクション実行、通知などを行うメインの無限ループです。
-- `display_pr_status(pr_info, current_phase, config)`: (定義元: `src/gh_pr_phase_monitor/display.py`) プルリクエストのステータス情報（タイトル、フェーズ、URLなど）を整形し、設定されたカラースキームでCLIに表示します。
-- `get_github_token()`: (定義元: `src/gh_pr_phase_monitor/github_auth.py`) GitHub CLI (`gh`) を使用して、現在認証されているGitHubユーザーの認証トークンを取得します。
-- `click_button_by_image(image_path, confidence, debug_dir)`: (定義元: `src/gh_pr_phase_monitor/browser_automation.py`) PyAutoGUIを使用して、指定された画像ファイルに一致するボタンを画面上で探し、クリックするブラウザ自動化のコア関数です。OCRフォールバックも含まれます。
-- `parse_interval_string(interval_str)`: (定義元: `src/gh_pr_phase_monitor/time_utils.py`) "30s", "1m", "5m"などの時間間隔を表す文字列を解析し、対応する秒数を返します。
-- `handle_wait(last_change_time, config)`: (定義元: `src/gh_pr_phase_monitor/wait_handler.py`) 前回の状態変更からの時間や設定された`no_change_timeout`に基づいて、通常の監視間隔または省電力モードの監視間隔で待機時間を計算し、スリープを実行します。
+- **`main()`** (src/gh_pr_phase_monitor/main.py):
+    - **役割**: プログラムのエントリーポイントとして、設定の読み込み、GitHubクライアントの初期化、そして中心となるPR監視ループの開始を調整します。
+    - **引数**: なし (または設定ファイルのパスなど)
+    - **戻り値**: なし
+    - **機能**: プログラムの実行フローを制御し、各モジュールの初期化と連携を行います。
+- **`monitor_prs()`** (src/gh_pr_phase_monitor/monitor.py):
+    - **役割**: GitHubリポジトリ内のプルリクエストを定期的に監視する主要なループを実装します。
+    - **引数**: 設定オブジェクト、GitHubクライアント、状態トラッカーなど
+    - **戻り値**: なし
+    - **機能**: リポジトリとPRのフェッチ、各PRのフェーズ判定、そしてそのフェーズに応じたアクションの実行を調整します。
+- **`detect_phase()`** (src/gh_pr_phase_monitor/phase_detector.py):
+    - **役割**: 与えられたプルリクエストの現在の状態（ドラフト、レビューコメントの有無、特定のコメントの存在など）に基づいて、そのPRがどのフェーズ（phase1, phase2, phase3, LLM working）にあるかを判定します。
+    - **引数**: プルリクエストデータ、関連するコメント情報など
+    - **戻り値**: 判定されたフェーズを示す文字列
+    - **機能**: 複雑なルールと条件に基づいてPRの進行状況を分類します。
+- **`perform_pr_actions()`** (src/gh_pr_phase_monitor/pr_actions.py):
+    - **役割**: 特定のプルリクエストが特定のフェーズに達した際に、設定に基づいて定義されたアクション（PRをReady状態にする、コメントを投稿する、通知を送信する、マージする、ブラウザでPRを開くなど）を実行します。Dry-runモードの制御も行います。
+    - **引数**: プルリクエストデータ、現在のフェーズ、設定オブジェクト、GitHubクライアントなど
+    - **戻り値**: 実行されたアクションの結果
+    - **機能**: フェーズ判定結果に基づき、PRのライフサイクルを自動化します。
+- **`send_notification()`** (src/gh_pr_phase_monitor/notifier.py):
+    - **役割**: ntfy.shサービスを利用して、指定されたメッセージとPR URLを含むモバイル通知を送信します。
+    - **引数**: メッセージ、URL、トピック、優先度など
+    - **戻り値**: なし
+    - **機能**: PRの状態変化（特にレビュー待ち）をユーザーのモバイルデバイスに通知します。
+- **`post_comment()`** (src/gh_pr_phase_monitor/comment_manager.py):
+    - **役割**: 指定されたプルリクエストに、特定のコーディングエージェント（例: `@codex[agent]`, `@copilot`）をメンションしたコメントを投稿します。
+    - **引数**: リポジトリID、PR番号、コメント本文、エージェント名など
+    - **戻り値**: 投稿されたコメントのIDなど
+    - **機能**: AIエージェントへの指示やフィードバックを自動でPRにコメントします。
+- **`click_button()`** (src/gh_pr_phase_monitor/button_clicker.py):
+    - **役割**: PyAutoGUIと画像認識（またはOCR）を使用して、ブラウザ画面上の特定のボタン（例: "Merge pull request", "Assign to Copilot"）を特定し、クリックします。
+    - **引数**: ボタン画像ファイルパス、OCRテキスト、信頼度、タイムアウトなど
+    - **戻り値**: 成功/失敗を示すブール値
+    - **機能**: GitHubウェブUI上の操作を自動化し、自動マージやIssue割り当てを実現します。
+- **`fetch_repositories()`** (src/gh_pr_phase_monitor/repository_fetcher.py):
+    - **役割**: 認証済みGitHubユーザーが所有するリポジトリのリストをGitHub GraphQL API経由で取得します。
+    - **引数**: GitHubクライアント
+    - **戻り値**: リポジトリのリスト
+    - **機能**: 監視対象となるリポジトリを動的に取得します。
+- **`fetch_prs()`** (src/gh_pr_phase_monitor/pr_fetcher.py):
+    - **役割**: 指定されたリポジトリのオープンなプルリクエストのリストとその詳細情報をGitHub GraphQL API経由で取得します。
+    - **引数**: リポジトリID、GitHubクライアント
+    - **戻り値**: プルリクエストのリストと関連データ
+    - **機能**: 各PRの最新の状態を把握するための基本データを提供します。
+- **`fetch_issues()`** (src/gh_pr_phase_monitor/issue_fetcher.py):
+    - **役割**: 特定の基準（例: "good first issue" ラベル、"ci-failure" ラベル）に合致するGitHub Issueを取得します。
+    - **引数**: リポジトリID、GitHubクライアント、ラベル、表示上限数など
+    - **戻り値**: 関連するIssueのリスト
+    - **機能**: コーディングエージェントに割り当てるべきIssueを特定します。
+- **`auto_update()`** (src/gh_pr_phase_monitor/auto_updater.py):
+    - **役割**: 自身のGitリポジトリ（`cat-github-watcher`）の更新を定期的に検知し、作業ツリーがクリーンでfast-forward可能な場合に自動で`git pull`を実行し、プロセスを再起動します。
+    - **引数**: 設定オブジェクト
+    - **戻り値**: なし
+    - **機能**: ツール自身を最新の状態に保ちます。
+- **`auto_git_pull()`** (src/gh_pr_phase_monitor/local_repo_watcher.py):
+    - **役割**: 親ディレクトリ内にあるローカルGitリポジトリを監視し、リモートに変更があり`git pull`が可能と判断された場合に、そのリポジトリを自動でpullします（Dry-runモードもサポート）。
+    - **引数**: ベースディレクトリ、設定オブジェクト
+    - **戻り値**: なし
+    - **機能**: ローカル開発環境のリポジトリを常に最新の状態に同期します。
+- **`load_config()`** (src/gh_pr_phase_monitor/config.py):
+    - **役割**: TOML形式の設定ファイルを読み込み、プログラム全体で使用する設定オブジェクトを生成します。デフォルト値の適用や、環境変数からの上書きも処理します。
+    - **引数**: 設定ファイルのパス
+    - **戻り値**: 解析された設定オブジェクト
+    - **機能**: ユーザー定義の設定をプログラムに適用します。
 
 ## 関数呼び出し階層ツリー
 ```
-[プロジェクト情報に「関数呼び出し階層を分析できませんでした」と記載があるため、具体的なツリーの生成は行いません。]
+関数呼び出し階層を分析できませんでした。
 
 ---
-Generated at: 2026-02-15 07:02:03 JST
+Generated at: 2026-03-02 07:01:51 JST

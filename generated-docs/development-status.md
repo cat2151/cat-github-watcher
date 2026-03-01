@@ -1,48 +1,50 @@
-Last updated: 2026-02-15
+Last updated: 2026-03-02
 
 # Development Status
 
 ## 現在のIssues
-オープン中のIssueはありません。
+- [Issue #298](../issue-notes/298.md) は `src/gh_pr_phase_monitor/button_clicker.py` が500行を超過しており、リファクタリングが推奨されています。
+- [Issue #297](../issue-notes/297.md) は GraphQL API 消費回数の表示改善が進み、`OSError` 捕捉や負の値対応が完了しましたが、ruff lintの対応が残っています。
+- [Issue #296](../issue-notes/296.md) は 1分ごとのGraphQL API消費の内訳表示と、急激な消費の原因調査、回復時間の表示が求められています。
 
 ## 次の一手候補
-1. ブラウザ自動化におけるボタン検出の堅牢性向上
-   - 最初の小さな一歩: `src/gh_pr_phase_monitor/browser_automation.py`内のボタン検出ロジックを分析し、現在の実装がどの要素（例：テキスト、CSSセレクタ、XPath）に依存しているかを特定する。
+1. [Issue #298](../issue-notes/298.md) `button_clicker.py` のリファクタリング調査
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/button_clicker.py` の機能と依存関係を分析し、分割可能な機能ブロックを特定する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: src/gh_pr_phase_monitor/browser_automation.py
+     対象ファイル: `src/gh_pr_phase_monitor/button_clicker.py`
 
-     実行内容: 対象ファイル内のボタン検出ロジックを分析し、現在の実装がどの要素（例：テキスト、CSSセレクタ、XPath）に依存しているかを特定してください。また、誤検出や検出漏れが発生しうるパターンを洗い出してください。
+     実行内容: `src/gh_pr_phase_monitor/button_clicker.py` の内容を詳細に分析し、主要な機能ブロックとそれらの依存関係を特定してください。特に、画像認識 (`pyautogui`)、OCR (`pytesseract`)、設定バリデーション、デバッグ情報保存の各機能について、それぞれが独立したモジュールとして切り出せる可能性を評価してください。
 
-     確認事項: `tests/test_browser_automation.py`ファイルを参照し、既存のテストがボタン検出ロジックのどの側面をカバーしているかを確認してください。
+     確認事項: `button_clicker.py` 内の関数が他のモジュールからどのように呼び出されているか、またどのデータ構造 (`config` dictなど) に依存しているかを確認してください。リファクタリングによる外部への影響を最小限に抑えるための情報収集が目的です。
 
-     期待する出力: ボタン検出ロジックの脆弱性と改善点をリストアップしたmarkdown形式の分析レポート。特に、設定可能な検出ロジック（例：複数のセレクタオプション）を導入する可能性について言及してください。
+     期待する出力: `button_clicker.py` の機能分割案をMarkdown形式で出力してください。各機能ブロックの概要、依存関係、および独立したモジュールとして切り出す場合の推奨ファイル名を含めてください。
      ```
 
-2. 自動更新機能のエラーハンドリングと信頼性の強化
-   - 最初の小さな一歩: `src/gh_pr_phase_monitor/auto_updater.py`ファイル内の自動更新および再起動ロジックにおけるエラーハンドリング（特にダウンロード失敗、ファイル破損、再起動失敗など）をレビューする。
+2. [Issue #296](../issue-notes/296.md) GraphQL API 消費量の原因特定と回復時間表示の実装方針検討
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/main.py` と `src/gh_pr_phase_monitor/graphql_client.py` におけるGraphQL APIの呼び出し箇所と消費パターンを特定する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: src/gh_pr_phase_monitor/auto_updater.py, src/gh_pr_phase_monitor/config.py
+     対象ファイル: `src/gh_pr_phase_monitor/main.py`, `src/gh_pr_phase_monitor/graphql_client.py`
 
-     実行内容: `auto_updater.py`内の自動更新および再起動ロジックにおけるエラーハンドリング（特にダウンロード失敗、ファイル破損、再起動失敗など）を分析してください。また、更新プロセス中のユーザー通知のオプションや、ロールバックの可能性について検討してください。
+     実行内容: `main.py` のメインループ内で `graphql_client.execute_graphql_query` がどのように呼び出されているか、またどの機能がGraphQL APIを頻繁に利用しているかを分析してください。特に `get_repositories_with_open_prs` や `get_pr_details_batch` などの呼び出しパターンと、それらが消費するAPIポイント数を推測してください。
 
-     確認事項: `tests/test_auto_updater.py`および`tests/test_auto_update_config.py`でカバーされているシナリオを確認し、不足しているテストケースを特定してください。
+     確認事項: GitHub APIのレート制限に関するドキュメント（もしあれば）や、`graphql_client.py` の `execute_graphql_query` の実装を確認し、APIエラーハンドリングが適切か。また、`gh api rate_limit` コマンドがどのような情報を返すかを理解してください。
 
-     期待する出力: `auto_updater.py`のエラーハンドリングを強化するための具体的な改善提案をmarkdown形式で記述してください。これには、エラーロギングの改善、ユーザー通知メカニズム、および更新失敗時の挙動（リトライ、ロールバック）に関する考慮事項を含めてください。
+     期待する出力: GraphQL APIの主要な消費源となる機能のリストと、その呼び出し頻度に関する考察をMarkdown形式で出力してください。また、各呼び出しが約何ポイント消費するかという推測値、および考えられる最適化の方向性があれば記述してください。
      ```
 
-3. 開発状況生成レポートの洞察と実用性の向上
-   - 最初の小さな一歩: 現在の`development-status-prompt.md`の内容と、`DevelopmentStatusGenerator.cjs`がどのような情報を利用して開発状況を生成しているかを分析する。
+3. [Issue #297](../issue-notes/297.md) GraphQL API消費表示機能の最終化とRuff Lint対応
+   - 最初の小さな一歩: プロジェクト全体で`ruff check`および`ruff format`を実行し、`graphql_client.py`と`main.py`に関連するLintエラーを確認する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: .github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md, .github/actions-tmp/.github_automation/project_summary/scripts/development/DevelopmentStatusGenerator.cjs
+     対象ファイル: 全ての `.py` ファイル、`ruff.toml`
 
-     実行内容: 現在の`development-status-prompt.md`の内容と、`DevelopmentStatusGenerator.cjs`がどのような情報を利用して開発状況を生成しているかを分析してください。特に、将来的にどのような追加情報（例：最近クローズされたIssue、PRのステータス概要、特定のモジュールの活動状況）を含めることで、レポートの価値が向上するかを検討してください。
+     実行内容: プロジェクトルートで `ruff check .` および `ruff format .` コマンドを実行し、出力されるlintエラーやフォーマットの差分を確認してください。特に `src/gh_pr_phase_monitor/graphql_client.py` と `src/gh_pr_phase_monitor/main.py` に関連するエラーがないか注意深く確認してください。
 
-     確認事項: `issue-notes`ディレクトリ内のファイルがどのように`DevelopmentStatusGenerator.cjs`によって処理されているかを確認し、現在のIssue要約ロジックの限界を把握してください。
+     確認事項: `ruff.toml` の設定内容が意図通りであるか、または lint エラーが無視されるべきではないかを確認してください。既存のテストが `ruff` 実行後に失敗しないことを保証してください。
 
-     期待する出力: 開発状況生成レポートをより価値あるものにするための改善提案をmarkdown形式で記述してください。これには、新しい情報源の統合方法、要約の粒度の調整、および具体的な生成スクリプトへの変更点に関するアイデアを含めてください。
+     期待する出力: `ruff check` および `ruff format` の実行結果（エラーメッセージ、修正提案など）をMarkdown形式で報告してください。もし修正が必要な場合は、その修正内容と、[Issue #297](../issue-notes/297.md) をクローズするために必要な追加作業があれば記述してください。
 
 ---
-Generated at: 2026-02-15 07:01:39 JST
+Generated at: 2026-03-02 07:01:42 JST

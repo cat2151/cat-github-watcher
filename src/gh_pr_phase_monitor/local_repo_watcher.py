@@ -244,8 +244,20 @@ def check_local_repos(config: dict, github_username: str) -> None:
     if not candidates:
         return
 
-    # Check each candidate
-    results = [_check_repo(d, github_username) for d in candidates]
+    # Check each candidate with live progress display (same style as wait countdown)
+    total = len(candidates)
+    results = []
+    max_msg_len = 0
+    for i, d in enumerate(candidates):
+        repo_name = Path(d).name
+        msg = f"[{i + 1}/{total}] リポジトリ確認中: {repo_name}..."
+        if len(msg) > max_msg_len:
+            max_msg_len = len(msg)
+        padding = max_msg_len - len(msg)
+        print(f"\r{msg}{' ' * padding}", end="", flush=True)
+        results.append(_check_repo(d, github_username))
+    if candidates:
+        print(f"\r{' ' * max_msg_len}\r", end="", flush=True)
     target_results = [r for r in results if r["is_target"]]
 
     pullable = [r for r in target_results if r["status"] == STATUS_PULLABLE]

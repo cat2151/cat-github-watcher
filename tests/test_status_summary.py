@@ -257,6 +257,22 @@ class TestDisplayStatusSummary:
                 "repository": {"name": "repo1", "owner": "owner"},
             },
             {
+                "title": "Changes Requested PR",
+                "url": "https://github.com/owner/repo1/pulls/4",
+                "isDraft": False,
+                "reviews": [
+                    {
+                        "author": {"login": "copilot-pull-request-reviewer"},
+                        "state": "CHANGES_REQUESTED",
+                        "body": "Please fix these issues.",
+                    }
+                ],
+                "latestReviews": [
+                    {"author": {"login": "copilot-pull-request-reviewer"}, "state": "CHANGES_REQUESTED"},
+                ],
+                "repository": {"name": "repo1", "owner": "owner"},
+            },
+            {
                 "title": "Reviewed PR",
                 "url": "https://github.com/owner/repo1/pulls/3",
                 "isDraft": False,
@@ -274,8 +290,8 @@ class TestDisplayStatusSummary:
             },
         ]
 
-        pr_phases = [PHASE_LLM_WORKING, PHASE_LLM_WORKING, PHASE_LLM_WORKING]
-        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 3}]
+        pr_phases = [PHASE_LLM_WORKING, PHASE_LLM_WORKING, PHASE_LLM_WORKING, PHASE_LLM_WORKING]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 4}]
 
         with patch("builtins.print") as mock_print:
             display_status_summary(all_prs, pr_phases, repos_with_prs)
@@ -284,6 +300,7 @@ class TestDisplayStatusSummary:
 
             assert "Phase 1 in progress, LLM working" in output
             assert "Phase 1 completed, LLM working" in output
+            assert "Phase 2 in progress, LLM working" in output
             assert "Phase 2 completed, LLM working" in output
 
     def test_status_summary_includes_latest_llm_status(self):

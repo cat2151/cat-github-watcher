@@ -6,8 +6,10 @@ from unittest.mock import patch
 import pytest
 
 from src.gh_pr_phase_monitor.phase_detector import (
+    PHASE_1,
     PHASE_LLM_WORKING,
     comment_reactions_marked_finished,
+    determine_phase,
     reset_comment_reaction_resolution_cache,
 )
 from src.gh_pr_phase_monitor.pr_data_recorder import (
@@ -118,8 +120,7 @@ def test_record_reaction_snapshot_can_skip_disk_writes(tmp_path):
     pr = _sample_pr()
     current_time = datetime(2024, 1, 2, 3, 4, 5)
     html_content = (
-        '<div data-llm-status="started work on updates"></div>'
-        '<div data-llm-status="finished work items"></div>'
+        '<div data-llm-status="started work on updates"></div><div data-llm-status="finished work items"></div>'
     )
 
     reset_comment_reaction_resolution_cache()
@@ -148,6 +149,59 @@ def test_record_reaction_snapshot_skips_when_no_reactions(tmp_path):
     result = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=current_time)
     assert result is None
     assert not list(tmp_path.iterdir())
+
+
+def test_draft_pr_without_review_requests_fetches_llm_statuses(tmp_path):
+    """Draft PRs with no review requests should have llm_statuses populated even without reactions.
+
+    The PR timeline always contains both 'started work' and 'finished work' events when
+    Copilot has finished.  Without this fix the tool never fetches the PR HTML (because
+    there are no comment reactions) so llm_statuses stays empty and the PR is
+    misclassified as LLM working instead of phase1.  Regression for #266.
+    """
+    html_with_both = """
+    <html><body>
+        <div class="prc-PageLayout-Content-xWL-A">
+            <div class="TimelineItem-body">
+                <strong>Copilot</strong>
+                <a title="View session" href="https://github.com/cat2151/cat-repo-auditor/agents/pull/19?session_id=abc">started work</a>
+                on behalf of <a href="/cat2151">cat2151</a>
+            </div>
+            <div class="TimelineItem-body">
+                <strong>Copilot</strong>
+                <a title="View session" href="https://github.com/copilot/tasks/pull/PR_xxx?session_id=abc">finished work</a>
+                on behalf of <a href="/cat2151">cat2151</a>
+            </div>
+        </div>
+    </body></html>
+    """
+    pr = {
+        "isDraft": True,
+        "reviews": [],
+        "latestReviews": [],
+        "reviewRequests": [],
+        "commentNodes": [],
+        "title": "Fix: permissions",
+        "url": "https://github.com/cat2151/cat-repo-auditor/pull/19",
+        "repository": {"owner": "cat2151", "name": "cat-repo-auditor"},
+    }
+    current_time = datetime(2024, 1, 2, 3, 4, 5)
+
+    result = record_reaction_snapshot(
+        pr,
+        phase=PHASE_LLM_WORKING,
+        base_dir=tmp_path,
+        current_time=current_time,
+        html_content=html_with_both,
+    )
+    assert result is None  # no snapshot saved (no reactions)
+    assert not list(tmp_path.iterdir())  # no files written
+    # But llm_statuses must be populated from the HTML
+    assert pr.get("llm_statuses") is not None
+    assert any("started work" in s.lower() for s in pr["llm_statuses"])
+    assert any("finished work" in s.lower() for s in pr["llm_statuses"])
+    # The resulting phase decision must be phase1, not LLM working
+    assert determine_phase(pr) == PHASE_1
 
 
 def test_record_reaction_snapshot_deduplicates_per_pr(tmp_path):

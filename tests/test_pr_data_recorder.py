@@ -15,13 +15,13 @@ from src.gh_pr_phase_monitor.phase_detector import (
 from src.gh_pr_phase_monitor.pr_data_recorder import (
     DEFAULT_SNAPSHOT_BASE_DIR,
     _escape_newlines,
-    _extract_llm_statuses,
     _json_to_markdown,
     record_reaction_snapshot,
     reset_snapshot_cache,
     save_pr_snapshot,
 )
 from src.gh_pr_phase_monitor.pr_html_fetcher import _fetch_pr_html, _html_to_simple_markdown
+from src.gh_pr_phase_monitor.llm_status_extractor import _extract_llm_statuses
 
 
 def _sample_pr():

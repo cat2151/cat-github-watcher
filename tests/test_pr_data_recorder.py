@@ -6,8 +6,10 @@ from unittest.mock import patch
 import pytest
 
 from src.gh_pr_phase_monitor.phase_detector import (
+    PHASE_1,
     PHASE_LLM_WORKING,
     comment_reactions_marked_finished,
+    determine_phase,
     reset_comment_reaction_resolution_cache,
 )
 from src.gh_pr_phase_monitor.pr_data_recorder import (
@@ -198,6 +200,8 @@ def test_draft_pr_without_review_requests_fetches_llm_statuses(tmp_path):
     assert pr.get("llm_statuses") is not None
     assert any("started work" in s.lower() for s in pr["llm_statuses"])
     assert any("finished work" in s.lower() for s in pr["llm_statuses"])
+    # The resulting phase decision must be phase1, not LLM working
+    assert determine_phase(pr) == PHASE_1
 
 
 def test_record_reaction_snapshot_deduplicates_per_pr(tmp_path):

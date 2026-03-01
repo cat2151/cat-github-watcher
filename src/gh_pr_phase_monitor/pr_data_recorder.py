@@ -733,13 +733,20 @@ def record_reaction_snapshot(
         return None
 
     comment_nodes = pr.get("commentNodes", pr.get("comments", []))
+    pr_key = pr.get("url") or _build_snapshot_dir_name(pr)
     if not has_comments_with_reactions(comment_nodes):
-        # Fetch HTML for Draft PRs without review requests to detect 'finished work' (#266).
-        # When Copilot starts from an issue, 'started work' is on the issue page while only
-        # 'finished work' appears on the PR timeline, so reactions are never added.
+        # Fetch HTML for Draft PRs without review requests to detect Copilot timeline
+        # events (#266). Previously, when there were no reactions we skipped fetching HTML,
+        # so llm_statuses were never populated even though both "started work" and
+        # "finished work" events are present on the PR page. This special-case fetch ensures
+        # we still capture those statuses for LLM working detection when reactions are absent.
         is_draft = pr.get("isDraft", False)
         review_requests = pr.get("reviewRequests", [])
         if is_draft and not review_requests:
+            cached = _previous_pr_content.get(pr_key, {}).get("llm_statuses")
+            if cached:
+                pr["llm_statuses"] = cached
+                return None
             pr_url = pr.get("url", "")
             if html_content:
                 fetched = html_content
@@ -752,9 +759,9 @@ def record_reaction_snapshot(
                 captured = _capture_llm_statuses(fetched, html_md)
                 if captured.get("statuses"):
                     pr["llm_statuses"] = captured["statuses"]
+                    pr_cache = _previous_pr_content.setdefault(pr_key, {})
+                    pr_cache["llm_statuses"] = captured["statuses"]
         return None
-
-    pr_key = pr.get("url") or _build_snapshot_dir_name(pr)
 
     # Check once flag: prevent duplicate recording within the same iteration
     if pr_key in _recorded_in_current_iteration:

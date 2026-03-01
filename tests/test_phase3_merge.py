@@ -5,6 +5,7 @@ Tests for Phase3 merge functionality
 from unittest.mock import MagicMock, patch
 
 from src.gh_pr_phase_monitor import pr_actions
+from src.gh_pr_phase_monitor.config import DEFAULT_PHASE3_MERGE_CONFIG
 from src.gh_pr_phase_monitor.pr_actions import merge_pr, process_pr
 
 
@@ -125,17 +126,9 @@ class TestPhase3Merge:
             # Comment should be posted before merge
             mock_comment.assert_called_once_with(pr, "Auto merge comment", None)
             # Merge should be attempted via browser automation with phase3_merge config merged with defaults
-            expected_config = {
-                "phase3_merge": {
-                    "comment": "Auto merge comment",
-                    "automated": True,
-                    # Defaults should be merged in
-                    "automation_backend": "playwright",
-                    "wait_seconds": 10,
-                    "browser": "chromium",
-                    "headless": False,
-                }
-            }
+            expected_phase3_merge = DEFAULT_PHASE3_MERGE_CONFIG.copy()
+            expected_phase3_merge.update({"comment": "Auto merge comment", "automated": True})
+            expected_config = {"phase3_merge": expected_phase3_merge}
             mock_merge_auto.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1", expected_config)
 
     def test_merge_only_once_per_pr(self):

@@ -166,7 +166,9 @@ class TestAssignIssueToCopilotAutomated:
         assert any("active window titleは、issue タブ です" in msg for msg in messages)
         assert any("Assign to Copilotボタンを探索中です…" in msg for msg in messages)
         assert any("Assign to Copilotボタンを発見しました。クリックします" in msg for msg in messages)
-        assert any("緑のAssignボタンを発見しました。クリックしました。自動assignを正常終了します" in msg for msg in messages)
+        assert any(
+            "緑のAssignボタンを発見しました。クリックしました。自動assignを正常終了します" in msg for msg in messages
+        )
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
@@ -525,13 +527,13 @@ class TestClickButtonWithImage:
             mock_get_path.return_value = Path("/tmp/test_button.png")
             mock_maximize.return_value = True
             mock_location = MagicMock()
-            mock_pyautogui.locateOnScreen.side_effect = [None, mock_location]
+            mock_pyautogui.locateOnScreen.side_effect = [None, mock_location, mock_location]
             mock_pyautogui.center.return_value = (10, 20)
 
             result = _click_button_with_image("test_button", {})
 
             assert result is True
-            assert mock_pyautogui.locateOnScreen.call_count == 2
+            assert mock_pyautogui.locateOnScreen.call_count == 3
             mock_maximize.assert_called_once()
             mock_pyautogui.click.assert_called_once_with((10, 20))
 
@@ -588,7 +590,7 @@ class TestClickButtonWithImage:
 
         with patch("src.gh_pr_phase_monitor.browser_automation.pyautogui") as mock_pyautogui:
             mock_location = MagicMock()
-            mock_pyautogui.locateOnScreen.side_effect = [None, None, mock_location]
+            mock_pyautogui.locateOnScreen.side_effect = [None, None, mock_location, mock_location]
             mock_pyautogui.center.return_value = (5, 5)
 
             result = _click_button_with_image(
@@ -600,7 +602,7 @@ class TestClickButtonWithImage:
             )
 
             assert result is True
-            assert mock_pyautogui.locateOnScreen.call_count == 3
+            assert mock_pyautogui.locateOnScreen.call_count == 4
             sleep_args = [call.args[0] for call in mock_sleep.call_args_list]
             assert sleep_args == [0.1, 0.1]
 

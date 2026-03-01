@@ -3,7 +3,6 @@ Configuration loading and parsing utilities
 """
 
 import os
-import re
 import subprocess
 from typing import Any, Dict
 
@@ -18,6 +17,7 @@ from .colors import (
     normalize_color_code,
     set_color_scheme,
 )
+from .interval_parser import parse_interval  # noqa: F401
 
 # Default configuration for phase3_merge feature (batteries included)
 DEFAULT_PHASE3_MERGE_CONFIG: Dict[str, Any] = {
@@ -74,49 +74,6 @@ DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS = False
 
 # Default setting for local repo auto-pull (disabled by default; display only by default)
 DEFAULT_AUTO_GIT_PULL = False
-
-
-def parse_interval(interval_str: str) -> int:
-    """Parse interval string like '1m', '30s', '2h' to seconds
-
-    Args:
-        interval_str: String like '1m', '30s', '2h', '1d'
-
-    Returns:
-        Number of seconds
-
-    Raises:
-        ValueError: If the interval string format is invalid
-    """
-    # Type validation for common misconfiguration
-    if not isinstance(interval_str, str):
-        raise ValueError(
-            f"Interval must be a string (e.g., '1m', '30s'), got {type(interval_str).__name__}: {interval_str}"
-        )
-
-    interval_str = interval_str.strip().lower()
-
-    # Match pattern like "30s", "1m", "2h", "1d"
-    match = re.match(r"^(\d+)([smhd])$", interval_str)
-
-    if not match:
-        raise ValueError(
-            f"Invalid interval format: '{interval_str}'. "
-            "Expected format: <number><unit> (e.g., '30s', '1m', '2h', '1d')"
-        )
-
-    value = int(match.group(1))
-    unit = match.group(2)
-
-    # Convert to seconds
-    if unit == "s":
-        return value
-    elif unit == "m":
-        return value * 60
-    elif unit == "h":
-        return value * 3600
-    else:  # unit == "d"
-        return value * 86400
 
 
 def is_process_running(process_name: str) -> bool:

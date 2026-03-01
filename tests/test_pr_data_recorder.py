@@ -1,11 +1,9 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
-from src.gh_pr_phase_monitor.llm_status_extractor import _extract_llm_statuses
 from src.gh_pr_phase_monitor.phase_detector import (
     PHASE_1,
     PHASE_LLM_WORKING,
@@ -19,8 +17,6 @@ from src.gh_pr_phase_monitor.pr_data_recorder import (
     reset_snapshot_cache,
     save_pr_snapshot,
 )
-from src.gh_pr_phase_monitor.pr_html_fetcher import _fetch_pr_html, _html_to_simple_markdown
-from src.gh_pr_phase_monitor.snapshot_markdown import _escape_newlines, _json_to_markdown
 
 
 def _sample_pr():
@@ -342,4 +338,3 @@ def test_snapshot_not_rewritten_when_unchanged(tmp_path):
 
 def test_default_snapshot_dir():
     assert DEFAULT_SNAPSHOT_BASE_DIR == Path("pr_phase_snapshots")
-

@@ -7,6 +7,7 @@ from src.gh_pr_phase_monitor.browser_automation import (
     merge_pr_automated,
 )
 
+
 class TestBrowserCooldown:
     """Tests for browser cooldown functionality"""
 
@@ -408,5 +409,3 @@ class TestMergeWithWindowActivation:
 
         assert result is True
         mock_activate.assert_not_called()
-
-

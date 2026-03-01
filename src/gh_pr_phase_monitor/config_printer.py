@@ -14,7 +14,6 @@ from .config import (
     DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
 )
-from .colors import Colors
 
 
 def print_config(config: Dict[str, Any]) -> None:

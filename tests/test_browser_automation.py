@@ -1,7 +1,5 @@
 """Tests for browser automation module"""
 
-import json
-from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 from src.gh_pr_phase_monitor.browser_automation import (
@@ -315,7 +313,9 @@ class TestAssignIssueToCopilotAutomated:
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
     @patch("src.gh_pr_phase_monitor.browser_cooldown.time.time")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
-    def test_issue_url_can_be_retried_after_24_hours(self, mock_time, mock_cooldown_time, mock_sleep, mock_click, mock_webbrowser):
+    def test_issue_url_can_be_retried_after_24_hours(
+        self, mock_time, mock_cooldown_time, mock_sleep, mock_click, mock_webbrowser
+    ):
         """Test that issue URL can be retried after 24 hours"""
         mock_click.return_value = False  # Simulate button not found
         mock_webbrowser.open.return_value = True
@@ -350,7 +350,9 @@ class TestAssignIssueToCopilotAutomated:
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
     @patch("src.gh_pr_phase_monitor.browser_cooldown.time.time")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
-    def test_different_issue_urls_are_tracked_separately(self, mock_time, mock_cooldown_time, mock_sleep, mock_click, mock_webbrowser):
+    def test_different_issue_urls_are_tracked_separately(
+        self, mock_time, mock_cooldown_time, mock_sleep, mock_click, mock_webbrowser
+    ):
         """Test that different issue URLs can each be attempted once"""
         mock_click.return_value = True  # Simulate success
         mock_webbrowser.open.return_value = True
@@ -472,5 +474,3 @@ class TestMergePrAutomated:
 
         assert result is False
         mock_click.assert_not_called()
-
-

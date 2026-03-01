@@ -8,17 +8,7 @@ Tests cover the following scenarios:
 - LLM working: No reviews, unknown reviewers, or comments with reactions
 """
 
-import copy
-from datetime import datetime
-from unittest.mock import patch
-
-from src.gh_pr_phase_monitor import determine_phase, has_comments_with_reactions, has_unresolved_review_threads
-from src.gh_pr_phase_monitor.phase_detector import (
-    PHASE_3,
-    PHASE_LLM_WORKING,
-    reset_comment_reaction_resolution_cache,
-)
-from src.gh_pr_phase_monitor.pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
+from src.gh_pr_phase_monitor import determine_phase
 
 
 class TestDeterminePhase:
@@ -304,5 +294,3 @@ class TestDeterminePhase:
         }
 
         assert determine_phase(pr) == "LLM working"
-
-

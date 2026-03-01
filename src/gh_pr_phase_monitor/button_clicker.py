@@ -48,6 +48,7 @@ def reset_user_cancelled_notification() -> None:
     global _user_cancelled_notification
     _user_cancelled_notification = False
 
+
 # Debug candidate detection settings
 # These thresholds are only used when image recognition fails with the original confidence threshold
 # The search stops after finding DEBUG_MAX_CANDIDATES candidates

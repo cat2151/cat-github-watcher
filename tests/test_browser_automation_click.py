@@ -2,7 +2,8 @@
 
 import json
 from pathlib import Path
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
+
 
 class TestClickButtonWithImage:
     """Tests for _click_button_with_image helper function"""
@@ -410,5 +411,3 @@ class TestSaveDebugInfo:
             # Verify that debug info is saved when exception occurs in locateOnScreen
             json_files = list(tmp_path.glob("test_button_fail_*.json"))
             assert len(json_files) == 1
-
-

@@ -4,6 +4,7 @@ Tests for HTML to simple markdown conversion
 
 from src.gh_pr_phase_monitor.pr_html_fetcher import _html_to_simple_markdown
 
+
 def test_html_to_simple_markdown():
     """Test HTML to markdown conversion"""
     html = """
@@ -216,5 +217,3 @@ def test_html_to_simple_markdown_preserves_inline_code_spacing():
     # For now, just verify the inline code is present
     assert "`x = 1" in result
     assert "+ 2`" in result or "+  2`" in result or "2`" in result
-
-

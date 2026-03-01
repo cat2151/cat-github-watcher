@@ -473,5 +473,3 @@ class TestPhase3Notifications:
             process_pr(pr, config)
             # Notification should not be sent for phase2
             mock_notify.assert_not_called()
-
-

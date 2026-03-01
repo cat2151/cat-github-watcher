@@ -9,13 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from src.gh_pr_phase_monitor.llm_status_extractor import _extract_llm_statuses
-from src.gh_pr_phase_monitor.phase_detector import (
-    PHASE_LLM_WORKING,
-    comment_reactions_marked_finished,
-    reset_comment_reaction_resolution_cache,
-)
 from src.gh_pr_phase_monitor.pr_data_recorder import (
-    record_reaction_snapshot,
     reset_snapshot_cache,
     save_pr_snapshot,
 )
@@ -49,6 +43,7 @@ def reset_snapshot_cache_fixture():
     reset_snapshot_cache(clear_content_cache=True)
     yield
     reset_snapshot_cache(clear_content_cache=True)
+
 
 def test_fetch_pr_html_mocked():
     """Test HTML fetching with mock"""
@@ -350,5 +345,3 @@ def test_save_pr_snapshot_with_fetch_html_disabled(tmp_path):
         # Verify HTML files were not created
         assert "html_path" not in result
         assert "html_md_path" not in result
-
-

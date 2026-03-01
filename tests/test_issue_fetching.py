@@ -429,4 +429,3 @@ class TestGetIssuesFromRepositories:
         assert issues[1]["title"] == "Issue 10"
         assert issues[2]["number"] == 5
         assert issues[2]["title"] == "Issue 5"
-

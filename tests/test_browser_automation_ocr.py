@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+
 class TestOCRFallback:
     """Tests for OCR-based button detection fallback"""
 

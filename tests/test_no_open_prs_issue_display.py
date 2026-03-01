@@ -407,7 +407,4 @@ if __name__ == "__main__":
     test_display_issues_with_assign_lowest_number()
     print("✓ Test 7 passed: display_issues_with_assign_lowest_number")
 
-    test_assign_only_fetches_from_enabled_repos()
-    print("✓ Test 8 passed: test_assign_only_fetches_from_enabled_repos")
-
     print("\n✅ All tests passed!")

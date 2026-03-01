@@ -338,7 +338,10 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
     return config
 
 
-from .config_printer import print_config, print_repo_execution_config  # noqa: E402, F401 - Re-exported for backwards compatibility
+from .config_printer import (  # noqa: E402, F401 - Re-exported for backwards compatibility
+    print_config,
+    print_repo_execution_config,
+)
 
 
 def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, repo_name: str) -> Dict[str, Any]:

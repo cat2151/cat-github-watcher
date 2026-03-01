@@ -86,8 +86,9 @@ class TestAssignIssueToCopilotAutomated:
     def setup_method(self):
         """Reset cooldown state before each test"""
         from src.gh_pr_phase_monitor import browser_automation as ba
+        from src.gh_pr_phase_monitor import browser_cooldown as bc
 
-        ba._last_browser_open_time = None
+        bc._last_browser_open_time = None
         ba._issue_assign_attempted.clear()
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", False)
@@ -312,8 +313,9 @@ class TestAssignIssueToCopilotAutomated:
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    @patch("src.gh_pr_phase_monitor.browser_cooldown.time.time")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
-    def test_issue_url_can_be_retried_after_24_hours(self, mock_time, mock_sleep, mock_click, mock_webbrowser):
+    def test_issue_url_can_be_retried_after_24_hours(self, mock_time, mock_cooldown_time, mock_sleep, mock_click, mock_webbrowser):
         """Test that issue URL can be retried after 24 hours"""
         mock_click.return_value = False  # Simulate button not found
         mock_webbrowser.open.return_value = True
@@ -323,18 +325,21 @@ class TestAssignIssueToCopilotAutomated:
 
         # First attempt at time 0
         mock_time.return_value = 0.0
+        mock_cooldown_time.return_value = 0.0
         result1 = assign_issue_to_copilot_automated(issue_url, config)
         assert result1 is False
         assert mock_webbrowser.open.call_count == 1
 
         # Second attempt after 12 hours - should skip (not enough time)
         mock_time.return_value = 12 * 3600  # 12 hours
+        mock_cooldown_time.return_value = 12 * 3600
         result2 = assign_issue_to_copilot_automated(issue_url, config)
         assert result2 is False
         assert mock_webbrowser.open.call_count == 1  # Still 1 (not opened again)
 
         # Third attempt after 25 hours - should retry (more than 24 hours)
         mock_time.return_value = 25 * 3600  # 25 hours
+        mock_cooldown_time.return_value = 25 * 3600
         result3 = assign_issue_to_copilot_automated(issue_url, config)
         assert result3 is False
         assert mock_webbrowser.open.call_count == 2  # Now 2 (opened again)
@@ -343,8 +348,9 @@ class TestAssignIssueToCopilotAutomated:
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
+    @patch("src.gh_pr_phase_monitor.browser_cooldown.time.time")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
-    def test_different_issue_urls_are_tracked_separately(self, mock_time, mock_sleep, mock_click, mock_webbrowser):
+    def test_different_issue_urls_are_tracked_separately(self, mock_time, mock_cooldown_time, mock_sleep, mock_click, mock_webbrowser):
         """Test that different issue URLs can each be attempted once"""
         mock_click.return_value = True  # Simulate success
         mock_webbrowser.open.return_value = True
@@ -355,12 +361,14 @@ class TestAssignIssueToCopilotAutomated:
 
         # First issue - should succeed
         mock_time.return_value = 0.0
+        mock_cooldown_time.return_value = 0.0
         result1 = assign_issue_to_copilot_automated(issue_url_1, config)
         assert result1 is True
 
         # Second issue - should also succeed (different URL)
         # Advance time past cooldown (61 seconds)
         mock_time.return_value = 61.0
+        mock_cooldown_time.return_value = 61.0
         result2 = assign_issue_to_copilot_automated(issue_url_2, config)
         assert result2 is True
 
@@ -374,8 +382,9 @@ class TestMergePrAutomated:
     def setup_method(self):
         """Reset cooldown state before each test"""
         from src.gh_pr_phase_monitor import browser_automation as ba
+        from src.gh_pr_phase_monitor import browser_cooldown as bc
 
-        ba._last_browser_open_time = None
+        bc._last_browser_open_time = None
         ba._issue_assign_attempted.clear()
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", False)
@@ -879,15 +888,16 @@ class TestBrowserCooldown:
     def setup_method(self):
         """Reset cooldown state before each test"""
         from src.gh_pr_phase_monitor import browser_automation as ba
+        from src.gh_pr_phase_monitor import browser_cooldown as bc
 
-        ba._last_browser_open_time = None
+        bc._last_browser_open_time = None
         ba._issue_assign_attempted.clear()
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
-    @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
+    @patch("src.gh_pr_phase_monitor.browser_cooldown.time.time")
     def test_assign_respects_cooldown(self, mock_time, mock_sleep, mock_click, mock_webbrowser):
         """Test that assign_issue_to_copilot_automated respects cooldown"""
         # Mock click function to succeed
@@ -917,7 +927,7 @@ class TestBrowserCooldown:
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
-    @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
+    @patch("src.gh_pr_phase_monitor.browser_cooldown.time.time")
     def test_merge_respects_cooldown(self, mock_time, mock_sleep, mock_click, mock_webbrowser):
         """Test that merge_pr_automated respects cooldown"""
         # Mock click function to succeed
@@ -947,7 +957,7 @@ class TestBrowserCooldown:
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
     @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
     @patch("src.gh_pr_phase_monitor.browser_automation.time.sleep")
-    @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
+    @patch("src.gh_pr_phase_monitor.browser_cooldown.time.time")
     def test_cooldown_applies_across_assign_and_merge(self, mock_time, mock_sleep, mock_click, mock_webbrowser):
         """Test that cooldown is shared between assign and merge operations"""
         # Mock click function to succeed
@@ -973,7 +983,7 @@ class TestBrowserCooldown:
         # Verify browser was only opened twice
         assert mock_webbrowser.open.call_count == 2
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
+    @patch("src.gh_pr_phase_monitor.browser_cooldown.time.time")
     def test_can_open_browser_when_no_previous_open(self, mock_time):
         """Test that _can_open_browser returns True when no previous browser was opened"""
         from src.gh_pr_phase_monitor.browser_automation import _can_open_browser
@@ -981,7 +991,7 @@ class TestBrowserCooldown:
         result = _can_open_browser()
         assert result is True
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
+    @patch("src.gh_pr_phase_monitor.browser_cooldown.time.time")
     def test_can_open_browser_respects_cooldown(self, mock_time):
         """Test that _can_open_browser respects the 60-second cooldown"""
         from src.gh_pr_phase_monitor.browser_automation import _can_open_browser, _record_browser_open
@@ -1006,7 +1016,7 @@ class TestBrowserCooldown:
         mock_time.return_value = 61.0
         assert _can_open_browser() is True
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.time.time")
+    @patch("src.gh_pr_phase_monitor.browser_cooldown.time.time")
     def test_get_remaining_cooldown(self, mock_time):
         """Test that _get_remaining_cooldown returns correct remaining time"""
         from src.gh_pr_phase_monitor.browser_automation import _get_remaining_cooldown, _record_browser_open
@@ -1175,8 +1185,9 @@ class TestAssignWithWindowActivation:
     def setup_method(self):
         """Reset cooldown state before each test"""
         from src.gh_pr_phase_monitor import browser_automation as ba
+        from src.gh_pr_phase_monitor import browser_cooldown as bc
 
-        ba._last_browser_open_time = None
+        bc._last_browser_open_time = None
         ba._issue_assign_attempted.clear()
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
@@ -1227,9 +1238,9 @@ class TestMergeWithWindowActivation:
 
     def setup_method(self):
         """Reset cooldown state before each test"""
-        from src.gh_pr_phase_monitor import browser_automation as ba
+        from src.gh_pr_phase_monitor import browser_cooldown as bc
 
-        ba._last_browser_open_time = None
+        bc._last_browser_open_time = None
 
     @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
     @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")

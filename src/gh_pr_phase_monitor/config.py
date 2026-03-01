@@ -3,8 +3,6 @@ Configuration loading and parsing utilities
 """
 
 import os
-import re
-import subprocess
 from typing import Any, Dict
 
 import tomli
@@ -18,6 +16,8 @@ from .colors import (
     normalize_color_code,
     set_color_scheme,
 )
+from .interval_parser import parse_interval  # noqa: F401 - Re-exported for backwards compatibility
+from .process_utils import is_process_running  # noqa: F401 - Re-exported for backwards compatibility
 
 # Default configuration for phase3_merge feature (batteries included)
 DEFAULT_PHASE3_MERGE_CONFIG: Dict[str, Any] = {
@@ -74,101 +74,6 @@ DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS = False
 
 # Default setting for local repo auto-pull (disabled by default; display only by default)
 DEFAULT_AUTO_GIT_PULL = False
-
-
-def parse_interval(interval_str: str) -> int:
-    """Parse interval string like '1m', '30s', '2h' to seconds
-
-    Args:
-        interval_str: String like '1m', '30s', '2h', '1d'
-
-    Returns:
-        Number of seconds
-
-    Raises:
-        ValueError: If the interval string format is invalid
-    """
-    # Type validation for common misconfiguration
-    if not isinstance(interval_str, str):
-        raise ValueError(
-            f"Interval must be a string (e.g., '1m', '30s'), got {type(interval_str).__name__}: {interval_str}"
-        )
-
-    interval_str = interval_str.strip().lower()
-
-    # Match pattern like "30s", "1m", "2h", "1d"
-    match = re.match(r"^(\d+)([smhd])$", interval_str)
-
-    if not match:
-        raise ValueError(
-            f"Invalid interval format: '{interval_str}'. "
-            "Expected format: <number><unit> (e.g., '30s', '1m', '2h', '1d')"
-        )
-
-    value = int(match.group(1))
-    unit = match.group(2)
-
-    # Convert to seconds
-    if unit == "s":
-        return value
-    elif unit == "m":
-        return value * 60
-    elif unit == "h":
-        return value * 3600
-    else:  # unit == "d"
-        return value * 86400
-
-
-def is_process_running(process_name: str) -> bool:
-    """Check if a process with the given name is currently running
-
-    Args:
-        process_name: Name of the process to check (e.g., "cat-window-watcher")
-
-    Returns:
-        True if the process is running, False otherwise
-    """
-    try:
-        # Use pgrep for more reliable process detection
-        # -f flag searches the full command line
-        # This is more reliable than parsing ps output
-        result = subprocess.run(
-            ["pgrep", "-f", process_name],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            check=False,
-        )
-
-        # pgrep returns 0 if at least one process matches, 1 if no processes match
-        # It prints the PIDs of matching processes to stdout
-        if result.returncode == 0 and result.stdout.strip():
-            return True
-        return False
-    except FileNotFoundError:
-        # pgrep command not available, fallback to ps aux approach
-        try:
-            result = subprocess.run(
-                ["ps", "aux"],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                check=False,
-            )
-
-            if result.returncode == 0:
-                # Check if process name appears in the output
-                # This is a simpler fallback when pgrep is not available
-                return process_name in result.stdout
-            return False
-        except (subprocess.SubprocessError, FileNotFoundError):
-            # If both commands fail, assume process is not running
-            return False
-    except subprocess.SubprocessError:
-        # If pgrep fails for any other reason, assume process is not running
-        return False
 
 
 def _validate_boolean_flag(value: Any, flag_name: str) -> bool:

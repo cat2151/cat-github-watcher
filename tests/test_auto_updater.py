@@ -3,6 +3,7 @@
 import importlib
 import os
 import sys
+import threading
 import time
 import types
 
@@ -17,6 +18,8 @@ sys.modules.setdefault("tkinter.messagebox", types.ModuleType("tkinter.messagebo
 os.environ.setdefault("DISPLAY", ":0")
 
 auto_updater = importlib.import_module("src.gh_pr_phase_monitor.auto_updater")
+
+_THREAD_TIMEOUT = 3
 
 
 @pytest.fixture(autouse=True)
@@ -85,3 +88,33 @@ def test_updates_and_restarts_when_remote_is_newer(monkeypatch):
 
     assert auto_updater.maybe_self_update(repo_root=auto_updater.REPO_ROOT) is True
     assert calls["restarted"] is True
+
+
+def test_start_startup_self_update_check_runs_in_background(monkeypatch):
+    """start_startup_self_update_check() が別スレッドで maybe_self_update を呼び出すことを確認。"""
+    called_event = threading.Event()
+
+    def fake_maybe_self_update(repo_root=None):
+        called_event.set()
+        return False
+
+    monkeypatch.setattr(auto_updater, "maybe_self_update", fake_maybe_self_update)
+
+    auto_updater.start_startup_self_update_check(repo_root=auto_updater.REPO_ROOT)
+
+    assert called_event.wait(timeout=_THREAD_TIMEOUT), "maybe_self_update was not called from background thread"
+
+
+def test_start_startup_self_update_check_swallows_exceptions(monkeypatch):
+    """start_startup_self_update_check() が例外を飲み込んでクラッシュしないことを確認。"""
+    done_event = threading.Event()
+
+    def raise_error(repo_root=None):
+        done_event.set()
+        raise RuntimeError("simulated error")
+
+    monkeypatch.setattr(auto_updater, "maybe_self_update", raise_error)
+
+    auto_updater.start_startup_self_update_check(repo_root=auto_updater.REPO_ROOT)
+
+    assert done_event.wait(timeout=_THREAD_TIMEOUT), "background thread did not run"

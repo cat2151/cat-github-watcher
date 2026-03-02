@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Optional, Tuple
@@ -151,3 +152,16 @@ def maybe_self_update(repo_root: Path | None = None) -> bool:
     print("Auto-update applied: restarting application to use the latest code...")
     restart_application()
     return True
+
+
+def start_startup_self_update_check(repo_root: Path | None = None) -> None:
+    """起動直後に別スレッドで自己リポジトリのアップデートチェックを一度実行する。"""
+
+    def _run() -> None:
+        try:
+            maybe_self_update(repo_root=repo_root)
+        except Exception as e:
+            print(f"Startup self-update check failed: {e}")
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()

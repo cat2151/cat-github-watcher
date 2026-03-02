@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .auto_updater import UPDATE_CHECK_INTERVAL_SECONDS, maybe_self_update
+from .auto_updater import UPDATE_CHECK_INTERVAL_SECONDS, maybe_self_update, start_startup_self_update_check
 from .config import (
     DEFAULT_ENABLE_AUTO_UPDATE,
     DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
@@ -209,6 +209,10 @@ def main():
         sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
+
+    # 起動直後に別スレッドで自己リポジトリのアップデートチェックを一度実行
+    if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE):
+        start_startup_self_update_check()
 
     # Infinite monitoring loop
     iteration = 0

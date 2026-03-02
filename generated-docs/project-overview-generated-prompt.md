@@ -1,4 +1,4 @@
-Last updated: 2026-03-02
+Last updated: 2026-03-03
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -524,6 +524,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
     📄 browser_automation.py
     📄 browser_cooldown.py
     📄 button_clicker.py
+    📄 click_config_validator.py
     📄 colors.py
     📄 comment_fetcher.py
     📄 comment_manager.py
@@ -571,6 +572,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_elapsed_time_display.py
   📄 test_error_logging.py
   📄 test_graphql_client_rate_limit.py
+  📄 test_graphql_query_intent_display.py
   📄 test_has_comments_with_reactions.py
   📄 test_has_unresolved_review_threads.py
   📄 test_hot_reload.py
@@ -581,6 +583,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_issue_assignment_priority.py
   📄 test_issue_fetching.py
   📄 test_local_repo_watcher.py
+  📄 test_local_repo_watcher_background.py
   📄 test_max_llm_working_parallel.py
   📄 test_no_change_timeout.py
   📄 test_no_open_prs_issue_display.py
@@ -602,6 +605,8 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_pr_data_recorder_json.py
   📄 test_pr_title_fix.py
   📄 test_rate_limit_reset_display.py
+  📄 test_rate_limit_throttle.py
+  📄 test_rate_limit_usage_display.py
   📄 test_repos_with_prs_structure.py
   📄 test_show_issues_when_pr_count_less_than_3.py
   📄 test_status_summary.py
@@ -636,4 +641,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-03-02 07:01:23 JST
+Generated at: 2026-03-03 07:04:23 JST

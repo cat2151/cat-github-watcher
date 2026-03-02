@@ -1,4 +1,4 @@
-Last updated: 2026-03-02
+Last updated: 2026-03-03
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -198,7 +198,7 @@ Last updated: 2026-03-02
 - .github/actions-tmp/issue-notes/4.md
 - .github/actions-tmp/issue-notes/40.md
 - .github/actions-tmp/issue-notes/44.md
-- .github/actions-tmp/issue-notes/46.md
+- .github/actions-tmp/issue-notes/49.md
 - .github/actions-tmp/issue-notes/7.md
 - .github/actions-tmp/issue-notes/8.md
 - .github/actions-tmp/issue-notes/9.md
@@ -237,6 +237,7 @@ Last updated: 2026-03-02
 - src/gh_pr_phase_monitor/browser_automation.py
 - src/gh_pr_phase_monitor/browser_cooldown.py
 - src/gh_pr_phase_monitor/button_clicker.py
+- src/gh_pr_phase_monitor/click_config_validator.py
 - src/gh_pr_phase_monitor/colors.py
 - src/gh_pr_phase_monitor/comment_fetcher.py
 - src/gh_pr_phase_monitor/comment_manager.py
@@ -283,6 +284,7 @@ Last updated: 2026-03-02
 - tests/test_elapsed_time_display.py
 - tests/test_error_logging.py
 - tests/test_graphql_client_rate_limit.py
+- tests/test_graphql_query_intent_display.py
 - tests/test_has_comments_with_reactions.py
 - tests/test_has_unresolved_review_threads.py
 - tests/test_hot_reload.py
@@ -293,6 +295,7 @@ Last updated: 2026-03-02
 - tests/test_issue_assignment_priority.py
 - tests/test_issue_fetching.py
 - tests/test_local_repo_watcher.py
+- tests/test_local_repo_watcher_background.py
 - tests/test_max_llm_working_parallel.py
 - tests/test_no_change_timeout.py
 - tests/test_no_open_prs_issue_display.py
@@ -314,6 +317,8 @@ Last updated: 2026-03-02
 - tests/test_pr_data_recorder_json.py
 - tests/test_pr_title_fix.py
 - tests/test_rate_limit_reset_display.py
+- tests/test_rate_limit_throttle.py
+- tests/test_rate_limit_usage_display.py
 - tests/test_repos_with_prs_structure.py
 - tests/test_show_issues_when_pr_count_less_than_3.py
 - tests/test_status_summary.py
@@ -322,14 +327,14 @@ Last updated: 2026-03-02
 - tests/test_wait_handler_callback.py
 
 ## 現在のオープンIssues
-## [Issue #298](../issue-notes/298.md): 大きなファイルの検出: 1個のファイルが500行を超えています
+## [Issue #308](../issue-notes/308.md): 大きなファイルの検出: 1個のファイルが500行を超えています
 以下のファイルが500行を超えています。リファクタリングを検討してください。
 
 ## 検出されたファイル
 
 | ファイル | 行数 | 超過行数 |
 |---------|------|----------|
-| `src/gh_pr_phase_monitor/button_clicker.py` | 518 | +18 |
+| `src/gh_pr_phase_monitor/main.py` | 510 | +10 |
 
 ## テスト実施のお願い
 
@@ -337,37 +342,189 @@ Last updated: 2026-03-02
 - リファクタリング前後のどちらかでテストがredの場合、まず別issueでtest greenにしてからリファクタリングしてください
 
 ## 推奨事項
-...
+
+1. 単一責任の原...
 ラベル: refactoring, code-quality, automated
---- issue-notes/298.md の内容 ---
+--- issue-notes/308.md の内容 ---
 
 ```markdown
 
 ```
 
-## [Issue #297](../issue-notes/297.md): GraphQL API消費回数の内訳を毎イテレーション表示する
-- [x] `graphql_client.py`: `get_rate_limit_info()` で `OSError` も捕捉する（`gh` がPATHにない場合のクラッシュ防止）
-- [x] `main.py`: `before_rate_limit` 取得を try/except で囲み、失敗時は `None` にフォールバック
-- [x] `main.py`: `consumed` が負になる場合（レートリミットウィンドウがリセットされた場合）を 0 表示＋「リセット後」ノートで対応
-- [x] テスト: 負の消費量ケースのテストを追加（10テスト全通過）
-- [x] ruff l...
+## [Issue #307](../issue-notes/307.md): 起動直後に別スレッドで自己アップデートチェックを実行する
+停止中にアップデートが行われた場合、次のメインループ実行まで検知が遅延していた。起動時に即座にアップデートチェックを走らせることで、再起動後すぐに最新コードへ更新できるようにする。
+
+## 変更点
+
+- **`auto_updater.py`**: `start_startup_self_update_check()` を追加
+  - daemonスレッドで `maybe_self_update()` を一度呼び出す
+  - 対象は自己リポジトリのみ
+  - 例外はprint出力して飲み込む（クラッシュ防止）
+
+- **`main.py`**: シグナルハンドラー設定後・メインループ開始前に呼...
 ラベル: 
---- issue-notes/297.md の内容 ---
+--- issue-notes/307.md の内容 ---
 
 ```markdown
 
 ```
 
-## [Issue #296](../issue-notes/296.md): 1分ごとに、GraphQL API の消費回数の内訳を表示する。現在、すぐ1000くらい減っているようなので原因調査用。あわせて回復までの時間も表示する
+## [Issue #304](../issue-notes/304.md): 今ある「自分自身をpullしたら自動アップデートする」、について、起動直後のタイミングにおいても、別スレッドで一度実行する
 
-ラベル: good first issue
---- issue-notes/296.md の内容 ---
+ラベル: 
+--- issue-notes/304.md の内容 ---
 
 ```markdown
 
 ```
 
 ## ドキュメントで言及されているファイルの内容
+### .github/actions-tmp/issue-notes/4.md
+```md
+{% raw %}
+# issue GitHub Actions「project概要生成」を共通ワークフロー化する #4
+[issues #4](https://github.com/cat2151/github-actions/issues/4)
+
+# prompt
+```
+あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
+このymlファイルを、以下の2つのファイルに分割してください。
+1. 共通ワークフロー       cat2151/github-actions/.github/workflows/daily-project-summary.yml
+2. 呼び出し元ワークフロー cat2151/github-actions/.github/workflows/call-daily-project-summary.yml
+まずplanしてください
+```
+
+# 結果、あちこちハルシネーションのあるymlが生成された
+- agentの挙動があからさまにハルシネーション
+    - インデントが修正できない、「失敗した」という
+    - 構文誤りを認識できない
+- 人力で修正した
+
+# このagentによるセルフレビューが信頼できないため、別のLLMによるセカンドオピニオンを試す
+```
+あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
+以下の2つのファイルをレビューしてください。最優先で、エラーが発生するかどうかだけレビューてください。エラー以外の改善事項のチェックをするかわりに、エラー発生有無チェックに最大限注力してください。
+
+--- 呼び出し元
+
+name: Call Daily Project Summary
+
+on:
+  schedule:
+    # 日本時間 07:00 (UTC 22:00 前日)
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+
+jobs:
+  call-daily-project-summary:
+    uses: cat2151/github-actions/.github/workflows/daily-project-summary.yml
+    secrets:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+--- 共通ワークフロー
+name: Daily Project Summary
+on:
+  workflow_call:
+
+jobs:
+  generate-summary:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      issues: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # 履歴を取得するため
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          # 一時的なディレクトリで依存関係をインストール
+          mkdir -p /tmp/summary-deps
+          cd /tmp/summary-deps
+          npm init -y
+          npm install @google/generative-ai @octokit/rest
+          # generated-docsディレクトリを作成
+          mkdir -p $GITHUB_WORKSPACE/generated-docs
+
+      - name: Generate project summary
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          NODE_PATH: /tmp/summary-deps/node_modules
+        run: |
+          node .github/scripts/generate-project-summary.cjs
+
+      - name: Check for generated summaries
+        id: check_summaries
+        run: |
+          if [ -f "generated-docs/project-overview.md" ] && [ -f "generated-docs/development-status.md" ]; then
+            echo "summaries_generated=true" >> $GITHUB_OUTPUT
+          else
+            echo "summaries_generated=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push summaries
+        if: steps.check_summaries.outputs.summaries_generated == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          # package.jsonの変更のみリセット（generated-docsは保持）
+          git restore package.json 2>/dev/null || true
+          # サマリーファイルのみを追加
+          git add generated-docs/project-overview.md
+          git add generated-docs/development-status.md
+          git commit -m "Update project summaries (overview & development status)"
+          git push
+
+      - name: Summary generation result
+        run: |
+          if [ "${{ steps.check_summaries.outputs.summaries_generated }}" == "true" ]; then
+            echo "✅ Project summaries updated successfully"
+            echo "📊 Generated: project-overview.md & development-status.md"
+          else
+            echo "ℹ️ No summaries generated (likely no user commits in the last 24 hours)"
+          fi
+```
+
+# 上記promptで、2つのLLMにレビューさせ、合格した
+
+# 細部を、先行する2つのymlを参照に手直しした
+
+# ローカルtestをしてからcommitできるとよい。方法を検討する
+- ローカルtestのメリット
+    - 素早く修正のサイクルをまわせる
+    - ムダにgit historyを汚さない
+        - これまでの事例：「実装したつもり」「エラー。修正したつもり」「エラー。修正したつもり」...（以降エラー多数）
+- 方法
+    - ※検討、WSL + act を環境構築済みである。test可能であると判断する
+    - 呼び出し元のURLをコメントアウトし、相対パス記述にする
+    - ※備考、テスト成功すると結果がcommit pushされる。それでよしとする
+- 結果
+    - OK
+    - secretsを簡略化できるか試した、できなかった、現状のsecrets記述が今わかっている範囲でベストと判断する
+    - OK
+
+# test green
+
+# commit用に、yml 呼び出し元 uses をlocal用から本番用に書き換える
+
+# closeとする
+
+{% endraw %}
+```
+
 ### .github/actions-tmp/issue-notes/7.md
 ```md
 {% raw %}
@@ -459,639 +616,162 @@ planにおいては、修正対象のソースファイル名と関数名を、�
 {% endraw %}
 ```
 
-### src/gh_pr_phase_monitor/button_clicker.py
+### src/gh_pr_phase_monitor/auto_updater.py
 ```py
 {% raw %}
-"""Button clicker module for browser automation
+"""Self-update utility using gh CLI and git."""
 
-Provides utilities for finding and clicking buttons on screen using
-image recognition (PyAutoGUI) with OCR fallback (pytesseract).
-"""
+from __future__ import annotations
 
-import json
+import os
+import re
+import subprocess
 import sys
 import time
-import traceback
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
-
-from .window_manager import _maybe_maximize_window
-
-# PyAutoGUI imports are optional - will be imported only if automation is enabled
-try:
-    import pyautogui
-
-    PYAUTOGUI_AVAILABLE = True
-except ImportError:
-    PYAUTOGUI_AVAILABLE = False
-    pyautogui = None  # Set to None when not available
-
-# pytesseract imports are optional - for OCR-based button detection fallback
-try:
-    import pytesseract
-
-    PYTESSERACT_AVAILABLE = True
-except ImportError:
-    PYTESSERACT_AVAILABLE = False
-    pytesseract = None
-    # Note: PIL.Image is imported locally in _click_button_with_ocr when needed
-
-# Track whether the notification window was explicitly closed by the user
-_user_cancelled_notification = False
-
-
-def set_user_cancelled_notification() -> None:
-    """Set the user-cancelled flag (call this when the notification window is closed by the user)."""
-    global _user_cancelled_notification
-    _user_cancelled_notification = True
-
-
-def reset_user_cancelled_notification() -> None:
-    """Reset the user-cancelled flag (call this before starting a new automation sequence)."""
-    global _user_cancelled_notification
-    _user_cancelled_notification = False
-
-
-# Debug candidate detection settings
-# These thresholds are only used when image recognition fails with the original confidence threshold
-# The search stops after finding DEBUG_MAX_CANDIDATES candidates
-DEBUG_CANDIDATE_CONFIDENCE_THRESHOLDS = [0.7, 0.6, 0.5]  # Try these confidence levels for debug candidates
-DEBUG_MAX_CANDIDATES = 3  # Maximum number of candidate regions to save for debugging
-
-# OCR detection settings
-OCR_BUTTON_PADDING = 20  # Pixels to add around detected text to account for button borders
-
-
-def _log_error(message: str, exc: Exception | BaseException | None = None) -> None:
-    """Append an error entry to logs/error.log without raising further exceptions."""
-    try:
-        log_dir = Path("logs")
-        log_dir.mkdir(parents=True, exist_ok=True)
-        log_path = log_dir / "error.log"
-        from datetime import UTC
-
-        timestamp = datetime.now(UTC).isoformat(timespec="seconds")
-        with log_path.open("a", encoding="utf-8") as log_file:
-            log_file.write(f"[{timestamp} UTC] {message}\n")
-            if exc:
-                log_file.writelines(traceback.format_exception(type(exc), exc, exc.__traceback__))
-            log_file.write("\n")
-    except Exception as log_exc:
-        print(
-            f"[button_clicker._log_error] Failed to write to error.log: {log_exc!r} (original message: {message})",
-            file=sys.stderr,
-        )
-
-
-def _validate_wait_seconds(config: Dict[str, Any], default: int = 10) -> int:
-    """Validate and get wait_seconds from configuration
-
-    Args:
-        config: Configuration dict with wait_seconds setting
-        default: Default wait time to fall back to when invalid
-
-    Returns:
-        Validated wait_seconds value (defaults to provided value if invalid)
-    """
-    try:
-        wait_seconds = int(config.get("wait_seconds", default))
-        if wait_seconds < 0:
-            print(f"  ⚠ wait_seconds must be positive, using default: {default}")
-            wait_seconds = default
-    except (ValueError, TypeError):
-        print(f"  ⚠ Invalid wait_seconds value in config, using default: {default}")
-        wait_seconds = default
-    return wait_seconds
-
-
-def _validate_confidence(config: Dict[str, Any]) -> float:
-    """Validate and get confidence from configuration
-
-    Args:
-        config: Configuration dict with confidence setting
-
-    Returns:
-        Validated confidence value (defaults to 0.8 if invalid)
-    """
-    try:
-        confidence = float(config.get("confidence", 0.8))
-        if not 0.0 <= confidence <= 1.0:
-            print("  ⚠ confidence must be between 0.0 and 1.0, using default: 0.8")
-            confidence = 0.8
-    except (ValueError, TypeError):
-        print("  ⚠ Invalid confidence value in config, using default: 0.8")
-        confidence = 0.8
-    return confidence
-
-
-def _validate_button_delay(config: Dict[str, Any]) -> float:
-    """Validate and get button_delay from configuration
-
-    Args:
-        config: Configuration dict with button_delay setting
-
-    Returns:
-        Validated button_delay value in seconds (defaults to 2.0 if invalid)
-    """
-    try:
-        button_delay = float(config.get("button_delay", 2.0))
-        if button_delay < 0:
-            print("  ⚠ button_delay must be positive, using default: 2.0")
-            button_delay = 2.0
-    except (ValueError, TypeError):
-        print("  ⚠ Invalid button_delay value in config, using default: 2.0")
-        button_delay = 2.0
-    return button_delay
-
-
-def _get_screenshot_path(button_name: str, config: Dict[str, Any]) -> Optional[Path]:
-    """Get the path to the button screenshot image
-
-    Args:
-        button_name: Name of the button (e.g., "assign_to_copilot", "assign", "merge_pull_request")
-        config: Configuration dict (assign_to_copilot or phase3_merge section) with screenshot_dir setting
-
-    Returns:
-        Path to the screenshot image, or None if not found
-    """
-    # Get screenshot directory from config, default to ./screenshots
-    screenshot_dir_str = config.get("screenshot_dir", "screenshots")
-    screenshot_dir = Path(screenshot_dir_str).expanduser().resolve()
-
-    # Look for the screenshot with common image extensions
-    for ext in [".png", ".jpg", ".jpeg"]:
-        screenshot_path = screenshot_dir / f"{button_name}{ext}"
-        if screenshot_path.exists():
-            return screenshot_path
-
-    return None
-
-
-def _save_debug_info(button_name: str, confidence: float, config: Dict[str, Any]) -> None:
-    """Save debug information when image recognition fails
-
-    This function saves:
-    1. Full screenshot of current screen
-    2. Top 3 candidate locations (if any found with lower confidence)
-    3. JSON metadata with all information
-
-    Args:
-        button_name: Name of the button that failed to be found
-        confidence: Confidence threshold that was used
-        config: Configuration dict with debug_dir setting
-    """
-    if not PYAUTOGUI_AVAILABLE or pyautogui is None:
-        return
-
-    # Get debug directory from config, default to ./debug_screenshots
-    debug_dir_str = config.get("debug_dir", "debug_screenshots")
-    debug_dir = Path(debug_dir_str).expanduser().resolve()
-
-    # Create debug directory if it doesn't exist
-    try:
-        debug_dir.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
-        print(f"  ⚠ Could not create debug directory '{debug_dir}': {e}")
-        return
-
-    # Generate timestamp once for consistency between filename and JSON
-    now = datetime.now()
-    timestamp = now.strftime("%Y%m%d_%H%M%S_%f")  # Include microseconds for uniqueness
-
-    # Take screenshot of current screen
-    screenshot_filename = f"{button_name}_fail_{timestamp}.png"
-    screenshot_path = debug_dir / screenshot_filename
-
-    try:
-        screenshot = pyautogui.screenshot()
-        screenshot.save(str(screenshot_path))
-        print(f"  ℹ Debug screenshot saved: {screenshot_path}")
-    except Exception as e:
-        print(f"  ⚠ Could not save debug screenshot: {e}")
-        _log_error(f"Failed to capture debug screenshot for '{button_name}'", e)
-        return
-
-    # Get template screenshot path and handle None case
-    template_path = _get_screenshot_path(button_name, config)
-    template_screenshot = str(template_path) if template_path else None
-
-    # Try to find candidate matches with lower confidence threshold
-    candidates = []
-    if template_path:
-        try:
-            # Try multiple confidence levels to find potential matches
-            for test_confidence in DEBUG_CANDIDATE_CONFIDENCE_THRESHOLDS:
-                # Only try confidence levels lower than the original threshold
-                if test_confidence >= confidence:
-                    continue
-
-                print(f"  → Searching for candidates with confidence {test_confidence}...")
-                all_locations = list(pyautogui.locateAllOnScreen(str(template_path), confidence=test_confidence))
-
-                if all_locations:
-                    print(f"  ℹ Found {len(all_locations)} candidate(s) with confidence {test_confidence}")
-                    # Save up to DEBUG_MAX_CANDIDATES candidates at this confidence level
-                    for idx, loc in enumerate(all_locations[:DEBUG_MAX_CANDIDATES]):
-                        candidate_info = {
-                            "confidence_used": test_confidence,
-                            "left": loc.left,
-                            "top": loc.top,
-                            "width": loc.width,
-                            "height": loc.height,
-                        }
-                        candidates.append(candidate_info)
-
-                        # Save cropped image of the candidate region
-                        try:
-                            candidate_img = screenshot.crop(
-                                (loc.left, loc.top, loc.left + loc.width, loc.top + loc.height)
-                            )
-                            candidate_filename = f"{button_name}_candidate_{timestamp}_{len(candidates)}.png"
-                            candidate_path = debug_dir / candidate_filename
-                            candidate_img.save(str(candidate_path))
-                            candidate_info["image_path"] = str(candidate_path)
-                            print(f"  ℹ Saved candidate #{len(candidates)}: {candidate_path}")
-                        except Exception as e:
-                            print(f"  ⚠ Could not save candidate image: {e}")
-
-                    # Stop after finding candidates
-                    if len(candidates) >= DEBUG_MAX_CANDIDATES:
-                        break
-
-        except Exception as e:
-            print(f"  ⚠ Error searching for candidates: {e}")
-
-    # Save failure information to JSON
-    json_filename = f"{button_name}_fail_{timestamp}.json"
-    json_path = debug_dir / json_filename
-
-    failure_info = {
-        "button_name": button_name,
-        "timestamp": now.isoformat(),  # Use the same datetime object for consistency
-        "confidence": confidence,
-        "screenshot_path": str(screenshot_path),
-        "template_screenshot": template_screenshot,
-        "candidates_found": len(candidates),
-        "candidates": candidates,
-    }
-
-    try:
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(failure_info, f, indent=2, ensure_ascii=False)
-        print(f"  ℹ Debug info saved: {json_path}")
-        if candidates:
-            print(f"  ℹ Found {len(candidates)} potential candidate(s) - check debug directory for details")
-    except Exception as e:
-        print(f"  ⚠ Could not save debug info JSON: {e}")
-
-
-def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:
-    """Find and click a button using OCR text detection
-
-    This is a fallback method when image recognition fails. It uses OCR
-    to find text on screen and click buttons by their text content.
-
-    Args:
-        button_name: Name of the button (e.g., "assign_to_copilot", "assign")
-        config: Configuration dict with automation settings
-
-    Returns:
-        True if button was found and clicked, False otherwise
-    """
-    if not PYTESSERACT_AVAILABLE or pytesseract is None:
-        print("  ℹ pytesseract is not available for OCR-based button detection")
-        return False
-
-    if not PYAUTOGUI_AVAILABLE or pyautogui is None:
-        print("  ℹ PyAutoGUI is required for OCR-based button detection")
-        return False
-
-    # OCR detection is enabled by default (True) to serve as a fallback when image recognition fails
-    if not config.get("enable_ocr_detection", True):
-        print("  ℹ OCR-based detection is disabled")
-        return False
-
-    # Map button names to the text we're looking for
-    button_text_map = {
-        "assign_to_copilot": "Assign to Copilot",
-        "assign": "Assign",
-        "merge_pull_request": "Merge pull request",
-        "confirm_merge": "Confirm merge",
-        "delete_branch": "Delete branch",
-    }
-
-    target_text = button_text_map.get(button_name)
-    if not target_text:
-        print(f"  ⚠ Unknown button name '{button_name}' for OCR detection")
-        return False
-
-    try:
-        print(f"  → Attempting OCR-based detection for '{target_text}' button...")
-
-        # Take a screenshot
-        screenshot = pyautogui.screenshot()
-
-        # Use pytesseract to get bounding boxes of all text
-        data = pytesseract.image_to_data(screenshot, output_type=pytesseract.Output.DICT)
-
-        # Search for the target text in the OCR results
-        n_boxes = len(data["text"])
-        found_regions = []
-
-        # Look for consecutive words that match our target text
-        target_words = target_text.lower().split()
-
-        for i in range(n_boxes):
-            text = data["text"][i].lower().strip()
-            if not text:
-                continue
-
-            # Check if we found the start of our target phrase
-            if text == target_words[0]:
-                # Try to match all consecutive words
-                matches = [i]
-                for j, target_word in enumerate(target_words[1:], start=1):
-                    if i + j < n_boxes:
-                        next_text = data["text"][i + j].lower().strip()
-                        if next_text == target_word:
-                            matches.append(i + j)
-                        else:
-                            break
-                    else:
-                        break
-
-                # If we matched all words, we found the button text
-                if len(matches) == len(target_words):
-                    # Calculate bounding box for all matched words
-                    xs = [data["left"][idx] for idx in matches]
-                    ys = [data["top"][idx] for idx in matches]
-                    ws = [data["width"][idx] for idx in matches]
-                    hs = [data["height"][idx] for idx in matches]
-
-                    left = min(xs)
-                    top = min(ys)
-                    right = max(x + w for x, w in zip(xs, ws))
-                    bottom = max(y + h for y, h in zip(ys, hs))
-
-                    # Expand the region to account for button padding
-                    region = {
-                        "left": max(0, left - OCR_BUTTON_PADDING),
-                        "top": max(0, top - OCR_BUTTON_PADDING),
-                        "right": min(screenshot.width, right + OCR_BUTTON_PADDING),
-                        "bottom": min(screenshot.height, bottom + OCR_BUTTON_PADDING),
-                    }
-                    found_regions.append(region)
-
-        if not found_regions:
-            print(f"  ✗ Text '{target_text}' not found using OCR")
-            return False
-
-        # Use the first found region (or could use heuristics to pick the best one)
-        region = found_regions[0]
-        center_x = int((region["left"] + region["right"]) / 2)
-        center_y = int((region["top"] + region["bottom"]) / 2)
-
-        print(f"  → Found '{target_text}' at position ({center_x}, {center_y})")
-
-        # Click the button
-        time.sleep(0.5)  # Brief pause before clicking
-        pyautogui.click(center_x, center_y)
-        print(f"  ✓ Clicked '{target_text}' button using OCR detection")
-
-        return True
-
-    except Exception as e:
-        print(f"  ⚠ OCR-based detection failed: {e}")
-        return False
-
-
-def _click_button_with_image(
-    button_name: str,
-    config: Dict[str, Any],
-    *,
-    max_attempts: int = 1,
-    poll_interval: float = 0.0,
-    pre_click_delay: float = 0.5,
-) -> bool:
-    """Find and click a button using image recognition
-
-    Args:
-        button_name: Name of the button screenshot file (without extension)
-        config: Configuration dict with screenshot settings (including optional confidence)
-
-    Returns:
-        True if button was found and clicked, False otherwise
-
-    Note:
-        Uses image recognition to find and click buttons on screen. The first matching
-        button found on the entire screen will be clicked. Ensure the correct GitHub
-        browser window/tab is focused and visible before running this function.
-
-        When image recognition fails, debug information (screenshot and failure details)
-        will be saved to the debug_dir directory (default: ./debug_screenshots).
-    """
-    if not PYAUTOGUI_AVAILABLE or pyautogui is None:
-        print("  ✗ PyAutoGUI is not available")
-        return False
-
-    if _user_cancelled_notification:
-        print("  ⚠ Notification window was closed by user; skipping button search")
-        return False
-
-    screenshot_path = _get_screenshot_path(button_name, config)
-    if screenshot_path is None:
-        print(f"  ✗ Screenshot not found for button '{button_name}'")
-        print(f"     Please save a screenshot as '{button_name}.png' in the screenshots directory")
-        print("     See README.ja.md for instructions")
-        return False
-
-    # Get confidence from config
-    confidence = _validate_confidence(config)
-
-    try:
-        attempts = max(1, max_attempts)
-        has_maximized = False
-        for attempt in range(attempts):
-            print(f"  → Looking for button using screenshot: {screenshot_path}")
-            print(
-                "  ⚠ Make sure the correct GitHub browser window/tab is focused "
-                "because the first matching button on the entire screen will be clicked."
-            )
-            location = pyautogui.locateOnScreen(str(screenshot_path), confidence=confidence)
-
-            if location is None and not has_maximized:
-                if _maybe_maximize_window(config):
-                    has_maximized = True
-                    time.sleep(0.5)  # Allow layout to settle after maximizing
-                    location = pyautogui.locateOnScreen(str(screenshot_path), confidence=confidence)
-
-            if location is None and attempt < attempts - 1:
-                if _user_cancelled_notification:
-                    print("  ⚠ Notification window was closed by user; skipping button search")
-                    return False
-                if poll_interval > 0:
-                    time.sleep(poll_interval)
-                continue
-
-            if location is None:
-                if _user_cancelled_notification:
-                    print("  ⚠ Notification window was closed by user; skipping button search")
-                    return False
-                print(f"  ✗ Could not find button '{button_name}' on screen with image recognition")
-                print("     Trying fallback methods...")
-                # Save debug information for troubleshooting
-                try:
-                    _save_debug_info(button_name, confidence, config)
-                except Exception as debug_exc:  # noqa: BLE001
-                    _log_error(f"Failed to save debug info for '{button_name}' after image search miss", debug_exc)
-
-                # Try OCR-based detection as fallback
-                print("  → Attempting OCR fallback...")
-                if _click_button_with_ocr(button_name, config):
-                    return True
-
-                print(f"  ✗ All detection methods failed for button '{button_name}'")
-                return False
-
-            # Re-verify just before clicking to avoid stale coordinates, then click immediately
-            verification_location = pyautogui.locateOnScreen(str(screenshot_path), confidence=confidence)
-            if verification_location is None:
-                print(f"  ✗ Button '{button_name}' not found during final verification; skipping click")
-                return False
-            center = pyautogui.center(verification_location)
-            if _user_cancelled_notification:
-                print("  ⚠ Notification window was closed by user; skipping button search")
-                return False
-            if pre_click_delay > 0:
-                time.sleep(pre_click_delay)
-            pyautogui.click(center)
-            print(f"  ✓ Clicked button '{button_name}' at position {center}")
-            return True
-
-    except Exception as e:
-        print(f"  ✗ Error clicking button '{button_name}': {e}")
-        print("     This may occur if running in a headless environment, SSH session without display,")
-        print("     or if the screen is locked. PyAutoGUI requires an active display.")
-        _log_error(f"Button click failed for '{button_name}'", e)
-        # Save debug information even on exception
-        try:
-            _save_debug_info(button_name, confidence, config)
-        except Exception as debug_exc:
-            _log_error(f"Failed to save debug info for '{button_name}' after exception", debug_exc)
-        return False
-
-{% endraw %}
-```
-
-### src/gh_pr_phase_monitor/graphql_client.py
-```py
-{% raw %}
-"""
-GraphQL client module for executing queries via GitHub CLI
-"""
-
-import json
-import subprocess
-from typing import Any, Dict
-
-
-class GitHubRateLimitError(RuntimeError):
-    """Raised when GitHub API rate limit is exceeded."""
-
-    def __init__(self, message: str, rate_limit_info: Dict[str, Any] | None = None):
-        super().__init__(message)
-        self.rate_limit_info = rate_limit_info
-
-
-def _is_rate_limit_exceeded_error(stderr: str) -> bool:
-    """Return True when stderr indicates a GitHub API rate limit exhaustion."""
-    lower_stderr = stderr.lower()
-    return "rate limit" in lower_stderr and ("exceeded" in lower_stderr or "exhausted" in lower_stderr)
-
-
-def _get_graphql_rate_limit_info() -> Dict[str, Any] | None:
-    """Fetch GraphQL rate limit details via gh api rate_limit.
-
-    Returns:
-        Dictionary containing GraphQL rate-limit fields, or None if unavailable.
-    """
-    try:
-        result = subprocess.run(
-            ["gh", "api", "rate_limit"],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            check=True,
-        )
-        data = json.loads(result.stdout or "{}")
-        graphql_info = data.get("resources", {}).get("graphql")
-        if isinstance(graphql_info, dict):
-            return graphql_info
+from typing import Optional, Tuple
+
+UPDATE_CHECK_INTERVAL_SECONDS = 60
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+_last_check_time: float = 0.0
+_REMOTE_PATTERN = re.compile(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?$")
+
+
+def _run_command(args: list[str], cwd: Path | str | None = None) -> subprocess.CompletedProcess[str]:
+    """Run a command and return the completed process without raising on error."""
+    return subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        cwd=cwd,
+        check=False,
+    )
+
+
+def _parse_remote_url(remote_url: str) -> Optional[Tuple[str, str]]:
+    """Parse a GitHub remote URL into (owner, repo)."""
+    match = _REMOTE_PATTERN.search(remote_url.strip())
+    if not match:
         return None
-    except (subprocess.CalledProcessError, json.JSONDecodeError):
+    return match.group("owner"), match.group("repo")
+
+
+def _get_tracking_branch(repo_root: Path) -> Optional[Tuple[str, str]]:
+    """Return (remote, branch) for the current upstream if configured."""
+    result = _run_command(["git", "-C", str(repo_root), "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
+    if result.returncode != 0:
         return None
 
+    ref = result.stdout.strip()
+    if "/" not in ref:
+        return None
+    remote, branch = ref.split("/", 1)
+    if not remote or not branch:
+        return None
+    return remote, branch
 
-def execute_graphql_query(query: str, variables: Dict[str, Any] | None = None) -> Dict[str, Any]:
-    """Execute a GraphQL query using gh CLI
 
-    Args:
-        query: GraphQL query string
-        variables: Optional dictionary of GraphQL variables
+def _get_remote_repo(repo_root: Path, remote_name: str) -> Optional[Tuple[str, str]]:
+    """Return (owner, repo) for the given remote using its URL."""
+    result = _run_command(["git", "-C", str(repo_root), "remote", "get-url", remote_name])
+    if result.returncode != 0:
+        return None
+    parsed = _parse_remote_url(result.stdout)
+    return parsed
 
-    Returns:
-        Parsed JSON response from GitHub API
 
-    Raises:
-        RuntimeError: If the query execution fails
-        json.JSONDecodeError: If the response cannot be parsed
-    """
-    cmd = ["gh", "api", "graphql", "-f", f"query={query}"]
+def _get_local_head_sha(repo_root: Path) -> Optional[str]:
+    """Return the current HEAD SHA."""
+    result = _run_command(["git", "-C", str(repo_root), "rev-parse", "HEAD"])
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
 
-    # Add variables to command if provided
-    if variables:
-        for key, value in variables.items():
-            cmd.extend(["-F", f"{key}={value}"])
 
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
-        try:
-            return json.loads(result.stdout)
-        except json.JSONDecodeError as e:
-            error_message = f"Error parsing JSON response from gh CLI: {e}\nRaw output from gh:\n{result.stdout}"
-            print(error_message)
-            raise RuntimeError(error_message) from e
+def _get_remote_latest_sha(owner: str, repo: str, branch: str, cwd: Path) -> Optional[str]:
+    """Fetch the latest SHA for the remote branch via gh api."""
+    result = _run_command(
+        [
+            "gh",
+            "api",
+            f"repos/{owner}/{repo}/commits",
+            "-F",
+            f"sha={branch}",
+            "-F",
+            "per_page=1",
+            "--jq",
+            ".[0].sha",
+        ],
+        cwd=cwd,
+    )
+    if result.returncode != 0:
+        return None
+    sha = result.stdout.strip()
+    return sha or None
 
-    except subprocess.CalledProcessError as e:
-        error_message = f"Error executing GraphQL query: {e}"
-        print(error_message)
-        stderr_text = (e.stderr or "").strip()
-        if stderr_text:
-            print(f"stderr: {stderr_text}")
 
-        if _is_rate_limit_exceeded_error(stderr_text):
-            graphql_limit_info = _get_graphql_rate_limit_info()
-            if graphql_limit_info:
-                limit = graphql_limit_info.get("limit", "unknown")
-                used = graphql_limit_info.get("used", "unknown")
-                remaining = graphql_limit_info.get("remaining", "unknown")
-                reset = graphql_limit_info.get("reset", "unknown")
-                rate_limit_message = (
-                    "GitHub API rate limit exceeded. "
-                    f"GraphQL limit: used={used}, remaining={remaining}, limit={limit}, reset={reset}. "
-                    "Wait for reset and retry."
-                )
-            else:
-                rate_limit_message = (
-                    "GitHub API rate limit exceeded. "
-                    "Wait for reset and retry. "
-                    "You can check remaining quota with `gh api rate_limit`."
-                )
-            raise GitHubRateLimitError(rate_limit_message, rate_limit_info=graphql_limit_info) from e
+def _is_worktree_clean(repo_root: Path) -> bool:
+    """Check if the worktree has no local modifications."""
+    result = _run_command(["git", "-C", str(repo_root), "status", "--porcelain"])
+    return result.returncode == 0 and not result.stdout.strip()
 
-        raise RuntimeError(error_message) from e
+
+def _pull_fast_forward(repo_root: Path, remote_name: str, branch: str) -> bool:
+    """Attempt a fast-forward pull; return True on success."""
+    result = _run_command(["git", "-C", str(repo_root), "pull", "--ff-only", remote_name, branch])
+    if result.returncode != 0:
+        message = result.stderr.strip() or result.stdout.strip()
+        print(f"Auto-update skipped: git pull failed ({message}).")
+        return False
+    return True
+
+
+def restart_application() -> None:
+    """Restart the current Python process with the same arguments."""
+    os.chdir(REPO_ROOT)
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
+def maybe_self_update(repo_root: Path | None = None) -> bool:
+    """Check for repository updates and restart the app if new commits are available."""
+    global _last_check_time
+    now = time.time()
+    if _last_check_time and now - _last_check_time < UPDATE_CHECK_INTERVAL_SECONDS:
+        return False
+    _last_check_time = now
+
+    repo_root = repo_root or REPO_ROOT
+    tracking = _get_tracking_branch(repo_root)
+    if not tracking:
+        return False
+    remote_name, branch = tracking
+
+    remote_repo = _get_remote_repo(repo_root, remote_name)
+    if not remote_repo:
+        return False
+    owner, repo = remote_repo
+
+    local_sha = _get_local_head_sha(repo_root)
+    if not local_sha:
+        return False
+
+    remote_sha = _get_remote_latest_sha(owner, repo, branch, repo_root)
+    if not remote_sha or remote_sha == local_sha:
+        return False
+
+    if not _is_worktree_clean(repo_root):
+        print("Auto-update skipped: local changes detected.")
+        return False
+
+    if not _pull_fast_forward(repo_root, remote_name, branch):
+        return False
+
+    print("Auto-update applied: restarting application to use the latest code...")
+    restart_application()
+    return True
 
 {% endraw %}
 ```
@@ -1103,6 +783,7 @@ def execute_graphql_query(query: str, variables: Dict[str, Any] | None = None) -
 Main execution module for GitHub PR Phase Monitor
 """
 
+import math
 import signal
 import sys
 import time
@@ -1125,8 +806,12 @@ from .config import (
 from .display import display_issues_from_repos_without_prs, display_status_summary
 from .github_auth import get_current_user
 from .github_client import get_pr_details_batch, get_repositories_with_open_prs
-from .graphql_client import GitHubRateLimitError
-from .local_repo_watcher import check_local_repos
+from .graphql_client import GitHubRateLimitError, get_rate_limit_info
+from .local_repo_watcher import (
+    display_pending_local_repo_results,
+    notify_phase3_detected,
+    start_local_repo_monitoring,
+)
 from .monitor import check_no_state_change_timeout
 from .pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
 from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
@@ -1136,6 +821,7 @@ from .time_utils import format_elapsed_time
 from .wait_handler import wait_with_countdown
 
 LOG_DIR = Path("logs")
+MAX_RATE_LIMIT_THROTTLE_SECONDS = 600
 
 
 def _format_rate_limit_reset(reset: Any, now: datetime | None = None) -> tuple[str, str]:
@@ -1147,6 +833,96 @@ def _format_rate_limit_reset(reset: Any, now: datetime | None = None) -> tuple[s
     reset_dt = datetime.fromtimestamp(float(reset), UTC)
     remaining_seconds = max(0, int(reset_dt.timestamp() - current.timestamp()))
     return reset_dt.strftime("%Y-%m-%d %H:%M:%S UTC"), format_elapsed_time(remaining_seconds)
+
+
+def _display_rate_limit_usage(
+    before: dict[str, Any] | None,
+    after: dict[str, Any] | None,
+) -> None:
+    """Display GraphQL API usage breakdown for this iteration."""
+    if not after:
+        return
+
+    remaining = after.get("remaining", "?")
+    limit = after.get("limit", "?")
+    reset = after.get("reset")
+    reset_display, reset_in_display = _format_rate_limit_reset(reset)
+    status = f"残={remaining}/{limit}, リセット={reset_display} (あと{reset_in_display})"
+
+    if before is not None and isinstance(before.get("remaining"), int) and isinstance(after.get("remaining"), int):
+        raw_consumed = before["remaining"] - after["remaining"]
+        if raw_consumed < 0:
+            # レートリミットウィンドウがリセットされ、単純差分が負になるケース
+            consumed = 0
+            reset_note = " (リセット後)"
+        else:
+            consumed = raw_consumed
+            reset_note = ""
+        print(f"\nGraphQL API使用状況: 今回消費={consumed}点{reset_note}, {status}")
+    else:
+        print(f"\nGraphQL API使用状況: {status}")
+
+
+def _check_rate_limit_throttle(
+    before: dict[str, Any] | None,
+    after: dict[str, Any] | None,
+    normal_interval_seconds: int,
+) -> tuple[bool, int]:
+    """Check if the current rate limit consumption rate requires interval throttling.
+
+    Calculates whether continuing at the current consumption rate would exhaust
+    the GraphQL rate limit before the next reset window.
+
+    Args:
+        before: Rate limit info captured before API calls
+        after: Rate limit info captured after API calls
+        normal_interval_seconds: The configured normal monitoring interval
+
+    Returns:
+        Tuple of (should_throttle, recommended_interval_seconds).
+        If should_throttle is False, recommended_interval_seconds equals normal_interval_seconds.
+    """
+    if not (before and after):
+        return False, normal_interval_seconds
+
+    remaining = after.get("remaining")
+    reset = after.get("reset")
+    if not isinstance(remaining, int) or not isinstance(reset, (int, float)):
+        return False, normal_interval_seconds
+
+    if not isinstance(before.get("remaining"), int):
+        return False, normal_interval_seconds
+
+    consumed = before["remaining"] - after["remaining"]
+    if consumed <= 0:
+        return False, normal_interval_seconds
+
+    now = time.time()
+    reset_seconds = max(0, int(reset) - now)
+    if reset_seconds <= 0 or normal_interval_seconds <= 0:
+        return False, normal_interval_seconds
+
+    # Estimate how many more iterations until reset
+    iterations_until_reset = reset_seconds / normal_interval_seconds
+    projected_consumption = consumed * iterations_until_reset
+
+    if projected_consumption <= remaining:
+        return False, normal_interval_seconds
+
+    # When remaining is 0, cap immediately at maximum throttle
+    if remaining <= 0:
+        return True, MAX_RATE_LIMIT_THROTTLE_SECONDS
+
+    # Calculate the minimum safe interval to avoid exhausting the rate limit
+    # safe_interval = reset_seconds / (remaining / consumed) = reset_seconds * consumed / remaining
+    # Use ceil to round up so we never under-estimate the required interval
+    safe_interval_seconds = math.ceil(reset_seconds * consumed / remaining)
+    # Use at least 2x the normal interval to avoid micro-adjustments
+    throttled_interval = max(normal_interval_seconds * 2, safe_interval_seconds)
+    # Cap at max throttle to prevent excessively long waits
+    throttled_interval = min(throttled_interval, MAX_RATE_LIMIT_THROTTLE_SECONDS)
+
+    return True, throttled_interval
 
 
 def log_error_to_file(message: str, exc: Exception | None = None, base_dir: Path | str | None = None) -> None:
@@ -1231,6 +1007,13 @@ def main():
         print(f"Check #{iteration} - {time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'=' * 50}")
 
+        # Capture rate limit before API calls for per-iteration consumption tracking
+        try:
+            before_rate_limit = get_rate_limit_info()
+        except Exception as rate_limit_error:
+            log_error_to_file("Failed to fetch pre-iteration rate limit info", rate_limit_error)
+            before_rate_limit = None
+
         # Reset snapshot cache to allow recording new snapshots in this iteration
         reset_snapshot_cache()
 
@@ -1238,6 +1021,7 @@ def main():
         all_prs = []
         pr_phases = []
         repos_with_prs = []
+        phase3_repo_names: list[str] = []
 
         try:
             # Phase 1: Get all repositories with open PRs (lightweight query)
@@ -1293,6 +1077,12 @@ def main():
 
                             pr_phases.append(phase)
                             process_pr(pr, config, phase)
+
+                            # phase3検知時: 該当リポジトリをpullable検査の対象に登録
+                            if phase == PHASE_3:
+                                repo_name = pr.get("repository", {}).get("name", "")
+                                if repo_name and repo_name not in phase3_repo_names:
+                                    phase3_repo_names.append(repo_name)
                         except Exception as pr_error:
                             log_error_to_file(
                                 f"Failed to process PR {pr.get('url', 'unknown') or pr.get('title', 'unknown')}",
@@ -1354,13 +1144,19 @@ def main():
                 log_error_to_file("Failed to check Pages deployment", pages_error)
                 current_user = None
 
-            # Check local repository pullable status
-            # By default (dry-run), displays repos that can be pulled.
-            # Set auto_git_pull = true in config.toml to auto-pull.
+            # Local repository pullable check (background-based)
+            # 初回イテレーション: 全リポジトリをバックグラウンドで検査開始
+            # phase3検知リポジトリ: バックグラウンドでpullable検査をトリガー
+            # 蓄積された検査結果を表示（1秒ごとの逐次表示は廃止、次のintervalで一括表示）
             try:
                 if current_user is None:
                     current_user = get_current_user()
-                check_local_repos(config, current_user)
+                if iteration == 1:
+                    start_local_repo_monitoring(config, current_user)
+                else:
+                    for repo_name in phase3_repo_names:
+                        notify_phase3_detected(repo_name, config, current_user)
+                display_pending_local_repo_results()
             except Exception as local_repo_error:
                 log_error_to_file("Failed to check local repos", local_repo_error)
 
@@ -1408,6 +1204,23 @@ def main():
         # incomplete or empty data, which is acceptable as it reflects the actual
         # state that was successfully retrieved before the error.
         try:
+            after_rate_limit = get_rate_limit_info()
+            _display_rate_limit_usage(before_rate_limit, after_rate_limit)
+        except Exception as rate_limit_display_error:
+            log_error_to_file("Failed to display rate limit usage", rate_limit_display_error)
+            after_rate_limit = None
+
+        # Check if current consumption rate would exhaust the rate limit before reset
+        try:
+            should_throttle, throttled_interval = _check_rate_limit_throttle(
+                before_rate_limit, after_rate_limit, normal_interval_seconds
+            )
+        except Exception as throttle_error:
+            log_error_to_file("Failed to check rate limit throttle", throttle_error)
+            should_throttle = False
+            throttled_interval = normal_interval_seconds
+
+        try:
             display_status_summary(all_prs, pr_phases, repos_with_prs, config)
         except Exception as summary_error:
             log_error_to_file("Failed to display status summary", summary_error)
@@ -1430,6 +1243,14 @@ def main():
             except ValueError as e:
                 print(f"Error: Invalid reduced_frequency_interval format: {e}")
                 sys.exit(1)
+        elif should_throttle:
+            # Rate limit throttling: slow down to avoid exhausting the quota before reset
+            current_interval_seconds = throttled_interval
+            current_interval_str = format_elapsed_time(throttled_interval)
+            print(f"\n{'=' * 50}")
+            print("現在の消費ペースでは、レートリミットがリセットされる前に使い切る可能性があります。")
+            print(f"監視間隔を{current_interval_str}に延長します。")
+            print(f"{'=' * 50}")
         else:
             # Use normal interval (preserved separately to avoid contamination)
             current_interval_seconds = normal_interval_seconds
@@ -1474,56 +1295,37 @@ if __name__ == "__main__":
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-b692705 Merge pull request #295 from cat2151/copilot/fix-phase2-llm-issue
-4c5c514 Fix: phase2 LLM working の進捗ラベルを「Phase 1 completed」から「Phase 2 in progress」に修正
-dde6e54 Initial plan
-aa53c9e Merge pull request #294 from cat2151/copilot/improve-search-response-time
-a6c92d5 進捗表示の残像修正: max_msg_lenで最長メッセージ長を追跡
-190eb46 pullableの検索処理中に1行進捗表示を追加（ハング防止）
-edf28ff Initial plan
-e4e58e0 Merge pull request #293 from cat2151/copilot/add-warning-for-long-working-prs
-3ea8229 LLM workingのPRが起票から30分以上経過している場合に警告を表示
-bf9a489 Initial plan
+47d323f Merge pull request #306 from cat2151/copilot/add-query-cost-indicator
+99ca8c5 レビュー指摘対応: 定数化・ceil丸め・docstring修正
+15c83e6 GraphQLクエリごとに意図・消費コストを表示し、レートリミット超過時に動的インターバル延長
+105aed7 Initial plan
+e0401a1 Merge pull request #303 from cat2151/copilot/refactor-large-file-detection
+8b0aa9e Split test_local_repo_watcher.py: move TestBackgroundMonitoring to separate file
+1dd503d Initial plan
+e38af6e Merge pull request #301 from cat2151/copilot/optimize-pullable-search
+719015b fix: PRレビューコメントへの対応
+85bd8dd feat: バックグラウンドスレッドでpullable検索を最適化
 
 ### 変更されたファイル:
-src/gh_pr_phase_monitor/browser_automation.py
-src/gh_pr_phase_monitor/browser_cooldown.py
+generated-docs/development-status-generated-prompt.md
+generated-docs/development-status.md
+generated-docs/project-overview-generated-prompt.md
+generated-docs/project-overview.md
 src/gh_pr_phase_monitor/button_clicker.py
-src/gh_pr_phase_monitor/config.py
-src/gh_pr_phase_monitor/config_printer.py
-src/gh_pr_phase_monitor/display.py
-src/gh_pr_phase_monitor/interval_parser.py
+src/gh_pr_phase_monitor/click_config_validator.py
+src/gh_pr_phase_monitor/graphql_client.py
+src/gh_pr_phase_monitor/issue_fetcher.py
 src/gh_pr_phase_monitor/local_repo_watcher.py
-src/gh_pr_phase_monitor/notification_window.py
+src/gh_pr_phase_monitor/main.py
 src/gh_pr_phase_monitor/phase_detector.py
 src/gh_pr_phase_monitor/pr_fetcher.py
-src/gh_pr_phase_monitor/process_utils.py
-src/gh_pr_phase_monitor/window_manager.py
-tests/test_assign_issue_to_copilot.py
-tests/test_browser_automation.py
-tests/test_browser_automation_click.py
-tests/test_browser_automation_ocr.py
-tests/test_browser_automation_window.py
-tests/test_check_process_before_autoraise.py
-tests/test_elapsed_time_display.py
-tests/test_has_comments_with_reactions.py
-tests/test_has_unresolved_review_threads.py
-tests/test_html_to_markdown.py
-tests/test_issue_assignment_priority.py
-tests/test_issue_fetching.py
-tests/test_local_repo_watcher.py
-tests/test_no_open_prs_issue_display.py
-tests/test_open_browser_cooldown.py
-tests/test_phase_detection.py
-tests/test_phase_detection_llm_status.py
-tests/test_phase_detection_real_prs.py
-tests/test_pr_actions.py
-tests/test_pr_actions_dry_run.py
-tests/test_pr_data_recorder.py
-tests/test_pr_data_recorder_html.py
-tests/test_pr_data_recorder_json.py
+src/gh_pr_phase_monitor/repository_fetcher.py
+tests/test_graphql_query_intent_display.py
+tests/test_local_repo_watcher_background.py
+tests/test_rate_limit_throttle.py
+tests/test_rate_limit_usage_display.py
 tests/test_status_summary.py
 
 
 ---
-Generated at: 2026-03-02 07:01:24 JST
+Generated at: 2026-03-03 07:04:23 JST

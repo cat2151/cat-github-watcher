@@ -2,6 +2,7 @@
 Main execution module for GitHub PR Phase Monitor
 """
 
+import math
 import signal
 import sys
 import time
@@ -39,6 +40,7 @@ from .time_utils import format_elapsed_time
 from .wait_handler import wait_with_countdown
 
 LOG_DIR = Path("logs")
+MAX_RATE_LIMIT_THROTTLE_SECONDS = 600
 
 
 def _format_rate_limit_reset(reset: Any, now: datetime | None = None) -> tuple[str, str]:
@@ -128,15 +130,16 @@ def _check_rate_limit_throttle(
 
     # When remaining is 0, cap immediately at maximum throttle
     if remaining <= 0:
-        return True, 600
+        return True, MAX_RATE_LIMIT_THROTTLE_SECONDS
 
     # Calculate the minimum safe interval to avoid exhausting the rate limit
     # safe_interval = reset_seconds / (remaining / consumed) = reset_seconds * consumed / remaining
-    safe_interval_seconds = int(reset_seconds * consumed / remaining)
+    # Use ceil to round up so we never under-estimate the required interval
+    safe_interval_seconds = math.ceil(reset_seconds * consumed / remaining)
     # Use at least 2x the normal interval to avoid micro-adjustments
     throttled_interval = max(normal_interval_seconds * 2, safe_interval_seconds)
-    # Cap at 10 minutes to prevent excessively long waits
-    throttled_interval = min(throttled_interval, 600)
+    # Cap at max throttle to prevent excessively long waits
+    throttled_interval = min(throttled_interval, MAX_RATE_LIMIT_THROTTLE_SECONDS)
 
     return True, throttled_interval
 

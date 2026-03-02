@@ -63,8 +63,7 @@ def execute_graphql_query(
         Parsed JSON response from GitHub API
 
     Raises:
-        RuntimeError: If the query execution fails
-        json.JSONDecodeError: If the response cannot be parsed
+        RuntimeError: If the query execution fails or the response cannot be parsed as JSON.
     """
     if intent:
         print(f"  [GraphQL] クエリ意図: {intent}")

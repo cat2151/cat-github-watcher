@@ -137,7 +137,8 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
 
         # Execute GraphQL query
-        data = execute_graphql_query(full_query)
+        batch_num = i // REPOSITORIES_BATCH_SIZE + 1
+        data = execute_graphql_query(full_query, intent=f"PR詳細取得 (バッチ{batch_num}: {len(batch)}リポジトリ)")
 
         # Extract PR data from response
         for idx, repo in enumerate(batch):
@@ -220,11 +221,6 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                         "repository": {"name": repo_name, "owner": owner},
                     }
                     all_prs.append(pr_with_repo)
-
-        # Print rate limit info
-        rate_limit = data.get("data", {}).get("rateLimit", {})
-        if rate_limit:
-            print(f"  GraphQL API - Cost: {rate_limit.get('cost')}, Remaining: {rate_limit.get('remaining')}")
 
     return all_prs
 

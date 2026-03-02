@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Optional, Tuple
@@ -14,6 +15,8 @@ UPDATE_CHECK_INTERVAL_SECONDS = 60
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 _last_check_time: float = 0.0
+_restart_needed: bool = False
+_update_lock = threading.Lock()
 _REMOTE_PATTERN = re.compile(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?$")
 
 
@@ -114,40 +117,81 @@ def restart_application() -> None:
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
-def maybe_self_update(repo_root: Path | None = None) -> bool:
-    """Check for repository updates and restart the app if new commits are available."""
-    global _last_check_time
+def maybe_self_update(repo_root: Path | None = None, *, _defer_restart: bool = False) -> bool:
+    """Check for repository updates and restart the app if new commits are available.
+
+    _defer_restart=True の場合は再起動を行わず _restart_needed フラグをセットする。
+    バックグラウンドスレッドからの呼び出しで使用し、メインスレッドが再起動を担う。
+    """
+    global _last_check_time, _restart_needed
+
+    # ロック取得前に簡易チェックしてロック競合を最小化
     now = time.time()
     if _last_check_time and now - _last_check_time < UPDATE_CHECK_INTERVAL_SECONDS:
         return False
-    _last_check_time = now
 
-    repo_root = repo_root or REPO_ROOT
-    tracking = _get_tracking_branch(repo_root)
-    if not tracking:
-        return False
-    remote_name, branch = tracking
+    with _update_lock:
+        # 別スレッドがロック待ち中に実行した可能性があるため再チェック
+        now = time.time()
+        if _last_check_time and now - _last_check_time < UPDATE_CHECK_INTERVAL_SECONDS:
+            return False
+        _last_check_time = now
 
-    remote_repo = _get_remote_repo(repo_root, remote_name)
-    if not remote_repo:
-        return False
-    owner, repo = remote_repo
+        repo_root = repo_root or REPO_ROOT
+        tracking = _get_tracking_branch(repo_root)
+        if not tracking:
+            return False
+        remote_name, branch = tracking
 
-    local_sha = _get_local_head_sha(repo_root)
-    if not local_sha:
-        return False
+        remote_repo = _get_remote_repo(repo_root, remote_name)
+        if not remote_repo:
+            return False
+        owner, repo = remote_repo
 
-    remote_sha = _get_remote_latest_sha(owner, repo, branch, repo_root)
-    if not remote_sha or remote_sha == local_sha:
-        return False
+        local_sha = _get_local_head_sha(repo_root)
+        if not local_sha:
+            return False
 
-    if not _is_worktree_clean(repo_root):
-        print("Auto-update skipped: local changes detected.")
-        return False
+        remote_sha = _get_remote_latest_sha(owner, repo, branch, repo_root)
+        if not remote_sha or remote_sha == local_sha:
+            return False
 
-    if not _pull_fast_forward(repo_root, remote_name, branch):
-        return False
+        if not _is_worktree_clean(repo_root):
+            print("Auto-update skipped: local changes detected.")
+            return False
 
-    print("Auto-update applied: restarting application to use the latest code...")
-    restart_application()
-    return True
+        if not _pull_fast_forward(repo_root, remote_name, branch):
+            return False
+
+        if _defer_restart:
+            _restart_needed = True
+            print("Auto-update downloaded: restart pending...")
+        else:
+            print("Auto-update applied: restarting application to use the latest code...")
+            restart_application()
+        return True
+
+
+def apply_startup_restart_if_needed() -> None:
+    """起動時チェックで更新が検出された場合、メインスレッドから再起動する。"""
+    with _update_lock:
+        needed = _restart_needed
+    if needed:
+        print("Auto-update applied: restarting application to use the latest code...")
+        restart_application()
+
+
+def start_startup_self_update_check(repo_root: Path | None = None) -> None:
+    """起動直後に別スレッドで自己リポジトリのアップデートチェックを一度実行する。
+
+    更新が見つかった場合はメインスレッドで再起動できるようフラグをセットする。
+    """
+
+    def _run() -> None:
+        try:
+            maybe_self_update(repo_root=repo_root, _defer_restart=True)
+        except Exception as e:
+            print(f"Startup self-update check failed: {e}")
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()

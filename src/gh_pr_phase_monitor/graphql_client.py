@@ -21,7 +21,7 @@ def _is_rate_limit_exceeded_error(stderr: str) -> bool:
     return "rate limit" in lower_stderr and ("exceeded" in lower_stderr or "exhausted" in lower_stderr)
 
 
-def _get_graphql_rate_limit_info() -> Dict[str, Any] | None:
+def get_rate_limit_info() -> Dict[str, Any] | None:
     """Fetch GraphQL rate limit details via gh api rate_limit.
 
     Returns:
@@ -41,8 +41,12 @@ def _get_graphql_rate_limit_info() -> Dict[str, Any] | None:
         if isinstance(graphql_info, dict):
             return graphql_info
         return None
-    except (subprocess.CalledProcessError, json.JSONDecodeError):
+    except (subprocess.CalledProcessError, json.JSONDecodeError, OSError):
         return None
+
+
+# Keep private alias for internal use
+_get_graphql_rate_limit_info = get_rate_limit_info
 
 
 def execute_graphql_query(query: str, variables: Dict[str, Any] | None = None) -> Dict[str, Any]:

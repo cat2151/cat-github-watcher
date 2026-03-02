@@ -24,7 +24,7 @@ from .config import (
 from .display import display_issues_from_repos_without_prs, display_status_summary
 from .github_auth import get_current_user
 from .github_client import get_pr_details_batch, get_repositories_with_open_prs
-from .graphql_client import GitHubRateLimitError
+from .graphql_client import GitHubRateLimitError, get_rate_limit_info
 from .local_repo_watcher import check_local_repos
 from .monitor import check_no_state_change_timeout
 from .pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
@@ -46,6 +46,34 @@ def _format_rate_limit_reset(reset: Any, now: datetime | None = None) -> tuple[s
     reset_dt = datetime.fromtimestamp(float(reset), UTC)
     remaining_seconds = max(0, int(reset_dt.timestamp() - current.timestamp()))
     return reset_dt.strftime("%Y-%m-%d %H:%M:%S UTC"), format_elapsed_time(remaining_seconds)
+
+
+def _display_rate_limit_usage(
+    before: dict[str, Any] | None,
+    after: dict[str, Any] | None,
+) -> None:
+    """Display GraphQL API usage breakdown for this iteration."""
+    if not after:
+        return
+
+    remaining = after.get("remaining", "?")
+    limit = after.get("limit", "?")
+    reset = after.get("reset")
+    reset_display, reset_in_display = _format_rate_limit_reset(reset)
+    status = f"残={remaining}/{limit}, リセット={reset_display} (あと{reset_in_display})"
+
+    if before is not None and isinstance(before.get("remaining"), int) and isinstance(after.get("remaining"), int):
+        raw_consumed = before["remaining"] - after["remaining"]
+        if raw_consumed < 0:
+            # レートリミットウィンドウがリセットされ、単純差分が負になるケース
+            consumed = 0
+            reset_note = " (リセット後)"
+        else:
+            consumed = raw_consumed
+            reset_note = ""
+        print(f"\nGraphQL API使用状況: 今回消費={consumed}点{reset_note}, {status}")
+    else:
+        print(f"\nGraphQL API使用状況: {status}")
 
 
 def log_error_to_file(message: str, exc: Exception | None = None, base_dir: Path | str | None = None) -> None:
@@ -129,6 +157,13 @@ def main():
         print(f"\n{'=' * 50}")
         print(f"Check #{iteration} - {time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'=' * 50}")
+
+        # Capture rate limit before API calls for per-iteration consumption tracking
+        try:
+            before_rate_limit = get_rate_limit_info()
+        except Exception as rate_limit_error:
+            log_error_to_file("Failed to fetch pre-iteration rate limit info", rate_limit_error)
+            before_rate_limit = None
 
         # Reset snapshot cache to allow recording new snapshots in this iteration
         reset_snapshot_cache()
@@ -306,6 +341,12 @@ def main():
         # Note: If an error occurred during data collection, the summary will show
         # incomplete or empty data, which is acceptable as it reflects the actual
         # state that was successfully retrieved before the error.
+        try:
+            after_rate_limit = get_rate_limit_info()
+            _display_rate_limit_usage(before_rate_limit, after_rate_limit)
+        except Exception as rate_limit_display_error:
+            log_error_to_file("Failed to display rate limit usage", rate_limit_display_error)
+
         try:
             display_status_summary(all_prs, pr_phases, repos_with_prs, config)
         except Exception as summary_error:

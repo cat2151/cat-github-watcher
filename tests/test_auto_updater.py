@@ -23,13 +23,16 @@ _THREAD_TIMEOUT = 3
 
 
 @pytest.fixture(autouse=True)
-def reset_last_check_time():
+def reset_module_state():
     original_last_check_time = getattr(auto_updater, "_last_check_time", 0.0)
+    original_restart_needed = getattr(auto_updater, "_restart_needed", False)
     auto_updater._last_check_time = 0.0
+    auto_updater._restart_needed = False
     try:
         yield
     finally:
         auto_updater._last_check_time = original_last_check_time
+        auto_updater._restart_needed = original_restart_needed
 
 
 def test_skips_when_interval_not_elapsed(monkeypatch):
@@ -91,10 +94,12 @@ def test_updates_and_restarts_when_remote_is_newer(monkeypatch):
 
 
 def test_start_startup_self_update_check_runs_in_background(monkeypatch):
-    """start_startup_self_update_check() が別スレッドで maybe_self_update を呼び出すことを確認。"""
+    """start_startup_self_update_check() が別スレッドで maybe_self_update を _defer_restart=True で呼び出すことを確認。"""
     called_event = threading.Event()
+    received_kwargs = {}
 
-    def fake_maybe_self_update(repo_root=None):
+    def fake_maybe_self_update(repo_root=None, *, _defer_restart=False):
+        received_kwargs["_defer_restart"] = _defer_restart
         called_event.set()
         return False
 
@@ -103,13 +108,14 @@ def test_start_startup_self_update_check_runs_in_background(monkeypatch):
     auto_updater.start_startup_self_update_check(repo_root=auto_updater.REPO_ROOT)
 
     assert called_event.wait(timeout=_THREAD_TIMEOUT), "maybe_self_update was not called from background thread"
+    assert received_kwargs["_defer_restart"] is True
 
 
 def test_start_startup_self_update_check_swallows_exceptions(monkeypatch):
     """start_startup_self_update_check() が例外を飲み込んでクラッシュしないことを確認。"""
     done_event = threading.Event()
 
-    def raise_error(repo_root=None):
+    def raise_error(repo_root=None, *, _defer_restart=False):
         done_event.set()
         raise RuntimeError("simulated error")
 
@@ -118,3 +124,70 @@ def test_start_startup_self_update_check_swallows_exceptions(monkeypatch):
     auto_updater.start_startup_self_update_check(repo_root=auto_updater.REPO_ROOT)
 
     assert done_event.wait(timeout=_THREAD_TIMEOUT), "background thread did not run"
+
+
+def test_defer_restart_sets_flag_instead_of_restarting(monkeypatch):
+    """_defer_restart=True のとき restart_application を呼ばず _restart_needed フラグをセットすることを確認。"""
+    monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
+    monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: "abc")
+    monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "def")
+    monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
+    monkeypatch.setattr(auto_updater, "_pull_fast_forward", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(auto_updater, "restart_application", lambda: pytest.fail("restart_application should not be called"))
+
+    result = auto_updater.maybe_self_update(repo_root=auto_updater.REPO_ROOT, _defer_restart=True)
+
+    assert result is True
+    assert auto_updater._restart_needed is True
+
+
+def test_apply_startup_restart_if_needed_restarts_when_flag_set(monkeypatch):
+    """_restart_needed=True のとき apply_startup_restart_if_needed() が restart_application を呼ぶことを確認。"""
+    calls = {"restarted": False}
+    auto_updater._restart_needed = True
+    monkeypatch.setattr(auto_updater, "restart_application", lambda: calls.update(restarted=True))
+
+    auto_updater.apply_startup_restart_if_needed()
+
+    assert calls["restarted"] is True
+
+
+def test_apply_startup_restart_if_needed_skips_when_flag_not_set(monkeypatch):
+    """_restart_needed=False のとき apply_startup_restart_if_needed() が restart_application を呼ばないことを確認。"""
+    auto_updater._restart_needed = False
+    monkeypatch.setattr(auto_updater, "restart_application", lambda: pytest.fail("should not restart"))
+
+    auto_updater.apply_startup_restart_if_needed()  # should not raise
+
+
+def test_concurrent_calls_do_not_double_update(monkeypatch):
+    """ロックにより maybe_self_update が並行実行されても git pull が1回しか行われないことを確認。"""
+    pull_count = {"n": 0}
+    start_event = threading.Event()
+
+    def counting_pull(*_args, **_kwargs):
+        pull_count["n"] += 1
+        return True
+
+    monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
+    monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: "abc")
+    monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "def")
+    monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
+    monkeypatch.setattr(auto_updater, "_pull_fast_forward", counting_pull)
+    monkeypatch.setattr(auto_updater, "restart_application", lambda: None)
+
+    def run():
+        start_event.wait()
+        auto_updater.maybe_self_update(repo_root=auto_updater.REPO_ROOT)
+
+    threads = [threading.Thread(target=run) for _ in range(5)]
+    for t in threads:
+        t.start()
+    start_event.set()
+    for t in threads:
+        t.join(timeout=_THREAD_TIMEOUT)
+
+    # ロック + インターバル再チェックにより pull は1回のみ実行される
+    assert pull_count["n"] == 1

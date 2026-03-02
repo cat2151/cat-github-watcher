@@ -25,7 +25,11 @@ from .display import display_issues_from_repos_without_prs, display_status_summa
 from .github_auth import get_current_user
 from .github_client import get_pr_details_batch, get_repositories_with_open_prs
 from .graphql_client import GitHubRateLimitError, get_rate_limit_info
-from .local_repo_watcher import check_local_repos
+from .local_repo_watcher import (
+    display_pending_local_repo_results,
+    notify_phase3_detected,
+    start_local_repo_monitoring,
+)
 from .monitor import check_no_state_change_timeout
 from .pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
 from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
@@ -172,6 +176,7 @@ def main():
         all_prs = []
         pr_phases = []
         repos_with_prs = []
+        phase3_repo_names: list[str] = []
 
         try:
             # Phase 1: Get all repositories with open PRs (lightweight query)
@@ -227,6 +232,12 @@ def main():
 
                             pr_phases.append(phase)
                             process_pr(pr, config, phase)
+
+                            # phase3検知時: 該当リポジトリをpullable検査の対象に登録
+                            if phase == PHASE_3:
+                                repo_name = pr.get("repository", {}).get("name", "")
+                                if repo_name and repo_name not in phase3_repo_names:
+                                    phase3_repo_names.append(repo_name)
                         except Exception as pr_error:
                             log_error_to_file(
                                 f"Failed to process PR {pr.get('url', 'unknown') or pr.get('title', 'unknown')}",
@@ -288,13 +299,19 @@ def main():
                 log_error_to_file("Failed to check Pages deployment", pages_error)
                 current_user = None
 
-            # Check local repository pullable status
-            # By default (dry-run), displays repos that can be pulled.
-            # Set auto_git_pull = true in config.toml to auto-pull.
+            # Local repository pullable check (background-based)
+            # 初回イテレーション: 全リポジトリをバックグラウンドで検査開始
+            # phase3検知リポジトリ: バックグラウンドでpullable検査をトリガー
+            # 蓄積された検査結果を表示（1秒ごとの逐次表示は廃止、次のintervalで一括表示）
             try:
                 if current_user is None:
                     current_user = get_current_user()
-                check_local_repos(config, current_user)
+                if iteration == 1:
+                    start_local_repo_monitoring(config, current_user)
+                else:
+                    for repo_name in phase3_repo_names:
+                        notify_phase3_detected(repo_name, config, current_user)
+                display_pending_local_repo_results()
             except Exception as local_repo_error:
                 log_error_to_file("Failed to check local repos", local_repo_error)
 

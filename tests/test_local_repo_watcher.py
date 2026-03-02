@@ -512,7 +512,48 @@ class TestBackgroundMonitoring:
             lines = list(local_repo_watcher._pending_lines)
         assert lines == []
 
-    def test_display_pending_calls_restart_when_flagged(self, monkeypatch, capsys):
+    def test_notify_phase3_detected_skips_if_already_done(self):
+        """notify_phase3_detected is a no-op for repos already in DONE state (no re-trigger)."""
+        import threading
+        import unittest.mock as _mock
+
+        with local_repo_watcher._state_lock:
+            local_repo_watcher._repo_states["myrepo"] = local_repo_watcher.REPO_STATE_DONE
+
+        started = []
+        with _mock.patch.object(threading.Thread, "start", lambda self: started.append(True)):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                (pathlib.Path(tmpdir) / "myrepo").mkdir()
+                config = {"local_repo_watcher_base_dir": tmpdir}
+                local_repo_watcher.notify_phase3_detected("myrepo", config, "myuser")
+
+        assert len(started) == 0
+
+    def test_background_startup_check_recovers_state_on_exception(self, monkeypatch):
+        """_background_startup_check sets DONE even when _check_repo raises an exception."""
+        monkeypatch.setattr(
+            local_repo_watcher, "_check_repo", lambda path, user: (_ for _ in ()).throw(RuntimeError("fetch error"))
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (pathlib.Path(tmpdir) / "myrepo").mkdir()
+            config = {"local_repo_watcher_base_dir": tmpdir}
+            local_repo_watcher._background_startup_check(config, "myuser")
+
+        assert local_repo_watcher._repo_states.get("myrepo") == local_repo_watcher.REPO_STATE_DONE
+
+    def test_background_single_repo_check_recovers_state_on_exception(self, monkeypatch):
+        """_background_single_repo_check sets DONE even when _check_repo raises an exception."""
+        monkeypatch.setattr(
+            local_repo_watcher, "_check_repo", lambda path, user: (_ for _ in ()).throw(RuntimeError("fetch error"))
+        )
+
+        with local_repo_watcher._state_lock:
+            local_repo_watcher._repo_states["myrepo"] = local_repo_watcher.REPO_STATE_CHECKING
+
+        local_repo_watcher._background_single_repo_check("/some/path", "myrepo", "myuser", False)
+
+        assert local_repo_watcher._repo_states.get("myrepo") == local_repo_watcher.REPO_STATE_DONE
         """display_pending_local_repo_results calls restart_application if needs_restart is set."""
         restarted = []
         monkeypatch.setattr(local_repo_watcher, "restart_application", lambda: restarted.append(True))

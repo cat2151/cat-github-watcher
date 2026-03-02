@@ -308,8 +308,9 @@ def main():
                     current_user = get_current_user()
                 if iteration == 1:
                     start_local_repo_monitoring(config, current_user)
-                for repo_name in phase3_repo_names:
-                    notify_phase3_detected(repo_name, config, current_user)
+                else:
+                    for repo_name in phase3_repo_names:
+                        notify_phase3_detected(repo_name, config, current_user)
                 display_pending_local_repo_results()
             except Exception as local_repo_error:
                 log_error_to_file("Failed to check local repos", local_repo_error)

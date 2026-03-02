@@ -379,10 +379,14 @@ def _background_startup_check(config: dict, github_username: str) -> None:
 
     for d in candidates:
         repo_name = Path(d).name
-        result = _check_repo(d, github_username)
-        _accumulate_result(result, enable_pull)
-        with _state_lock:
-            _repo_states[repo_name] = REPO_STATE_DONE
+        try:
+            result = _check_repo(d, github_username)
+            _accumulate_result(result, enable_pull)
+        except Exception:
+            pass
+        finally:
+            with _state_lock:
+                _repo_states[repo_name] = REPO_STATE_DONE
 
 
 def _background_single_repo_check(repo_path: str, repo_name: str, github_username: str, enable_pull: bool) -> None:
@@ -390,10 +394,14 @@ def _background_single_repo_check(repo_path: str, repo_name: str, github_usernam
 
     phase3検知時に呼び出される。検査後に状態を DONE に更新する。
     """
-    result = _check_repo(repo_path, github_username)
-    _accumulate_result(result, enable_pull)
-    with _state_lock:
-        _repo_states[repo_name] = REPO_STATE_DONE
+    try:
+        result = _check_repo(repo_path, github_username)
+        _accumulate_result(result, enable_pull)
+    except Exception:
+        pass
+    finally:
+        with _state_lock:
+            _repo_states[repo_name] = REPO_STATE_DONE
 
 
 def start_local_repo_monitoring(config: dict, github_username: str) -> None:
@@ -433,8 +441,8 @@ def notify_phase3_detected(repo_name: str, config: dict, github_username: str) -
     """
     with _state_lock:
         current_state = _repo_states.get(repo_name)
-        if current_state in (REPO_STATE_STARTUP_CHECKING, REPO_STATE_NEEDS_CHECK, REPO_STATE_CHECKING):
-            return  # 既に検査中または待機中
+        if current_state in (REPO_STATE_STARTUP_CHECKING, REPO_STATE_NEEDS_CHECK, REPO_STATE_CHECKING, REPO_STATE_DONE):
+            return  # 既に検査済み・検査中または待機中
         _repo_states[repo_name] = REPO_STATE_NEEDS_CHECK
 
     base_dir = _get_base_dir(config)

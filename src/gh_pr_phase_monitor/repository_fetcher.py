@@ -41,6 +41,10 @@ def get_repositories_with_open_prs() -> List[Dict[str, Any]]:
           }}
         }}
       }}
+      rateLimit {{
+        cost
+        remaining
+      }}
     }}
     """.format(repositories_per_page=REPOSITORIES_PER_PAGE)
 
@@ -59,7 +63,9 @@ def get_repositories_with_open_prs() -> List[Dict[str, Any]]:
             query_with_pagination = query
 
         # Execute GraphQL query
-        data = execute_graphql_query(query_with_pagination, {"login": current_user})
+        data = execute_graphql_query(
+            query_with_pagination, {"login": current_user}, intent="リポジトリ一覧取得 (open PRあり)"
+        )
 
         repositories = data.get("data", {}).get("user", {}).get("repositories", {})
         nodes = repositories.get("nodes", [])
@@ -112,6 +118,10 @@ def get_all_repositories() -> List[Dict[str, Any]]:
           }}
         }}
       }}
+      rateLimit {{
+        cost
+        remaining
+      }}
     }}
     """.format(repositories_per_page=REPOSITORIES_PER_PAGE)
 
@@ -130,7 +140,7 @@ def get_all_repositories() -> List[Dict[str, Any]]:
             query_with_pagination = query
 
         # Execute GraphQL query
-        data = execute_graphql_query(query_with_pagination, {"login": current_user})
+        data = execute_graphql_query(query_with_pagination, {"login": current_user}, intent="リポジトリ一覧取得 (全件)")
 
         repositories = data.get("data", {}).get("user", {}).get("repositories", {})
         nodes = repositories.get("nodes", [])

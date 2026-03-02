@@ -80,6 +80,67 @@ def _display_rate_limit_usage(
         print(f"\nGraphQL API使用状況: {status}")
 
 
+def _check_rate_limit_throttle(
+    before: dict[str, Any] | None,
+    after: dict[str, Any] | None,
+    normal_interval_seconds: int,
+) -> tuple[bool, int]:
+    """Check if the current rate limit consumption rate requires interval throttling.
+
+    Calculates whether continuing at the current consumption rate would exhaust
+    the GraphQL rate limit before the next reset window.
+
+    Args:
+        before: Rate limit info captured before API calls
+        after: Rate limit info captured after API calls
+        normal_interval_seconds: The configured normal monitoring interval
+
+    Returns:
+        Tuple of (should_throttle, recommended_interval_seconds).
+        If should_throttle is False, recommended_interval_seconds equals normal_interval_seconds.
+    """
+    if not (before and after):
+        return False, normal_interval_seconds
+
+    remaining = after.get("remaining")
+    reset = after.get("reset")
+    if not isinstance(remaining, int) or not isinstance(reset, (int, float)):
+        return False, normal_interval_seconds
+
+    if not isinstance(before.get("remaining"), int):
+        return False, normal_interval_seconds
+
+    consumed = before["remaining"] - after["remaining"]
+    if consumed <= 0:
+        return False, normal_interval_seconds
+
+    now = time.time()
+    reset_seconds = max(0, int(reset) - now)
+    if reset_seconds <= 0 or normal_interval_seconds <= 0:
+        return False, normal_interval_seconds
+
+    # Estimate how many more iterations until reset
+    iterations_until_reset = reset_seconds / normal_interval_seconds
+    projected_consumption = consumed * iterations_until_reset
+
+    if projected_consumption <= remaining:
+        return False, normal_interval_seconds
+
+    # When remaining is 0, cap immediately at maximum throttle
+    if remaining <= 0:
+        return True, 600
+
+    # Calculate the minimum safe interval to avoid exhausting the rate limit
+    # safe_interval = reset_seconds / (remaining / consumed) = reset_seconds * consumed / remaining
+    safe_interval_seconds = int(reset_seconds * consumed / remaining)
+    # Use at least 2x the normal interval to avoid micro-adjustments
+    throttled_interval = max(normal_interval_seconds * 2, safe_interval_seconds)
+    # Cap at 10 minutes to prevent excessively long waits
+    throttled_interval = min(throttled_interval, 600)
+
+    return True, throttled_interval
+
+
 def log_error_to_file(message: str, exc: Exception | None = None, base_dir: Path | str | None = None) -> None:
     """Append an error entry to logs/error.log without interrupting execution"""
     try:
@@ -363,6 +424,17 @@ def main():
             _display_rate_limit_usage(before_rate_limit, after_rate_limit)
         except Exception as rate_limit_display_error:
             log_error_to_file("Failed to display rate limit usage", rate_limit_display_error)
+            after_rate_limit = None
+
+        # Check if current consumption rate would exhaust the rate limit before reset
+        try:
+            should_throttle, throttled_interval = _check_rate_limit_throttle(
+                before_rate_limit, after_rate_limit, normal_interval_seconds
+            )
+        except Exception as throttle_error:
+            log_error_to_file("Failed to check rate limit throttle", throttle_error)
+            should_throttle = False
+            throttled_interval = normal_interval_seconds
 
         try:
             display_status_summary(all_prs, pr_phases, repos_with_prs, config)
@@ -387,6 +459,14 @@ def main():
             except ValueError as e:
                 print(f"Error: Invalid reduced_frequency_interval format: {e}")
                 sys.exit(1)
+        elif should_throttle:
+            # Rate limit throttling: slow down to avoid exhausting the quota before reset
+            current_interval_seconds = throttled_interval
+            current_interval_str = format_elapsed_time(throttled_interval)
+            print(f"\n{'=' * 50}")
+            print("現在の消費ペースでは、レートリミットがリセットされる前に使い切る可能性があります。")
+            print(f"監視間隔を{current_interval_str}に延長します。")
+            print(f"{'=' * 50}")
         else:
             # Use normal interval (preserved separately to avoid contamination)
             current_interval_seconds = normal_interval_seconds

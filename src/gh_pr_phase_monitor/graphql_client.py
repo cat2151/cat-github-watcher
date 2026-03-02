@@ -49,12 +49,15 @@ def get_rate_limit_info() -> Dict[str, Any] | None:
 _get_graphql_rate_limit_info = get_rate_limit_info
 
 
-def execute_graphql_query(query: str, variables: Dict[str, Any] | None = None) -> Dict[str, Any]:
+def execute_graphql_query(
+    query: str, variables: Dict[str, Any] | None = None, intent: str | None = None
+) -> Dict[str, Any]:
     """Execute a GraphQL query using gh CLI
 
     Args:
         query: GraphQL query string
         variables: Optional dictionary of GraphQL variables
+        intent: Optional human-readable description of the query's purpose (displayed before execution)
 
     Returns:
         Parsed JSON response from GitHub API
@@ -63,6 +66,9 @@ def execute_graphql_query(query: str, variables: Dict[str, Any] | None = None) -
         RuntimeError: If the query execution fails
         json.JSONDecodeError: If the response cannot be parsed
     """
+    if intent:
+        print(f"  [GraphQL] クエリ意図: {intent}")
+
     cmd = ["gh", "api", "graphql", "-f", f"query={query}"]
 
     # Add variables to command if provided
@@ -73,11 +79,18 @@ def execute_graphql_query(query: str, variables: Dict[str, Any] | None = None) -
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
         try:
-            return json.loads(result.stdout)
+            parsed = json.loads(result.stdout)
         except json.JSONDecodeError as e:
             error_message = f"Error parsing JSON response from gh CLI: {e}\nRaw output from gh:\n{result.stdout}"
             print(error_message)
             raise RuntimeError(error_message) from e
+
+        # Display cost info if the query includes rateLimit in its response
+        rate_limit = parsed.get("data", {}).get("rateLimit", {})
+        if rate_limit and rate_limit.get("cost") is not None:
+            print(f"  [GraphQL] 消費コスト: {rate_limit.get('cost')}点, 残={rate_limit.get('remaining')}")
+
+        return parsed
 
     except subprocess.CalledProcessError as e:
         error_message = f"Error executing GraphQL query: {e}"

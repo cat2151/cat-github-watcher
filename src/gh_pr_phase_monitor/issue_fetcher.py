@@ -99,11 +99,16 @@ def get_issues_from_repositories(
         full_query = f"""
         query {{
           {" ".join(repo_queries)}
+          rateLimit {{
+            cost
+            remaining
+          }}
         }}
         """
 
         # Execute GraphQL query
-        data = execute_graphql_query(full_query)
+        batch_num = i // REPOSITORIES_BATCH_SIZE + 1
+        data = execute_graphql_query(full_query, intent=f"Issue一覧取得 (バッチ{batch_num}: {len(batch)}リポジトリ)")
 
         # Extract issue data from response
         for idx, repo in enumerate(batch):

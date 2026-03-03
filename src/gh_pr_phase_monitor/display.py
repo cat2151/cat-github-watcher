@@ -20,13 +20,13 @@ from .state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_stat
 from .time_utils import format_elapsed_time
 
 # Cross-iteration issue cache.
-# Key: "owner/name", Value: list of issues / last known openIssueCount.
-# Cache is invalidated per-repo when its openIssueCount changes, ensuring we always
-# reflect closed or newly-opened issues.  Label changes that don't alter the count
-# may not be detected immediately, but this is an acceptable trade-off given the
-# significant reduction in GraphQL API cost it provides.
+# Key: "owner/name", Value: list of issues / last known repository updatedAt.
+# Cache is invalidated per-repo when its updatedAt changes, ensuring we always
+# reflect any repository activity (issue open/close, PR updates, etc.).
+# Using updatedAt instead of openIssueCount avoids false cache hits when one
+# issue is closed and another is opened in the same iteration (count unchanged).
 _cached_repo_issues: Dict[str, List[Dict[str, Any]]] = {}
-_cached_repo_issue_counts: Dict[str, int] = {}
+_cached_repo_updated_at: Dict[str, str] = {}
 
 # Upper bound for the limit parameter when fetching all issues from a repo batch.
 # get_issues_from_repositories caps per-repo results at ISSUES_PER_REPO (50), so the
@@ -37,7 +37,7 @@ _MAX_ISSUES_FETCH_LIMIT = 100_000
 def reset_issues_cache() -> None:
     """Reset the issues cache (used in tests and on explicit invalidation)."""
     _cached_repo_issues.clear()
-    _cached_repo_issue_counts.clear()
+    _cached_repo_updated_at.clear()
 
 
 def display_status_summary(
@@ -184,12 +184,14 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
 
             issue_limit = config.get("issue_display_limit", 10) if config else 10
 
-            # Fetch issues only for repos whose openIssueCount has changed since last check.
+            # Fetch issues only for repos whose updatedAt has changed since last check.
             # On the very first run (empty cache) every repo is fetched.
+            # Using updatedAt (instead of openIssueCount) correctly detects changes when
+            # one issue is closed and another is opened in the same iteration.
             repos_to_fetch = [
                 repo
                 for repo in repos_with_issues
-                if _cached_repo_issue_counts.get(f"{repo['owner']}/{repo['name']}") != repo.get("openIssueCount", 0)
+                if _cached_repo_updated_at.get(f"{repo['owner']}/{repo['name']}") != repo.get("updatedAt", "")
             ]
 
             if repos_to_fetch:
@@ -212,7 +214,7 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                 for repo in repos_to_fetch:
                     key = f"{repo['owner']}/{repo['name']}"
                     _cached_repo_issues[key] = newly_by_repo.get(key, [])
-                    _cached_repo_issue_counts[key] = repo.get("openIssueCount", 0)
+                    _cached_repo_updated_at[key] = repo.get("updatedAt", "")
 
             # Combine cached issues for all current repos
             all_fetched_issues: List[Dict[str, Any]] = []
@@ -357,7 +359,7 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         repo_info = issue.get("repository", {})
                         cache_key = f"{repo_info.get('owner', '')}/{repo_info.get('name', '')}"
                         _cached_repo_issues.pop(cache_key, None)
-                        _cached_repo_issue_counts.pop(cache_key, None)
+                        _cached_repo_updated_at.pop(cache_key, None)
                         break
                     else:
                         if label_name == "issue":

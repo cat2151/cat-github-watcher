@@ -105,6 +105,7 @@ def get_all_repositories() -> List[Dict[str, Any]]:
             owner {{
               login
             }}
+            updatedAt
             pullRequests(states: OPEN) {{
               totalCount
             }}
@@ -156,6 +157,7 @@ def get_all_repositories() -> List[Dict[str, Any]]:
                     "owner": repo.get("owner", {}).get("login"),
                     "openPRCount": pr_count,
                     "openIssueCount": issue_count,
+                    "updatedAt": repo.get("updatedAt", ""),
                 }
             )
 

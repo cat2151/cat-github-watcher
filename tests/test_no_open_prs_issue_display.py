@@ -332,10 +332,10 @@ def test_display_issues_with_assign_lowest_number():
 
 def test_cache_skips_fetch_on_unchanged_issue_count():
     """
-    Second call with the same openIssueCount must NOT invoke get_issues_from_repositories again.
+    Second call with the same updatedAt must NOT invoke get_issues_from_repositories again.
     This verifies the cross-iteration cache that reduces GraphQL consumption.
     """
-    repo = {"name": "test-repo", "owner": "testuser", "openIssueCount": 5}
+    repo = {"name": "test-repo", "owner": "testuser", "openIssueCount": 5, "updatedAt": "2024-01-01T00:00:00Z"}
     issue_data = [
         {
             "title": "Issue 1",
@@ -366,11 +366,13 @@ def test_cache_skips_fetch_on_unchanged_issue_count():
 
 def test_cache_refetches_when_issue_count_changes():
     """
-    When openIssueCount changes between calls, the cache must be invalidated
+    When updatedAt changes between calls, the cache must be invalidated
     and get_issues_from_repositories called again for that repo.
+    This correctly handles the case where one issue is closed and another opened
+    (openIssueCount stays the same, but updatedAt changes).
     """
-    repo_v1 = {"name": "test-repo", "owner": "testuser", "openIssueCount": 5}
-    repo_v2 = {"name": "test-repo", "owner": "testuser", "openIssueCount": 6}
+    repo_v1 = {"name": "test-repo", "owner": "testuser", "openIssueCount": 5, "updatedAt": "2024-01-01T00:00:00Z"}
+    repo_v2 = {"name": "test-repo", "owner": "testuser", "openIssueCount": 5, "updatedAt": "2024-01-02T00:00:00Z"}
     issue_data = [
         {
             "title": "Issue 1",
@@ -396,7 +398,7 @@ def test_cache_refetches_when_issue_count_changes():
             mock_get_repos.return_value = [repo_v2]
             display_issues_from_repos_without_prs(None)
             assert mock_get_issues.call_count == 2, (
-                "get_issues_from_repositories must be called again when openIssueCount changes"
+                "get_issues_from_repositories must be called again when updatedAt changes"
             )
 
 
@@ -406,7 +408,7 @@ def test_cache_invalidated_after_assignment():
     so the next iteration re-fetches fresh issue data (including updated assignees),
     ensuring assigned_issue_count stays accurate for max_llm_working_parallel enforcement.
     """
-    repo = {"name": "test-repo", "owner": "testuser", "openIssueCount": 2}
+    repo = {"name": "test-repo", "owner": "testuser", "openIssueCount": 2, "updatedAt": "2024-01-01T00:00:00Z"}
     good_first_issue = {
         "title": "Good first issue",
         "url": "https://github.com/testuser/test-repo/issues/1",
@@ -432,7 +434,7 @@ def test_cache_invalidated_after_assignment():
                 display_issues_from_repos_without_prs(config)
                 assert mock_get_issues.call_count == 1
 
-                # Second call: even though openIssueCount is unchanged, cache should have
+                # Second call: even though openIssueCount and updatedAt are unchanged, cache should have
                 # been invalidated by the assignment → must re-fetch
                 display_issues_from_repos_without_prs(config)
                 assert mock_get_issues.call_count == 2, (

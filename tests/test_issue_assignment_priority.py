@@ -172,3 +172,41 @@ def test_fallback_to_deploy_pages_failure_when_no_ci_failure():
                 mock_assign.assert_called_once()
                 assigned_issue = mock_assign.call_args[0][0]
                 assert "deploy-pages-failure" in assigned_issue.get("labels", [])
+
+
+def test_no_assignment_without_matching_label():
+    """
+    Regression test for PR #311: ensures no issue is assigned when none match the required label filter.
+    """
+    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
+            with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
+                mock_get_repos.return_value = [{"name": "old-repo", "owner": "testuser", "openIssueCount": 1}]
+
+                # Issue exists but has NO "good first issue" label
+                mock_get_issues.return_value = [
+                    {
+                        "title": "Old issue without any special label",
+                        "url": "https://github.com/testuser/old-repo/issues/1",
+                        "number": 1,
+                        "updatedAt": "2020-01-01T00:00:00Z",
+                        "labels": [],
+                        "assignees": [],
+                        "repository": {"owner": "testuser", "name": "old-repo"},
+                    }
+                ]
+
+                config = {
+                    "assign_to_copilot": {},
+                    "rulesets": [
+                        {
+                            "repositories": ["old-repo"],
+                            "assign_good_first_old": True,
+                        }
+                    ],
+                }
+
+                display_issues_from_repos_without_prs(config)
+
+                # No issue should be assigned because none have the "good first issue" label
+                mock_assign.assert_not_called()

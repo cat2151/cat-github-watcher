@@ -322,18 +322,6 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         if (issue["repository"]["owner"], issue["repository"]["name"]) in repos_set
                         and (label_filter is None or any(lbl in issue.get("labels", []) for lbl in label_filter))
                     ]
-                    # Fallback: if no issues match the label_filter, it may be because the target
-                    # label sits beyond the labels(first: 10) limit fetched by the GraphQL query,
-                    # which would otherwise silently skip potentially assignable issues.
-                    # In that case, fall back to all issues in the target repos so at least the
-                    # oldest unassigned issue gets considered (it may or may not carry the target
-                    # label; the reviewer must verify manually if needed).
-                    if not candidate_issues and label_filter is not None:
-                        candidate_issues = [
-                            issue
-                            for issue in all_fetched_issues
-                            if (issue["repository"]["owner"], issue["repository"]["name"]) in repos_set
-                        ]
                     candidate_issues.sort(key=lambda x: x["number"])
                     candidate_issues = candidate_issues[:1]
 

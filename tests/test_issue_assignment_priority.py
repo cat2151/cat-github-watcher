@@ -9,9 +9,9 @@ from src.gh_pr_phase_monitor.display import display_issues_from_repos_without_pr
 
 def test_assign_only_fetches_from_enabled_repos():
     """
-    Test that assignment only fetches issues from repos where
+    Test that assignment only considers issues from repos where
     assign_good_first_old or assign_old is enabled.
-    This prevents fetching issues from repos that don't have assignment enabled.
+    Issues from repos without assignment enabled must not be assigned.
     """
     with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
         with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
@@ -22,21 +22,26 @@ def test_assign_only_fetches_from_enabled_repos():
                     {"name": "repo-without-assign", "owner": "testuser", "openIssueCount": 3},
                 ]
 
-                # Mock issue response
-                mock_get_issues.side_effect = [
-                    [],  # First call: top issues for display/detection
-                    # Second call: good first issue (should only fetch from repo-with-assign)
-                    [
-                        {
-                            "title": "Good first issue from enabled repo",
-                            "url": "https://github.com/testuser/repo-with-assign/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "repo-with-assign"},
-                            "labels": ["good first issue"],
-                        }
-                    ],
+                # Single call returns issues from both repos
+                mock_get_issues.return_value = [
+                    {
+                        "title": "Issue from non-assign repo",
+                        "url": "https://github.com/testuser/repo-without-assign/issues/1",
+                        "number": 1,
+                        "updatedAt": "2024-01-01T00:00:00Z",
+                        "labels": ["good first issue"],
+                        "assignees": [],
+                        "repository": {"owner": "testuser", "name": "repo-without-assign"},
+                    },
+                    {
+                        "title": "Good first issue from enabled repo",
+                        "url": "https://github.com/testuser/repo-with-assign/issues/2",
+                        "number": 2,
+                        "updatedAt": "2024-01-02T00:00:00Z",
+                        "labels": ["good first issue"],
+                        "assignees": [],
+                        "repository": {"owner": "testuser", "name": "repo-with-assign"},
+                    },
                 ]
 
                 mock_assign.return_value = True
@@ -59,17 +64,13 @@ def test_assign_only_fetches_from_enabled_repos():
                 # Call the function
                 display_issues_from_repos_without_prs(config)
 
-                # Verify that get_issues_from_repositories was called
-                assert mock_get_issues.call_count == 2
+                # Issues are fetched in a single call
+                assert mock_get_issues.call_count == 1
 
-                # Verify assignment fetch only included repo-with-assign
-                second_call = mock_get_issues.call_args_list[1]
-                repos_arg = second_call[0][0]  # First positional argument
-                assert len(repos_arg) == 1
-                assert repos_arg[0]["name"] == "repo-with-assign"
-
-                # Verify assignment was attempted
+                # Verify assignment was attempted only for the enabled repo's issue
                 mock_assign.assert_called_once()
+                assigned_issue = mock_assign.call_args[0][0]
+                assert assigned_issue["repository"]["name"] == "repo-with-assign"
 
 
 def test_priority_prefers_ci_failure_then_deploy_then_good_first():
@@ -81,19 +82,26 @@ def test_priority_prefers_ci_failure_then_deploy_then_good_first():
             with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
                 mock_get_repos.return_value = [{"name": "test-repo", "owner": "testuser", "openIssueCount": 1}]
 
-                mock_get_issues.side_effect = [
-                    [],  # First call: top issues for display/detection
-                    [
-                        {
-                            "title": "CI failure",
-                            "url": "https://github.com/testuser/test-repo/issues/10",
-                            "number": 10,
-                            "updatedAt": "2024-01-10T00:00:00Z",
-                            "author": {"login": "bot"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                            "labels": ["ci-failure"],
-                        }
-                    ],
+                # Single call returns all issues; ci-failure takes priority over others
+                mock_get_issues.return_value = [
+                    {
+                        "title": "CI failure",
+                        "url": "https://github.com/testuser/test-repo/issues/10",
+                        "number": 10,
+                        "updatedAt": "2024-01-10T00:00:00Z",
+                        "labels": ["ci-failure"],
+                        "assignees": [],
+                        "repository": {"owner": "testuser", "name": "test-repo"},
+                    },
+                    {
+                        "title": "Good first issue",
+                        "url": "https://github.com/testuser/test-repo/issues/5",
+                        "number": 5,
+                        "updatedAt": "2024-01-05T00:00:00Z",
+                        "labels": ["good first issue"],
+                        "assignees": [],
+                        "repository": {"owner": "testuser", "name": "test-repo"},
+                    },
                 ]
 
                 mock_assign.return_value = True
@@ -112,11 +120,12 @@ def test_priority_prefers_ci_failure_then_deploy_then_good_first():
 
                 display_issues_from_repos_without_prs(config)
 
-                assert mock_get_issues.call_count == 2
-                second_call = mock_get_issues.call_args_list[1]
-                assert second_call[1]["labels"] == ["ci-failure"]
-                assert second_call[1]["sort_by_number"] is True
+                # Issues fetched in a single call; priority handled client-side
+                assert mock_get_issues.call_count == 1
+                # The ci-failure issue should be assigned (priority)
                 mock_assign.assert_called_once()
+                assigned_issue = mock_assign.call_args[0][0]
+                assert "ci-failure" in assigned_issue.get("labels", [])
 
 
 def test_fallback_to_deploy_pages_failure_when_no_ci_failure():
@@ -128,20 +137,17 @@ def test_fallback_to_deploy_pages_failure_when_no_ci_failure():
             with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
                 mock_get_repos.return_value = [{"name": "test-repo", "owner": "testuser", "openIssueCount": 1}]
 
-                mock_get_issues.side_effect = [
-                    [],  # First call: top issues for display/detection
-                    [],  # No ci-failure issues
-                    [
-                        {
-                            "title": "Pages deploy failure",
-                            "url": "https://github.com/testuser/test-repo/issues/20",
-                            "number": 20,
-                            "updatedAt": "2024-02-01T00:00:00Z",
-                            "author": {"login": "bot"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                            "labels": ["deploy-pages-failure"],
-                        }
-                    ],
+                # No ci-failure issues, but a deploy-pages-failure issue exists
+                mock_get_issues.return_value = [
+                    {
+                        "title": "Pages deploy failure",
+                        "url": "https://github.com/testuser/test-repo/issues/20",
+                        "number": 20,
+                        "updatedAt": "2024-02-01T00:00:00Z",
+                        "labels": ["deploy-pages-failure"],
+                        "assignees": [],
+                        "repository": {"owner": "testuser", "name": "test-repo"},
+                    }
                 ]
 
                 mock_assign.return_value = True
@@ -160,10 +166,9 @@ def test_fallback_to_deploy_pages_failure_when_no_ci_failure():
 
                 display_issues_from_repos_without_prs(config)
 
-                assert mock_get_issues.call_count == 3
-                second_call = mock_get_issues.call_args_list[1]
-                assert second_call[1]["labels"] == ["ci-failure"]
-                third_call = mock_get_issues.call_args_list[2]
-                assert third_call[1]["labels"] == ["deploy-pages-failure"]
-                assert third_call[1]["sort_by_number"] is True
+                # Issues fetched in a single call; ci-failure filter finds nothing,
+                # deploy-pages-failure filter finds the issue → assigned
+                assert mock_get_issues.call_count == 1
                 mock_assign.assert_called_once()
+                assigned_issue = mock_assign.call_args[0][0]
+                assert "deploy-pages-failure" in assigned_issue.get("labels", [])

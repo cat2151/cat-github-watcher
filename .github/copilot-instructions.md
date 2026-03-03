@@ -138,3 +138,6 @@ ruff format .
 
 ## コミット前にすること
 - ruffでlintとformatをすること
+
+## html / json 保存機能
+- 引数optionでURLを指定しなくても、PRのURLをfetchしたときは必ずhtmlを保存するし、そこからstatusを算出するときにjsonを生成して保存する。もしこの機能が動作していないなら、生成をやめてuserに報告すること

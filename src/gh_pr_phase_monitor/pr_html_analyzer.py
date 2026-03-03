@@ -83,25 +83,31 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
             return PHASE2A_REVIEW_COMPLETED
 
 
-def analyze_pr_html(html: str) -> dict[str, Any]:
-    """PR HTMLを解析してstatusを算出するための元データを返す。
+def analyze_pr_html(html: str, pr_url: str = "") -> dict[str, Any]:
+    """PR HTMLを解析してstatusを算出するための元データと判定結果を返す。
 
     Args:
         html: 解析対象のHTML文字列
+        pr_url: PR URL（JSON出力用。省略可）
 
     Returns:
         {
+            "pr_url": str,
             "is_draft": bool,
             "llm_statuses": list[str],  # 時系列順の "started work" / "finished work" / "reviewing" 等
+            "status": str,              # PHASE1A〜PHASE3Aのいずれか
         }
     """
     html_markdown = _html_to_simple_markdown(html)
     llm_statuses = _extract_llm_statuses(html, html_markdown)
     is_draft = _is_draft_from_html(html)
+    status = _determine_html_status(llm_statuses, is_draft)
 
     return {
+        "pr_url": pr_url,
         "is_draft": is_draft,
         "llm_statuses": llm_statuses,
+        "status": status,
     }
 
 

@@ -108,7 +108,7 @@ def save_pr_html(pr_url: str, output_dir: Path = DEFAULT_OUTPUT_DIR) -> Optional
     print(f"保存完了: {output_file}")
 
     # HTML解析してstatusを算出するための元データJSONを生成・保存
-    analysis = analyze_pr_html(html)
+    analysis = analyze_pr_html(html, pr_url)
     save_analysis_json(analysis, output_file)
 
     return output_file

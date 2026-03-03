@@ -106,11 +106,17 @@ class TestDetermineHtmlStatus:
 class TestAnalyzePrHtml:
     def test_returns_dict_with_required_keys(self):
         html = "<html><body>Some PR content</body></html>"
-        result = analyze_pr_html(html)
+        result = analyze_pr_html(html, "https://github.com/owner/repo/pull/1")
+        assert "pr_url" in result
         assert "is_draft" in result
         assert "llm_statuses" in result
-        assert "status" not in result
-        assert "pr_url" not in result
+        assert "status" in result
+
+    def test_pr_url_preserved(self):
+        html = "<html><body></body></html>"
+        url = "https://github.com/owner/repo/pull/42"
+        result = analyze_pr_html(html, url)
+        assert result["pr_url"] == url
 
     def test_draft_pr_detected(self):
         html = '<span class="State State--draft">Draft</span>'
@@ -127,13 +133,28 @@ class TestAnalyzePrHtml:
         result = analyze_pr_html(html)
         assert isinstance(result["llm_statuses"], list)
 
+    def test_status_is_valid_phase(self):
+        html = "<html><body></body></html>"
+        result = analyze_pr_html(html)
+        valid_phases = {
+            PHASE1A_DRAFT_LLM_WORKING,
+            PHASE1B_DRAFT_LLM_FINISHED_WORK,
+            PHASE1C_REVIEW_IN_PROGRESS,
+            PHASE2A_REVIEW_COMPLETED,
+            PHASE2B_LLM_ADDRESSING_FEEDBACK,
+            PHASE3A_LLM_FEEDBACK_FINISHED_WORK,
+        }
+        assert result["status"] in valid_phases
+
 
 class TestSaveAnalysisJson:
     def test_saves_json_with_correct_filename(self, tmp_path):
         html_path = tmp_path / "repo_123.html"
         analysis = {
+            "pr_url": "https://github.com/o/repo/pull/123",
             "is_draft": False,
             "llm_statuses": [],
+            "status": PHASE1C_REVIEW_IN_PROGRESS,
         }
         result = save_analysis_json(analysis, html_path)
         assert result == tmp_path / "repo_123.json"
@@ -142,8 +163,10 @@ class TestSaveAnalysisJson:
     def test_json_content_is_correct(self, tmp_path):
         html_path = tmp_path / "repo_1.html"
         analysis = {
+            "pr_url": "https://github.com/o/repo/pull/1",
             "is_draft": True,
             "llm_statuses": ["started work"],
+            "status": PHASE1A_DRAFT_LLM_WORKING,
         }
         save_analysis_json(analysis, html_path)
         json_path = tmp_path / "repo_1.json"
@@ -153,8 +176,10 @@ class TestSaveAnalysisJson:
     def test_json_is_valid_json(self, tmp_path):
         html_path = tmp_path / "repo_5.html"
         analysis = {
+            "pr_url": "https://github.com/o/r/pull/5",
             "is_draft": False,
             "llm_statuses": ["reviewing", "started work", "finished work"],
+            "status": PHASE3A_LLM_FEEDBACK_FINISHED_WORK,
         }
         save_analysis_json(analysis, html_path)
         json_path = tmp_path / "repo_5.json"

@@ -5,7 +5,10 @@ Wait and countdown handling with hot reload support
 import time
 from typing import Any, Callable, Dict, Tuple
 
-import tomli
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib  # type: ignore[no-redef]
 
 from .config import get_config_mtime, load_config, parse_interval, print_config
 from .time_utils import format_elapsed_time
@@ -120,7 +123,7 @@ def wait_with_countdown(
                         print(f"Waiting {current_interval_str} until next check...")
                         print(f"{'=' * 50}")
 
-                    except (ValueError, tomli.TOMLDecodeError) as e:
+                    except (ValueError, tomllib.TOMLDecodeError) as e:
                         # Config file has invalid format (TOML parsing error or invalid interval)
                         # Update mtime to avoid repeatedly trying to reload the same broken config
                         current_mtime = new_mtime

@@ -219,35 +219,39 @@ def llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
 def _phase_from_llm_statuses(llm_statuses: List[str]) -> Optional[str]:
     """Infer phase from LLM statuses.
 
-    Returns PHASE_3 when reviewing + started work + finished work detected after reviewing.
-    Returns PHASE_2 when reviewing occurred but addressing work is not yet complete.
+    Returns PHASE_3 when reviewing → started work → finished work are detected in that order.
+    Returns PHASE_2 when reviewing occurred but post-review work (started→finished) is not yet complete.
     Returns None when no reviewing event found (cannot determine phase2/3).
+
+    Tracking is reset on each new reviewing event so only the most recent review cycle counts.
     """
     if not llm_statuses:
         return None
 
-    review_idx: Optional[int] = None
-    last_started_idx: Optional[int] = None
-    last_finished_idx: Optional[int] = None
+    last_review_idx: Optional[int] = None
+    last_started_after_review_idx: Optional[int] = None
+    last_finished_after_started_after_review_idx: Optional[int] = None
 
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
         if "reviewing" in lowered:
-            review_idx = idx
-        if "started work" in lowered:
-            last_started_idx = idx
-        if "finished work" in lowered:
-            last_finished_idx = idx
+            last_review_idx = idx
+            last_started_after_review_idx = None  # reset on new reviewing event
+            last_finished_after_started_after_review_idx = None
+        elif "started work" in lowered and last_review_idx is not None:
+            last_started_after_review_idx = idx
+            last_finished_after_started_after_review_idx = None  # reset finished when a new started begins
+        elif "finished work" in lowered and last_started_after_review_idx is not None:
+            last_finished_after_started_after_review_idx = idx
 
-    if review_idx is None:
+    if last_review_idx is None:
         return None  # no reviewing event: cannot determine phase2/3
 
-    # finished work after reviewing, and no started work after that finished work → phase3
-    if last_finished_idx is not None and last_finished_idx > review_idx:
-        if last_started_idx is None or last_started_idx <= last_finished_idx:
-            return PHASE_3
+    # reviewing → started work → finished work all in order → phase3
+    if last_finished_after_started_after_review_idx is not None:
+        return PHASE_3
 
-    # reviewing occurred but work not yet complete → phase2
+    # reviewing occurred but post-review work not yet complete → phase2
     return PHASE_2
 
 

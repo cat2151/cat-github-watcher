@@ -46,6 +46,26 @@ class TestPhaseFromLlmStatuses:
         statuses = ["started reviewing", "started work"]
         assert _phase_from_llm_statuses(statuses) == "phase2"
 
+    def test_returns_phase2_not_phase3_when_finished_before_reviewing_only(self):
+        """'finished work' that precedes reviewing must NOT count as post-review completion.
+
+        Before the reviewer comment fix, ["started reviewing", "finished work"] could incorrectly
+        return PHASE_3 because last_finished_idx > review_idx was satisfied even without a
+        'started work' after reviewing.
+        """
+        statuses = ["started reviewing", "finished work"]
+        assert _phase_from_llm_statuses(statuses) == "phase2"
+
+    def test_returns_phase2_not_phase3_when_started_before_reviewing_and_finished_after(self):
+        """'started work' before reviewing + 'finished work' after must NOT count as post-review cycle.
+
+        Before the reviewer comment fix, ["started work", "started reviewing", "finished work"]
+        could incorrectly return PHASE_3 because last_finished_idx > review_idx was satisfied
+        even though 'started work' came before 'reviewing'.
+        """
+        statuses = ["started work", "started reviewing", "finished work"]
+        assert _phase_from_llm_statuses(statuses) == "phase2"
+
 
 class TestDeterminePhase:
     """Test the determine_phase function"""

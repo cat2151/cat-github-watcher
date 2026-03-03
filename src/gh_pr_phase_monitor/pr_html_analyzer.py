@@ -1,15 +1,11 @@
 """
-PR HTMLを解析してステータスと分析用JSONを生成するモジュール。
+PR HTMLを解析して分析用JSONを生成するモジュール。
 
 HTMLから llm_statuses（started/finished/reviewing）とPRのdraft状態を抽出し、
-以下の6種のステータスに分類する：
+statusを算出するための元データをJSONに出力する。
 
-  PHASE1A_DRAFT_LLM_WORKING        - Draft PR、LLM作業中
-  PHASE1B_DRAFT_LLM_FINISHED_WORK  - Draft PR、LLM作業完了 → アプリはReady for review操作を行う
-  PHASE1C_REVIEW_IN_PROGRESS       - 非Draft、レビュー未開始/進行中
-  PHASE2A_REVIEW_COMPLETED         - レビュー完了 → アプリはaddressing feedback用コメントを投稿する
-  PHASE2B_LLM_ADDRESSING_FEEDBACK  - LLMがフィードバック対応中
-  PHASE3A_LLM_FEEDBACK_FINISHED_WORK - LLMがフィードバック対応完了 → アプリはntfy通知を送る
+このモジュールはHTMLの解析と元データの抽出・保存を担う。
+ステータスの判定（PHASE1A〜PHASE3A への分類）は呼び出し側の責務。
 """
 
 import json
@@ -87,31 +83,25 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
             return PHASE2A_REVIEW_COMPLETED
 
 
-def analyze_pr_html(html: str, pr_url: str = "") -> dict[str, Any]:
-    """PR HTMLを解析してステータスと分析情報を返す。
+def analyze_pr_html(html: str) -> dict[str, Any]:
+    """PR HTMLを解析してstatusを算出するための元データを返す。
 
     Args:
         html: 解析対象のHTML文字列
-        pr_url: PR URL（JSON出力用。省略可）
 
     Returns:
         {
-            "pr_url": str,
             "is_draft": bool,
-            "llm_statuses": list[str],
-            "status": str,  # PHASE1A〜PHASE3Aのいずれか
+            "llm_statuses": list[str],  # 時系列順の "started work" / "finished work" / "reviewing" 等
         }
     """
     html_markdown = _html_to_simple_markdown(html)
     llm_statuses = _extract_llm_statuses(html, html_markdown)
     is_draft = _is_draft_from_html(html)
-    status = _determine_html_status(llm_statuses, is_draft)
 
     return {
-        "pr_url": pr_url,
         "is_draft": is_draft,
         "llm_statuses": llm_statuses,
-        "status": status,
     }
 
 

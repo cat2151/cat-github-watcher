@@ -194,9 +194,13 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
 
             if repos_to_fetch:
                 # Single GraphQL call covering all changed repos, no server-side labels filter.
-                # _MAX_ISSUES_FETCH_LIMIT ensures the per-repo cap (ISSUES_PER_REPO=50) is the
-                # only effective limit, so all issues from the changed repos are returned.
-                newly_fetched = get_issues_from_repositories(repos_to_fetch, limit=_MAX_ISSUES_FETCH_LIMIT)
+                # sort_by_number=True (CREATED_AT ASC) ensures the per-repo cap keeps the oldest
+                # issues, which are the correct candidates for assignment selection.
+                newly_fetched = get_issues_from_repositories(
+                    repos_to_fetch,
+                    limit=_MAX_ISSUES_FETCH_LIMIT,
+                    sort_by_number=True,
+                )
 
                 # Group by repo and update cache
                 newly_by_repo: Dict[str, List[Dict[str, Any]]] = {}
@@ -318,6 +322,18 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         if (issue["repository"]["owner"], issue["repository"]["name"]) in repos_set
                         and (label_filter is None or any(lbl in issue.get("labels", []) for lbl in label_filter))
                     ]
+                    # Fallback: if no issues match the label_filter, it may be because the target
+                    # label sits beyond the labels(first: 10) limit fetched by the GraphQL query,
+                    # which would otherwise silently skip potentially assignable issues.
+                    # In that case, fall back to all issues in the target repos so at least the
+                    # oldest unassigned issue gets considered (it may or may not carry the target
+                    # label; the reviewer must verify manually if needed).
+                    if not candidate_issues and label_filter is not None:
+                        candidate_issues = [
+                            issue
+                            for issue in all_fetched_issues
+                            if (issue["repository"]["owner"], issue["repository"]["name"]) in repos_set
+                        ]
                     candidate_issues.sort(key=lambda x: x["number"])
                     candidate_issues = candidate_issues[:1]
 
@@ -335,6 +351,13 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                         success = assign_issue_to_copilot(issue, temp_config)
                         if not success:
                             print("  Assignment failed - will retry on next iteration")
+                        # Invalidate cache for the assigned repo so the next iteration re-fetches
+                        # fresh issue data (including up-to-date assignees), ensuring that
+                        # assigned_issue_count remains accurate and max_llm_working_parallel is enforced.
+                        repo_info = issue.get("repository", {})
+                        cache_key = f"{repo_info.get('owner', '')}/{repo_info.get('name', '')}"
+                        _cached_repo_issues.pop(cache_key, None)
+                        _cached_repo_issue_counts.pop(cache_key, None)
                         break
                     else:
                         if label_name == "issue":

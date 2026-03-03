@@ -330,6 +330,116 @@ def test_display_issues_with_assign_lowest_number():
                 mock_assign.assert_called_once()
 
 
+def test_cache_skips_fetch_on_unchanged_issue_count():
+    """
+    Second call with the same openIssueCount must NOT invoke get_issues_from_repositories again.
+    This verifies the cross-iteration cache that reduces GraphQL consumption.
+    """
+    repo = {"name": "test-repo", "owner": "testuser", "openIssueCount": 5}
+    issue_data = [
+        {
+            "title": "Issue 1",
+            "url": "https://github.com/testuser/test-repo/issues/1",
+            "number": 1,
+            "updatedAt": "2024-01-01T00:00:00Z",
+            "labels": [],
+            "assignees": [],
+            "repository": {"owner": "testuser", "name": "test-repo"},
+        }
+    ]
+
+    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
+            mock_get_repos.return_value = [repo]
+            mock_get_issues.return_value = issue_data
+
+            # First call: cache is empty, should fetch
+            display_issues_from_repos_without_prs(None)
+            assert mock_get_issues.call_count == 1
+
+            # Second call: openIssueCount unchanged, should use cache (no new fetch)
+            display_issues_from_repos_without_prs(None)
+            assert mock_get_issues.call_count == 1, (
+                "get_issues_from_repositories should NOT be called again when openIssueCount is unchanged"
+            )
+
+
+def test_cache_refetches_when_issue_count_changes():
+    """
+    When openIssueCount changes between calls, the cache must be invalidated
+    and get_issues_from_repositories called again for that repo.
+    """
+    repo_v1 = {"name": "test-repo", "owner": "testuser", "openIssueCount": 5}
+    repo_v2 = {"name": "test-repo", "owner": "testuser", "openIssueCount": 6}
+    issue_data = [
+        {
+            "title": "Issue 1",
+            "url": "https://github.com/testuser/test-repo/issues/1",
+            "number": 1,
+            "updatedAt": "2024-01-01T00:00:00Z",
+            "labels": [],
+            "assignees": [],
+            "repository": {"owner": "testuser", "name": "test-repo"},
+        }
+    ]
+
+    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
+            mock_get_issues.return_value = issue_data
+
+            # First call: fetch for v1
+            mock_get_repos.return_value = [repo_v1]
+            display_issues_from_repos_without_prs(None)
+            assert mock_get_issues.call_count == 1
+
+            # Second call: openIssueCount changed → must re-fetch
+            mock_get_repos.return_value = [repo_v2]
+            display_issues_from_repos_without_prs(None)
+            assert mock_get_issues.call_count == 2, (
+                "get_issues_from_repositories must be called again when openIssueCount changes"
+            )
+
+
+def test_cache_invalidated_after_assignment():
+    """
+    After a successful auto-assignment, the cache for that repo must be invalidated
+    so the next iteration re-fetches fresh issue data (including updated assignees),
+    ensuring assigned_issue_count stays accurate for max_llm_working_parallel enforcement.
+    """
+    repo = {"name": "test-repo", "owner": "testuser", "openIssueCount": 2}
+    good_first_issue = {
+        "title": "Good first issue",
+        "url": "https://github.com/testuser/test-repo/issues/1",
+        "number": 1,
+        "updatedAt": "2024-01-01T00:00:00Z",
+        "labels": ["good first issue"],
+        "assignees": [],
+        "repository": {"owner": "testuser", "name": "test-repo"},
+    }
+    config = {
+        "assign_to_copilot": {},
+        "rulesets": [{"repositories": ["test-repo"], "assign_good_first_old": True}],
+    }
+
+    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
+            with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
+                mock_get_repos.return_value = [repo]
+                mock_get_issues.return_value = [good_first_issue]
+                mock_assign.return_value = True
+
+                # First call: fetch and assign
+                display_issues_from_repos_without_prs(config)
+                assert mock_get_issues.call_count == 1
+
+                # Second call: even though openIssueCount is unchanged, cache should have
+                # been invalidated by the assignment → must re-fetch
+                display_issues_from_repos_without_prs(config)
+                assert mock_get_issues.call_count == 2, (
+                    "Cache must be invalidated after assignment so next iteration gets fresh assignees"
+                )
+
+
 if __name__ == "__main__":
     test_display_issues_when_no_repos_with_prs()
     print("✓ Test 1 passed: display_issues_when_no_repos_with_prs")

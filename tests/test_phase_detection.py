@@ -9,6 +9,42 @@ Tests cover the following scenarios:
 """
 
 from src.gh_pr_phase_monitor import determine_phase
+from src.gh_pr_phase_monitor.phase_detector import _phase_from_llm_statuses
+
+
+class TestPhaseFromLlmStatuses:
+    """Tests for the _phase_from_llm_statuses helper, which is the primary detection method."""
+
+    def test_returns_none_when_no_reviewing_event(self):
+        """Without a reviewing event, cannot determine phase2/3."""
+        assert _phase_from_llm_statuses([]) is None
+        assert _phase_from_llm_statuses(["started work", "finished work"]) is None
+
+    def test_returns_phase3_when_reviewing_then_started_then_finished(self):
+        """reviewing → started work → finished work = phase3."""
+        statuses = ["started reviewing", "started work", "finished work"]
+        assert _phase_from_llm_statuses(statuses) == "phase3"
+
+    def test_returns_phase3_real_world_pattern(self):
+        """Real-world PR#167 pattern: initial work → reviewing → addressing work → phase3."""
+        statuses = [
+            "Copilot started work on behalf of cat2151",
+            "Copilot finished work on behalf of cat2151",
+            "Copilot started reviewing on behalf of cat2151",
+            "Copilot started work on behalf of cat2151",
+            "Copilot finished work on behalf of cat2151",
+        ]
+        assert _phase_from_llm_statuses(statuses) == "phase3"
+
+    def test_returns_phase2_when_reviewing_only(self):
+        """Reviewing event occurred but no subsequent work started → phase2 (waiting for Copilot)."""
+        statuses = ["started work", "finished work", "started reviewing"]
+        assert _phase_from_llm_statuses(statuses) == "phase2"
+
+    def test_returns_phase2_when_reviewing_then_started_but_not_finished(self):
+        """reviewing → started work but NOT finished → phase2 (Copilot still addressing)."""
+        statuses = ["started reviewing", "started work"]
+        assert _phase_from_llm_statuses(statuses) == "phase2"
 
 
 class TestDeterminePhase:
@@ -283,6 +319,52 @@ class TestDeterminePhase:
         }
 
         assert determine_phase(pr) == "LLM working"
+
+    def test_phase2_from_llm_statuses_overrides_graphql(self):
+        """llm_statuses showing reviewing-in-progress returns phase2 even without GraphQL review threads.
+
+        This validates the unified approach: llm_statuses is checked first for non-draft PRs.
+        When llm_statuses shows reviewing occurred but work not yet complete → phase2,
+        regardless of what GraphQL reviewThreads say.
+        """
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "## Pull request overview\n\nThis PR looks good overall.",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
+            "comments": [],
+            "reviewThreads": [],  # No unresolved threads (GraphQL would say phase3)
+            "llm_statuses": [
+                "Copilot started reviewing on behalf of cat2151",
+                "Copilot started work on behalf of cat2151",
+                # No "finished work" yet → still addressing → phase2
+            ],
+        }
+
+        assert determine_phase(pr) == "phase2"
+
+    def test_phase2_from_llm_statuses_when_no_graphql_reviews(self):
+        """llm_statuses showing reviewing → phase2 even when GraphQL has no review data yet.
+
+        GraphQL might not yet have the review, but HTML shows reviewing started.
+        The unified approach returns phase2 based on llm_statuses instead of LLM working.
+        """
+        pr = {
+            "isDraft": False,
+            "reviews": [],
+            "latestReviews": [],
+            "comments": [],
+            "llm_statuses": [
+                "Copilot started reviewing on behalf of cat2151",
+            ],
+        }
+
+        assert determine_phase(pr) == "phase2"
 
     def test_phase2_when_comments_without_reactions(self):
         """PR with review comments but no reactions should still be phase2"""

@@ -102,8 +102,21 @@ class TestDetermineHtmlStatus:
         ]
         assert _determine_html_status(statuses, is_draft=False) == PHASE2B_LLM_ADDRESSING_FEEDBACK
 
+    def test_phase2b_new_started_after_finished_within_same_cycle(self):
+        """reviewing → started → finished → started (no finished) → PHASE2B, not PHASE3A.
 
-class TestAnalyzePrHtml:
+        Edge case: a new started-work event after finished-work within the same reviewing cycle
+        means Copilot is still working (phase2b), not done (phase3a).
+        This was a bug in the previous implementation which incorrectly returned PHASE3A.
+        """
+        statuses = [
+            "reviewing",
+            "started work on feedback",
+            "finished work on feedback",
+            "started work again",  # new cycle started, no matching finished
+        ]
+        assert _determine_html_status(statuses, is_draft=False) == PHASE2B_LLM_ADDRESSING_FEEDBACK
+
     def test_returns_dict_with_required_keys(self):
         html = "<html><body>Some PR content</body></html>"
         result = analyze_pr_html(html, "https://github.com/owner/repo/pull/1")

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .llm_status_extractor import _extract_llm_statuses
-from .phase_detector import llm_working_from_statuses
+from .phase_detector import PHASE_3, _phase_from_llm_statuses, llm_working_from_statuses
 from .pr_html_fetcher import _html_to_simple_markdown
 
 # 6種のステータス定数
@@ -44,28 +44,13 @@ def _is_draft_from_html(html: str) -> bool:
 def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
     """llm_statusesとdraft状態から6種のステータスを決定する。
 
+    コアのphase2/3検出はphase_detectorの_phase_from_llm_statusesに委譲する。
     llm_statusesは時系列順（古い順）で渡すこと。
     """
-    # reviewing イベントがあるか、その位置を特定
-    last_review_idx: Optional[int] = None
-    started_after_review_idx: Optional[int] = None
-    finished_after_started_after_review_idx: Optional[int] = None
+    phase = _phase_from_llm_statuses(llm_statuses)
 
-    for idx, status in enumerate(llm_statuses):
-        lowered = status.lower()
-        if "reviewing" in lowered:
-            last_review_idx = idx
-            started_after_review_idx = None  # reviewingが来たらリセット
-            finished_after_started_after_review_idx = None  # 前サイクルの完了もリセット
-        if "started work" in lowered and last_review_idx is not None and idx > last_review_idx:
-            started_after_review_idx = idx
-        if "finished work" in lowered and started_after_review_idx is not None and idx > started_after_review_idx:
-            finished_after_started_after_review_idx = idx
-
-    has_reviewing = last_review_idx is not None
-
-    if not has_reviewing:
-        # レビュー前フェーズ
+    if phase is None:
+        # reviewingイベントなし = レビュー前フェーズ
         if is_draft:
             llm_working = llm_working_from_statuses(llm_statuses)
             if llm_working is False:
@@ -73,14 +58,23 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
             return PHASE1A_DRAFT_LLM_WORKING
         else:
             return PHASE1C_REVIEW_IN_PROGRESS
-    else:
-        # レビュー後フェーズ
-        if finished_after_started_after_review_idx is not None:
-            return PHASE3A_LLM_FEEDBACK_FINISHED_WORK
-        elif started_after_review_idx is not None:
-            return PHASE2B_LLM_ADDRESSING_FEEDBACK
-        else:
-            return PHASE2A_REVIEW_COMPLETED
+
+    if phase == PHASE_3:
+        return PHASE3A_LLM_FEEDBACK_FINISHED_WORK
+
+    # phase == PHASE_2: PHASE2A（未着手）とPHASE2B（対応中）を区別する
+    # 最後のreviewingイベント以降にstarted workがあるかで判断する
+    last_review_idx: Optional[int] = None
+    started_after_review = False
+    for idx, status in enumerate(llm_statuses):
+        lowered = status.lower()
+        if "reviewing" in lowered:
+            last_review_idx = idx
+            started_after_review = False  # 新しいreviewingが来たらリセット
+        if "started work" in lowered and last_review_idx is not None and idx > last_review_idx:
+            started_after_review = True
+
+    return PHASE2B_LLM_ADDRESSING_FEEDBACK if started_after_review else PHASE2A_REVIEW_COMPLETED
 
 
 def analyze_pr_html(html: str, pr_url: str = "") -> dict[str, Any]:

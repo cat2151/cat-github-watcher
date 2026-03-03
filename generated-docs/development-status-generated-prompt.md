@@ -1,4 +1,4 @@
-Last updated: 2026-03-03
+Last updated: 2026-03-04
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -198,7 +198,7 @@ Last updated: 2026-03-03
 - .github/actions-tmp/issue-notes/4.md
 - .github/actions-tmp/issue-notes/40.md
 - .github/actions-tmp/issue-notes/44.md
-- .github/actions-tmp/issue-notes/49.md
+- .github/actions-tmp/issue-notes/52.md
 - .github/actions-tmp/issue-notes/7.md
 - .github/actions-tmp/issue-notes/8.md
 - .github/actions-tmp/issue-notes/9.md
@@ -225,6 +225,7 @@ Last updated: 2026-03-03
 - docs/RULESETS.md
 - docs/button-detection-improvements.ja.md
 - docs/window-activation-feature.md
+- fetch_pr_html.py
 - generated-docs/project-overview-generated-prompt.md
 - pytest.ini
 - requirements-automation.txt
@@ -260,8 +261,11 @@ Last updated: 2026-03-03
 - src/gh_pr_phase_monitor/pr_actions.py
 - src/gh_pr_phase_monitor/pr_data_recorder.py
 - src/gh_pr_phase_monitor/pr_fetcher.py
+- src/gh_pr_phase_monitor/pr_html_analyzer.py
 - src/gh_pr_phase_monitor/pr_html_fetcher.py
+- src/gh_pr_phase_monitor/pr_html_saver.py
 - src/gh_pr_phase_monitor/process_utils.py
+- src/gh_pr_phase_monitor/rate_limit_handler.py
 - src/gh_pr_phase_monitor/repository_fetcher.py
 - src/gh_pr_phase_monitor/snapshot_markdown.py
 - src/gh_pr_phase_monitor/snapshot_path_utils.py
@@ -283,6 +287,7 @@ Last updated: 2026-03-03
 - tests/test_config_rulesets_features.py
 - tests/test_elapsed_time_display.py
 - tests/test_error_logging.py
+- tests/test_fetch_pr_html.py
 - tests/test_graphql_client_rate_limit.py
 - tests/test_graphql_query_intent_display.py
 - tests/test_has_comments_with_reactions.py
@@ -315,6 +320,7 @@ Last updated: 2026-03-03
 - tests/test_pr_data_recorder.py
 - tests/test_pr_data_recorder_html.py
 - tests/test_pr_data_recorder_json.py
+- tests/test_pr_html_analyzer.py
 - tests/test_pr_title_fix.py
 - tests/test_rate_limit_reset_display.py
 - tests/test_rate_limit_throttle.py
@@ -327,58 +333,263 @@ Last updated: 2026-03-03
 - tests/test_wait_handler_callback.py
 
 ## 現在のオープンIssues
-## [Issue #308](../issue-notes/308.md): 大きなファイルの検出: 1個のファイルが500行を超えています
-以下のファイルが500行を超えています。リファクタリングを検討してください。
+## [Issue #323](../issue-notes/323.md): fix: phase2/phase3誤検出の根本修正とllm_statuses優先への統一
+GraphQLの`reviewThreads`が明示resolveされない限り`isResolved: False`のまま残るため、Copilotがフィードバック対応済みでも常にphase2と誤判定されていた。
 
-## 検出されたファイル
+## 変更概要
 
-| ファイル | 行数 | 超過行数 |
-|---------|------|----------|
-| `src/gh_pr_phase_monitor/main.py` | 510 | +10 |
+### phase検出の優先順位統一（`phase_detector.py`）
 
-## テスト実施のお願い
+`_phase_from_llm_statuses`をHTMLベースの一次シグナルに昇格：
 
-- リファクタリング前後にテストを実行し、それぞれのテスト失敗件数を報告してください
-- リファクタリング前後のどちらかでテストがredの場合、まず別issueでtest greenにしてからリファクタリングしてください
-
-## 推奨事項
-
-1. 単一責任の原...
-ラベル: refactoring, code-quality, automated
---- issue-notes/308.md の内容 ---
+- **拡張**: `PHASE_3`のみ返していたところを`PHASE_2`も返すよう拡張（reviewingイベントあり＋未完了 → PHASE_2、reviewingなし → None）...
+ラベル: 
+--- issue-notes/323.md の内容 ---
 
 ```markdown
 
 ```
 
-## [Issue #307](../issue-notes/307.md): 起動直後に別スレッドで自己アップデートチェックを実行する
-停止中にアップデートが行われた場合、次のメインループ実行まで検知が遅延していた。起動時に即座にアップデートチェックを走らせることで、再起動後すぐに最新コードへ更新できるようにする。
+## [Issue #319](../issue-notes/319.md): ムダにGraphQLクエリを消費しすぎ
 
-## 変更点
-
-- **`auto_updater.py`**: `start_startup_self_update_check()` を追加
-  - daemonスレッドで `maybe_self_update()` を一度呼び出す
-  - 対象は自己リポジトリのみ
-  - 例外はprint出力して飲み込む（クラッシュ防止）
-
-- **`main.py`**: シグナルハンドラー設定後・メインループ開始前に呼...
 ラベル: 
---- issue-notes/307.md の内容 ---
+--- issue-notes/319.md の内容 ---
 
 ```markdown
 
 ```
 
-## [Issue #304](../issue-notes/304.md): 今ある「自分自身をpullしたら自動アップデートする」、について、起動直後のタイミングにおいても、別スレッドで一度実行する
+## [Issue #317](../issue-notes/317.md): auto pullの発展型として、対象userのアクティブなリポジトリを全てlocalにcloneし、高速に全リポジトリへのアクセスを可能とする、ことを検討する
 
 ラベル: 
---- issue-notes/304.md の内容 ---
+--- issue-notes/317.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #314](../issue-notes/314.md): 現在観測できるPRが、すべて現実はphase3なのに、判定結果が誤ってphase2という判定をされてしまっている
+
+ラベル: 
+--- issue-notes/314.md の内容 ---
 
 ```markdown
 
 ```
 
 ## ドキュメントで言及されているファイルの内容
+### .github/actions-tmp/issue-notes/14.md
+```md
+{% raw %}
+# issue Development Status のdocument生成において、最初の小さな一歩 を実現する用のプロンプト生成がされなくなっている #14
+[issues #14](https://github.com/cat2151/github-actions/issues/14)
+
+## 何が困るの？
+- #11の場合
+- 期待値
+    - 最初の小さな一歩 : [Issue #11]のtranslateについて、現在の処理フローを確認し、外部プロジェクトから利用する際にどのような情報（翻訳対象のファイルパス、ターゲット言語設定など）が必要となるかを明確にする。これにより、再利用可能なワークフロー設計の基礎を築く。
+    - 最初の小さな一歩をagentに実行させるためのプロンプト : 現在のGitHub Actions翻訳ワークフロー（translate-readme.yml、call-translate-readme.yml、translate-readme.cjs）を分析し、外部プロジェクトから利用する際に必要となる設定項目を洗い出してください。具体的には、以下の観点から調査し、markdown形式でまとめてください：1) 必須入力パラメータ（現在はtarget-branchのみ） 2) 必須シークレット（GEMINI_API_KEY） 3) ファイル配置の前提条件（README.ja.md の存在、配置場所） 4) 翻訳対象ファイル名の制約（現在はREADME固定） 5) ブランチ・トリガー設定の制約 6) 外部プロジェクトでの利用時に追加で必要となりそうな設定項目の提案
+- 実際の結果
+    - 最初の小さな一歩: [Issue #11]のtranslateについて、現在の処理フローを確認し、外部プロジェクトから利用する際にどのような情報（翻訳対象のファイルパス、ターゲット言語設定など）が必要となるかを明確にする。これにより、再利用可能なワークフロー設計の基礎を築く。
+
+## close条件
+- 期待値のように、Agent実行プロンプト、が生成されること
+
+## agentに修正させた
+- development-status.md を修正させた
+- test green
+
+## closeとする
+
+{% endraw %}
+```
+
+### .github/actions-tmp/issue-notes/17.md
+```md
+{% raw %}
+# issue development-status が生成したmdに誤りがある。issue-note へのlinkがURL誤りで、404となってしまう #17
+[issues #17](https://github.com/cat2151/github-actions/issues/17)
+
+# 事例
+- 生成したmdのURL：
+    - https://github.com/cat2151/github-actions/blob/main/generated-docs/development-status.md
+- そのmdをGitHub上でdecodeして閲覧したときのURL、404である：
+    - https://github.com/cat2151/github-actions/blob/main/generated-docs/issue-notes/16.md
+- そのmdに実際に含まれるURL：
+    - issue-notes/16.md
+- あるべきURL：
+    - https://github.com/cat2151/github-actions/blob/main/issue-notes/16.md
+- あるべきURLがmdにどう含まれているべきか：
+    - ../issue-notes/16.md
+
+# どうする？
+- 案
+    - promptを修正する
+    - promptの場所は：
+        - .github_automation/project_summary/scripts/development/DevelopmentStatusGenerator.cjs
+    - 備考、cjs内にpromptがハードコーディングされており、promptをメンテしづらいので別途対処する : [issues #18](https://github.com/cat2151/github-actions/issues/18)
+
+# 結果
+- agentにpromptを投げた
+    - ※promptは、development-statusで生成したもの
+- レビューした
+    - agentがフルパスで実装した、ことがわかった
+- userが分析し、 ../ のほうが適切と判断した
+    - ※「事例」コーナーを、あわせて修正した
+- そのように指示してagentに修正させた
+- testする
+
+# 結果
+- test green
+- closeする
+
+{% endraw %}
+```
+
+### .github/actions-tmp/issue-notes/19.md
+```md
+{% raw %}
+# issue project-summary の development-status 生成時、issue-notes/ 配下のmdファイルの内容を参照させる #19
+[issues #19](https://github.com/cat2151/github-actions/issues/19)
+
+# 何が困るの？
+- issue解決に向けての次の一手の内容が実態に即していないことが多い。
+
+# 対策案
+- issue-notes/ 配下のmdファイルの内容を参照させる
+
+# 備考
+- さらにmd内に書かれているfileも、project内をcjsに検索させて添付させると、よりGeminiの生成品質が向上する可能性がある。
+    - [issues #20](https://github.com/cat2151/github-actions/issues/20)
+- さらにproject overviewでGeminiがまとめたmdも、Geminiに与えると、よりGeminiの生成品質が向上する可能性がある。
+    - [issues #21](https://github.com/cat2151/github-actions/issues/21)
+- さらに、Geminiに与えたpromptをfileにしてcommit pushしておくと、デバッグに役立つ可能性がある。
+    - [issues #22](https://github.com/cat2151/github-actions/issues/22)
+
+# close条件
+- issues #22 がcloseされること。
+- commitされたpromptを確認し、issue-notes/ 配下のmdファイルがpromptに添付されていること、が確認できること。
+
+# 状況
+- 課題、実装したがtestができていない
+- 対策、issues #22 が実装されれば、testができる
+- 対策、issues #22 のcloseを待つ
+
+# 状況
+- issues #22 がcloseされた
+- testできるようになった
+- commitされたpromptを確認した。issue-notes/ 配下のmdファイルがpromptに添付されていること、が確認できた
+
+# closeする
+
+{% endraw %}
+```
+
+### .github/actions-tmp/issue-notes/23.md
+```md
+{% raw %}
+# issue issue 17が再発してしまっている #23
+[issues #23](https://github.com/cat2151/github-actions/issues/23)
+
+# 症状は？
+- issue 17と同じ
+
+# どうする？
+- development-status-generated-prompt.md を確認する
+- 結果
+    - >Issue番号を記載する際は、必ず [Issue #番号](issue-notes/番号.md) の形式でMarkdownリンクとして記載してください。
+    - 仮説、これが残っており、ほかの ../ 指定と競合し、どちらかがランダムで選ばれていた
+    - 対策、ここを ../ 指定にする
+
+# 結果
+- test green
+
+# closeとする
+
+{% endraw %}
+```
+
+### .github/actions-tmp/issue-notes/3.md
+```md
+{% raw %}
+# issue GitHub Actions「issue note生成」を共通ワークフロー化する #3
+[issues #3](https://github.com/cat2151/github-actions/issues/3)
+
+- 前提
+  - userは、translateのworkflowを共通ワークフロー化し、動くようにしたので、共通ワークフロー化の知識がある
+  - よって、今回は、promptでplanさせ、そのplanをuserがレビューし、planの改善を指示できるので、ハルシネーションのリスクを下げることができる
+
+- prompt
+```
+あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
+このymlはまだ共通ワークフロー化されず、
+呼び出し元からコピーされたままの状態です。
+このymlファイル名のまま、
+中身を共通ワークフロー化してください。
+呼び出し元ymlは別途書きますので気にしないでください。
+まずplanしてください
+```
+
+- plan 生成結果
+```
+共通ワークフロー化のためのplanは以下の通りです。
+
+1. 目的
+現在の issue-note.yml を「共通ワークフロー」として再設計し、他リポジトリや他ワークフローから workflow_call で呼び出せるようにする。
+2. 主な変更点
+on: トリガーを workflow_call に変更（直接イベントで起動しない）。
+必要な入力（inputs）やシークレット（secrets）を workflow_call セクションで定義。
+github.event.issue などのイベント依存部分を、inputs経由で受け取る形に修正。
+既存の処理（issueノート生成、コミット、issue body更新）はそのまま活かすが、パラメータ化する。
+3. 具体的な修正内容
+on: issues: → on: workflow_call: に変更。
+inputs で必要な値（例: issue_title, issue_number, issue_body, issue_url など）を受け取る。
+スクリプト内の ${{ github.event.issue.xxx }} を ${{ inputs.xxx }} に置換。
+github-script ステップも同様にinputsを参照。
+必要に応じて secrets も workflow_call で受け取れるようにする。
+4. ファイル名・配置
+ファイル名はそのまま issue-note.yml。
+配置場所は workflows でOK（共通ワークフローとしてもこの場所で良い）。
+5. 呼び出し元への影響
+呼び出し元ワークフローで uses: <repo>/.github/workflows/issue-note.yml@main のように参照し、inputsを渡す形になる。
+このplanで進めます。次に、実際の共通ワークフロー化のためのyml修正案を作成しますか？
+```
+
+- userがplanレビューし、OKを出した
+- agentに生成結果ymlをレビューさせた、OKとなった
+  - userはこのレビューは認知負荷が高いのでskipとする（単純な細かい間違い探し作業になるので、それはagentに任せた）
+-  エラー。呼び出し元ymlのエラーがあり修正。共通ワークフローのエラー指摘があり、共通ワークフロー側の修正が必要となった
+```
+原因の分析：
+
+呼び出し元（tonejs-mml-to-jsonのissue-note.yml）は、reusable workflow（cat2151/github-actions/.github/workflows/issue-note.yml@main）をusesで呼び出し、inputsをwithで渡しています。
+共通ワークフロー（reusable workflow）は inputs を workflow_call で受け取り、各ステップで ${{ inputs.xxx }} で参照しています。
+しかし、エラーが発生したのは actions/github-script@v7 の script 内です。
+エラーの本質的な原因：
+
+actions/github-script の script: で ${{ inputs.issue_number }} のような式を直接 JavaScript テンプレートリテラル内で使っていますが、これはサポートされていません。
+script: の中は JavaScript であり、YAMLの ${{ ... }} は展開されません（または意図通りに展開されません）。
+そのため、inputs 変数は script 内の JavaScript で未定義となり、ReferenceError になります。
+正しい書き方：
+
+actions/github-script の script: でワークフローの inputs を使いたい場合は、with: で input を environment 変数や script の引数として渡し、JavaScript で process.env から取得するか、github-script の input 機能を使う必要があります。
+例（修正版）：
+
+このように、inputs の値を env で渡し、script 内では process.env で参照してください。
+
+まとめ：
+
+actions/github-script の script 内で ${{ inputs.xxx }} を直接使うと ReferenceError になる
+env: で値を渡し、process.env で参照するのが正しい
+修正が必要です。修正版のワークフローが必要な場合はお知らせください。
+```
+
+- test green
+- closeとする
+
+{% endraw %}
+```
+
 ### .github/actions-tmp/issue-notes/4.md
 ```md
 {% raw %}
@@ -537,795 +748,487 @@ jobs:
 {% endraw %}
 ```
 
-### .github/actions-tmp/issue-notes/8.md
+### .github/actions-tmp/issue-notes/9.md
 ```md
 {% raw %}
-# issue 関数コールグラフhtmlビジュアライズ生成の対象ソースファイルを、呼び出し元ymlで指定できるようにする #8
-[issues #8](https://github.com/cat2151/github-actions/issues/8)
+# issue 関数コールグラフhtmlビジュアライズが0件なので、原因を可視化する #9
+[issues #9](https://github.com/cat2151/github-actions/issues/9)
 
-# これまでの課題
-- 以下が決め打ちになっていた
-```
-  const allowedFiles = [
-    'src/main.js',
-    'src/mml2json.js',
-    'src/play.js'
-  ];
-```
+# agentに修正させたり、人力で修正したりした
+- agentがハルシネーションし、いろいろ根の深いバグにつながる、エラー隠蔽などを仕込んでいたため、検知が遅れた
+- 詳しくはcommit logを参照のこと
+- WSL + actの環境を少し変更、act起動時のコマンドライン引数を変更し、generated-docsをmountする（ほかはデフォルト挙動であるcpだけにする）ことで、デバッグ情報をコンテナ外に出力できるようにし、デバッグを効率化した
 
-# 対策
-- 呼び出し元ymlで指定できるようにする
-
-# agent
-- agentにやらせることができれば楽なので、初手agentを試した
-- 失敗
-    - ハルシネーションしてscriptを大量破壊した
-- 分析
-    - 修正対象scriptはagentが生成したもの
-    - 低品質な生成結果でありソースが巨大
-    - ハルシネーションで破壊されやすいソース
-    - AIの生成したソースは、必ずしもAIフレンドリーではない
-
-# 人力リファクタリング
-- 低品質コードを、最低限agentが扱えて、ハルシネーションによる大量破壊を防止できる内容、にする
-- 手短にやる
-    - そもそもビジュアライズは、agentに雑に指示してやらせたもので、
-    - 今後別のビジュアライザを選ぶ可能性も高い
-    - 今ここで手間をかけすぎてコンコルド効果（サンクコストバイアス）を増やすのは、project群をトータルで俯瞰して見たとき、損
-- 対象
-    - allowedFiles のあるソース
-        - callgraph-utils.cjs
-            - たかだか300行未満のソースである
-            - この程度でハルシネーションされるのは予想外
-            - やむなし、リファクタリングでソース分割を進める
-
-# agentに修正させる
-## prompt
-```
-allowedFilesを引数で受け取るようにしたいです。
-ないならエラー。
-最終的に呼び出し元すべてに波及して修正したいです。
-
-呼び出し元をたどってエントリポイントも見つけて、
-エントリポイントにおいては、
-引数で受け取ったjsonファイル名 allowedFiles.js から
-jsonファイル allowedFiles.jsonの内容をreadして
-変数 allowedFilesに格納、
-後続処理に引き渡す、としたいです。
-
-まずplanしてください。
-planにおいては、修正対象のソースファイル名と関数名を、呼び出し元を遡ってすべて特定し、listしてください。
-```
-
-# 修正が順調にできた
-- コマンドライン引数から受け取る作りになっていなかったので、そこだけ指示して修正させた
-- yml側は人力で修正した
-
-# 他のリポジトリから呼び出した場合にバグらないよう修正する
-- 気付いた
-    - 共通ワークフローとして他のリポジトリから使った場合はバグるはず。
-        - ymlから、共通ワークフロー側リポジトリのcheckoutが漏れているので。
-- 他のyml同様に修正する
-- あわせて全体にymlをリファクタリングし、修正しやすくし、今後のyml読み書きの学びにしやすくする
-
-# local WSL + act : test green
+# test green
 
 # closeとする
-- もし生成されたhtmlがNGの場合は、別issueとするつもり
 
 {% endraw %}
 ```
 
-### src/gh_pr_phase_monitor/auto_updater.py
+### src/gh_pr_phase_monitor/phase_detector.py
 ```py
 {% raw %}
-"""Self-update utility using gh CLI and git."""
+"""
+PR phase detection logic based on reviews and PR state
+"""
 
-from __future__ import annotations
-
-import os
+import json
 import re
-import subprocess
-import sys
-import time
-from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Union
 
-UPDATE_CHECK_INTERVAL_SECONDS = 60
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+# Phase constants
+PHASE_LLM_WORKING = "LLM working"
+PHASE_1 = "phase1"
+PHASE_2 = "phase2"
+PHASE_3 = "phase3"
 
-_last_check_time: float = 0.0
-_REMOTE_PATTERN = re.compile(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?$")
-
-
-def _run_command(args: list[str], cwd: Path | str | None = None) -> subprocess.CompletedProcess[str]:
-    """Run a command and return the completed process without raising on error."""
-    return subprocess.run(
-        args,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        cwd=cwd,
-        check=False,
-    )
+# Tracks comment reaction signatures that were confirmed as "finished" via HTML snapshot analysis.
+_finished_reaction_signatures: Dict[str, str] = {}
 
 
-def _parse_remote_url(remote_url: str) -> Optional[Tuple[str, str]]:
-    """Parse a GitHub remote URL into (owner, repo)."""
-    match = _REMOTE_PATTERN.search(remote_url.strip())
-    if not match:
-        return None
-    return match.group("owner"), match.group("repo")
+def _build_pr_key(pr: Dict[str, Any]) -> str:
+    """Build a stable key for tracking reaction resolution state."""
+    url = pr.get("url")
+    if url:
+        return url
+
+    repo_info = pr.get("repository") or {}
+    owner = repo_info.get("owner") or "unknown"
+    name = repo_info.get("name") or "unknown"
+    number = pr.get("number") or "unknown"
+    return f"{owner}/{name}#{number}"
 
 
-def _get_tracking_branch(repo_root: Path) -> Optional[Tuple[str, str]]:
-    """Return (remote, branch) for the current upstream if configured."""
-    result = _run_command(["git", "-C", str(repo_root), "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
-    if result.returncode != 0:
-        return None
+def _comment_reaction_signature(comment_nodes: Any) -> str:
+    """Build a deterministic signature of comment reactions for change detection."""
+    if not isinstance(comment_nodes, list):
+        return ""
 
-    ref = result.stdout.strip()
-    if "/" not in ref:
-        return None
-    remote, branch = ref.split("/", 1)
-    if not remote or not branch:
-        return None
-    return remote, branch
+    signatures: List[Dict[str, Any]] = []
+    for comment in comment_nodes:
+        groups = []
+        for group in comment.get("reactionGroups") or []:
+            count = (group.get("users") or {}).get("totalCount", 0)
+            if count:
+                groups.append({"content": group.get("content"), "count": count})
+        if groups:
+            # Sort reactions within a comment so signature is order-insensitive
+            groups.sort(key=lambda g: (g.get("content") or "", g.get("count", 0)))
+            signatures.append({"reactions": groups})
 
+    if not signatures:
+        return ""
 
-def _get_remote_repo(repo_root: Path, remote_name: str) -> Optional[Tuple[str, str]]:
-    """Return (owner, repo) for the given remote using its URL."""
-    result = _run_command(["git", "-C", str(repo_root), "remote", "get-url", remote_name])
-    if result.returncode != 0:
-        return None
-    parsed = _parse_remote_url(result.stdout)
-    return parsed
+    # Sort comments by their reaction signature to avoid dependence on comment order
+    signatures.sort(key=lambda item: json.dumps(item["reactions"], sort_keys=True))
 
-
-def _get_local_head_sha(repo_root: Path) -> Optional[str]:
-    """Return the current HEAD SHA."""
-    result = _run_command(["git", "-C", str(repo_root), "rev-parse", "HEAD"])
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip() or None
+    # Sort keys for deterministic output
+    return json.dumps(signatures, sort_keys=True)
 
 
-def _get_remote_latest_sha(owner: str, repo: str, branch: str, cwd: Path) -> Optional[str]:
-    """Fetch the latest SHA for the remote branch via gh api."""
-    result = _run_command(
-        [
-            "gh",
-            "api",
-            f"repos/{owner}/{repo}/commits",
-            "-F",
-            f"sha={branch}",
-            "-F",
-            "per_page=1",
-            "--jq",
-            ".[0].sha",
-        ],
-        cwd=cwd,
-    )
-    if result.returncode != 0:
-        return None
-    sha = result.stdout.strip()
-    return sha or None
+def update_comment_reaction_resolution(pr: Dict[str, Any], comment_nodes: Any, finished: bool) -> None:
+    """Update resolution cache based on HTML analysis results."""
+    pr_key = _build_pr_key(pr)
+    signature = _comment_reaction_signature(comment_nodes)
 
-
-def _is_worktree_clean(repo_root: Path) -> bool:
-    """Check if the worktree has no local modifications."""
-    result = _run_command(["git", "-C", str(repo_root), "status", "--porcelain"])
-    return result.returncode == 0 and not result.stdout.strip()
-
-
-def _pull_fast_forward(repo_root: Path, remote_name: str, branch: str) -> bool:
-    """Attempt a fast-forward pull; return True on success."""
-    result = _run_command(["git", "-C", str(repo_root), "pull", "--ff-only", remote_name, branch])
-    if result.returncode != 0:
-        message = result.stderr.strip() or result.stdout.strip()
-        print(f"Auto-update skipped: git pull failed ({message}).")
-        return False
-    return True
-
-
-def restart_application() -> None:
-    """Restart the current Python process with the same arguments."""
-    os.chdir(REPO_ROOT)
-    os.execv(sys.executable, [sys.executable] + sys.argv)
-
-
-def maybe_self_update(repo_root: Path | None = None) -> bool:
-    """Check for repository updates and restart the app if new commits are available."""
-    global _last_check_time
-    now = time.time()
-    if _last_check_time and now - _last_check_time < UPDATE_CHECK_INTERVAL_SECONDS:
-        return False
-    _last_check_time = now
-
-    repo_root = repo_root or REPO_ROOT
-    tracking = _get_tracking_branch(repo_root)
-    if not tracking:
-        return False
-    remote_name, branch = tracking
-
-    remote_repo = _get_remote_repo(repo_root, remote_name)
-    if not remote_repo:
-        return False
-    owner, repo = remote_repo
-
-    local_sha = _get_local_head_sha(repo_root)
-    if not local_sha:
-        return False
-
-    remote_sha = _get_remote_latest_sha(owner, repo, branch, repo_root)
-    if not remote_sha or remote_sha == local_sha:
-        return False
-
-    if not _is_worktree_clean(repo_root):
-        print("Auto-update skipped: local changes detected.")
-        return False
-
-    if not _pull_fast_forward(repo_root, remote_name, branch):
-        return False
-
-    print("Auto-update applied: restarting application to use the latest code...")
-    restart_application()
-    return True
-
-{% endraw %}
-```
-
-### src/gh_pr_phase_monitor/main.py
-```py
-{% raw %}
-"""
-Main execution module for GitHub PR Phase Monitor
-"""
-
-import math
-import signal
-import sys
-import time
-import traceback
-from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any
-
-from .auto_updater import UPDATE_CHECK_INTERVAL_SECONDS, maybe_self_update
-from .config import (
-    DEFAULT_ENABLE_AUTO_UPDATE,
-    DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
-    DEFAULT_MAX_LLM_WORKING_PARALLEL,
-    get_config_mtime,
-    load_config,
-    parse_interval,
-    print_config,
-    validate_phase3_merge_config_required,
-)
-from .display import display_issues_from_repos_without_prs, display_status_summary
-from .github_auth import get_current_user
-from .github_client import get_pr_details_batch, get_repositories_with_open_prs
-from .graphql_client import GitHubRateLimitError, get_rate_limit_info
-from .local_repo_watcher import (
-    display_pending_local_repo_results,
-    notify_phase3_detected,
-    start_local_repo_monitoring,
-)
-from .monitor import check_no_state_change_timeout
-from .pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
-from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
-from .pr_actions import process_pr
-from .pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
-from .time_utils import format_elapsed_time
-from .wait_handler import wait_with_countdown
-
-LOG_DIR = Path("logs")
-MAX_RATE_LIMIT_THROTTLE_SECONDS = 600
-
-
-def _format_rate_limit_reset(reset: Any, now: datetime | None = None) -> tuple[str, str]:
-    """Format rate-limit reset epoch into UTC datetime and remaining duration."""
-    if not isinstance(reset, (int, float)):
-        return "unknown", "unknown"
-
-    current = now or datetime.now(UTC)
-    reset_dt = datetime.fromtimestamp(float(reset), UTC)
-    remaining_seconds = max(0, int(reset_dt.timestamp() - current.timestamp()))
-    return reset_dt.strftime("%Y-%m-%d %H:%M:%S UTC"), format_elapsed_time(remaining_seconds)
-
-
-def _display_rate_limit_usage(
-    before: dict[str, Any] | None,
-    after: dict[str, Any] | None,
-) -> None:
-    """Display GraphQL API usage breakdown for this iteration."""
-    if not after:
+    if not signature:
+        _finished_reaction_signatures.pop(pr_key, None)
         return
 
-    remaining = after.get("remaining", "?")
-    limit = after.get("limit", "?")
-    reset = after.get("reset")
-    reset_display, reset_in_display = _format_rate_limit_reset(reset)
-    status = f"残={remaining}/{limit}, リセット={reset_display} (あと{reset_in_display})"
-
-    if before is not None and isinstance(before.get("remaining"), int) and isinstance(after.get("remaining"), int):
-        raw_consumed = before["remaining"] - after["remaining"]
-        if raw_consumed < 0:
-            # レートリミットウィンドウがリセットされ、単純差分が負になるケース
-            consumed = 0
-            reset_note = " (リセット後)"
-        else:
-            consumed = raw_consumed
-            reset_note = ""
-        print(f"\nGraphQL API使用状況: 今回消費={consumed}点{reset_note}, {status}")
+    if finished:
+        _finished_reaction_signatures[pr_key] = signature
     else:
-        print(f"\nGraphQL API使用状況: {status}")
+        _finished_reaction_signatures.pop(pr_key, None)
 
 
-def _check_rate_limit_throttle(
-    before: dict[str, Any] | None,
-    after: dict[str, Any] | None,
-    normal_interval_seconds: int,
-) -> tuple[bool, int]:
-    """Check if the current rate limit consumption rate requires interval throttling.
+def comment_reactions_marked_finished(pr: Dict[str, Any], comment_nodes: Any) -> bool:
+    """Return True when reactions match a signature previously marked finished."""
+    signature = _comment_reaction_signature(comment_nodes)
+    if not signature:
+        return False
 
-    Calculates whether continuing at the current consumption rate would exhaust
-    the GraphQL rate limit before the next reset window.
+    pr_key = _build_pr_key(pr)
+    return _finished_reaction_signatures.get(pr_key) == signature
+
+
+def reset_comment_reaction_resolution_cache() -> None:
+    """Clear cached reaction resolution state (useful for tests)."""
+    _finished_reaction_signatures.clear()
+
+
+def has_comments_with_reactions(comments: Union[List[Dict[str, Any]], int, None]) -> bool:
+    """Check if any comments have non-empty reactionGroups
+
+    When the LLM (coding agent) is working on addressing PR comments
+    (general pull request comments fetched via the `comments` field),
+    those comments may have reactions (GitHub reactions like 👍, 👎, 😄, 🎉,
+    😕, ❤️, 🚀, 👀, etc.) indicating the bot is processing them.
+    This indicates the LLM is actively working.
 
     Args:
-        before: Rate limit info captured before API calls
-        after: Rate limit info captured after API calls
-        normal_interval_seconds: The configured normal monitoring interval
+        comments: List of comment dictionaries with reactionGroups, or None/integer for backward compatibility
 
     Returns:
-        Tuple of (should_throttle, recommended_interval_seconds).
-        If should_throttle is False, recommended_interval_seconds equals normal_interval_seconds.
+        True if any comment has non-empty reactionGroups, False otherwise
     """
-    if not (before and after):
-        return False, normal_interval_seconds
+    # Handle backward compatibility: comments might be an integer or None from legacy API
+    if not comments or not isinstance(comments, list):
+        return False
 
-    remaining = after.get("remaining")
-    reset = after.get("reset")
-    if not isinstance(remaining, int) or not isinstance(reset, (int, float)):
-        return False, normal_interval_seconds
+    for comment in comments:
+        reaction_groups = comment.get("reactionGroups", [])
+        if reaction_groups:
+            # Check if any reaction group has users
+            for group in reaction_groups:
+                users = group.get("users", {})
+                total_count = users.get("totalCount", 0)
+                if total_count > 0:
+                    return True
 
-    if not isinstance(before.get("remaining"), int):
-        return False, normal_interval_seconds
-
-    consumed = before["remaining"] - after["remaining"]
-    if consumed <= 0:
-        return False, normal_interval_seconds
-
-    now = time.time()
-    reset_seconds = max(0, int(reset) - now)
-    if reset_seconds <= 0 or normal_interval_seconds <= 0:
-        return False, normal_interval_seconds
-
-    # Estimate how many more iterations until reset
-    iterations_until_reset = reset_seconds / normal_interval_seconds
-    projected_consumption = consumed * iterations_until_reset
-
-    if projected_consumption <= remaining:
-        return False, normal_interval_seconds
-
-    # When remaining is 0, cap immediately at maximum throttle
-    if remaining <= 0:
-        return True, MAX_RATE_LIMIT_THROTTLE_SECONDS
-
-    # Calculate the minimum safe interval to avoid exhausting the rate limit
-    # safe_interval = reset_seconds / (remaining / consumed) = reset_seconds * consumed / remaining
-    # Use ceil to round up so we never under-estimate the required interval
-    safe_interval_seconds = math.ceil(reset_seconds * consumed / remaining)
-    # Use at least 2x the normal interval to avoid micro-adjustments
-    throttled_interval = max(normal_interval_seconds * 2, safe_interval_seconds)
-    # Cap at max throttle to prevent excessively long waits
-    throttled_interval = min(throttled_interval, MAX_RATE_LIMIT_THROTTLE_SECONDS)
-
-    return True, throttled_interval
+    return False
 
 
-def log_error_to_file(message: str, exc: Exception | None = None, base_dir: Path | str | None = None) -> None:
-    """Append an error entry to logs/error.log without interrupting execution"""
-    try:
-        log_dir = Path(base_dir) if base_dir else LOG_DIR
-        log_dir.mkdir(parents=True, exist_ok=True)
-        log_path = log_dir / "error.log"
-        timestamp = datetime.now(UTC).isoformat(timespec="seconds")
-        with log_path.open("a", encoding="utf-8") as log_file:
-            log_file.write(f"[{timestamp} UTC] {message}\n")
-            if exc:
-                log_file.writelines(traceback.format_exception(type(exc), exc, exc.__traceback__))
-            log_file.write("\n")
-    except Exception:
-        # Avoid any logging-related failures impacting the main loop
-        pass
+def has_unresolved_review_threads(review_threads: Union[List[Dict[str, Any]], None]) -> bool:
+    """Check if there are any unresolved review threads (inline comments)
+
+    Review threads contain inline code comments from reviews.
+    If there are unresolved threads, the PR needs fixes (phase2).
+
+    Args:
+        review_threads: List of review thread dictionaries with isResolved, isOutdated, or None
+
+    Returns:
+        True if there are unresolved review threads, False otherwise
+    """
+    if not review_threads or not isinstance(review_threads, list):
+        return False
+
+    # Check if any thread is unresolved and not outdated
+    for thread in review_threads:
+        is_resolved = thread.get("isResolved", False)
+        is_outdated = thread.get("isOutdated", False)
+
+        # If a thread is not resolved and not outdated, it needs attention
+        if not is_resolved and not is_outdated:
+            return True
+
+    return False
 
 
-def main():
-    """Main execution function"""
-    config_path = "config.toml"
+def has_inline_review_comments(review_body: str) -> bool:
+    """DEPRECATED: Check if review body indicates inline code comments were generated
 
-    if len(sys.argv) > 1:
-        config_path = sys.argv[1]
+    This function is kept for backward compatibility but should not be used
+    for new code. Use has_unresolved_review_threads() instead which checks
+    actual review thread data rather than trying to infer from text patterns.
 
-    # Load config if it exists, otherwise use defaults
-    config = {}
-    config_mtime = 0.0
-    try:
-        config = load_config(config_path)
-        config_mtime = get_config_mtime(config_path)
-    except FileNotFoundError:
-        print(f"Warning: Config file '{config_path}' not found, using defaults")
-        print("You can create a config.toml file to customize settings")
-        print("Expected format:")
-        print('interval = "1m"  # Check interval (e.g., "30s", "1m", "5m")')
-        print()
+    Copilot's review body MAY contain text like:
+    "Copilot reviewed X out of Y changed files in this pull request and generated N comment(s)."
+    when inline comments are present. However, this pattern is not always present.
 
-    # Get interval setting (default to 1 minute if not specified)
-    # Keep the normal interval separate from the current interval to prevent the normal
-    # interval from being overwritten by reduced frequency interval values during mode switches
-    normal_interval_str = config.get("interval", "1m")
-    try:
-        normal_interval_seconds = parse_interval(normal_interval_str)
-    except ValueError as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+    Args:
+        review_body: The body text of the review
 
-    print("GitHub PR Phase Monitor")
-    print("=" * 50)
-    print(f"Monitoring interval: {normal_interval_str} ({normal_interval_seconds} seconds)")
-    print("Monitoring all repositories for the current GitHub user")
-    print("Press CTRL+C to stop monitoring")
-    print("=" * 50)
+    Returns:
+        True if the review body indicates inline comments exist, False otherwise
+    """
+    if not review_body:
+        return False
 
-    # Print configuration if verbose mode is enabled
-    if config.get("verbose", False):
-        print_config(config)
+    # Check for the pattern indicating inline comments were generated
+    # Pattern matches: "generated 1 comment" or "generated 2 comments" etc.
+    # NOTE: This is unreliable - the pattern may not always be present!
+    pattern = r"generated\s+\d+\s+comments?"
+    return bool(re.search(pattern, review_body, re.IGNORECASE))
 
-    # Set up signal handler for graceful interruption
-    def signal_handler(_signum, _frame):
-        print("\n\nMonitoring interrupted by user (CTRL+C)")
-        print("Exiting...")
-        sys.exit(0)
 
-    signal.signal(signal.SIGINT, signal_handler)
+def llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
+    """Determine LLM working state from ordered LLM statuses.
 
-    # Infinite monitoring loop
-    iteration = 0
-    consecutive_failures = 0
-    while True:
-        iteration += 1
+    Returns True when the most recent state after any 'started work' entry has
+    no subsequent 'finished work' entry, False when a later 'finished work'
+    exists, and None when the statuses do not provide a signal.
+    """
+    if not llm_statuses:
+        return None
 
-        if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE):
-            try:
-                maybe_self_update()
-            except Exception as update_error:
-                log_error_to_file("Auto-update check failed", update_error)
+    last_started_idx = None
+    last_finished_idx = None
+    reviewing_chain_finished_idx = None
+    review_idx = None
+    started_after_review_idx = None
 
-        print(f"\n{'=' * 50}")
-        print(f"Check #{iteration} - {time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"{'=' * 50}")
+    for idx, status in enumerate(llm_statuses):
+        lowered = status.lower()
+        if "reviewing" in lowered:
+            review_idx = idx
+            started_after_review_idx = None
+        if "started work" in lowered:
+            last_started_idx = idx
+            if review_idx is not None and idx > review_idx:
+                started_after_review_idx = idx
+        if "finished work" in lowered:
+            last_finished_idx = idx
+            if started_after_review_idx is not None and idx > started_after_review_idx:
+                reviewing_chain_finished_idx = idx
 
-        # Capture rate limit before API calls for per-iteration consumption tracking
-        try:
-            before_rate_limit = get_rate_limit_info()
-        except Exception as rate_limit_error:
-            log_error_to_file("Failed to fetch pre-iteration rate limit info", rate_limit_error)
-            before_rate_limit = None
+    if last_finished_idx is not None and last_started_idx is not None and last_finished_idx > last_started_idx:
+        return False
 
-        # Reset snapshot cache to allow recording new snapshots in this iteration
-        reset_snapshot_cache()
+    if reviewing_chain_finished_idx is not None and (
+        last_started_idx is None or reviewing_chain_finished_idx >= last_started_idx
+    ):
+        return False
 
-        # Initialize variables to track status for summary
-        all_prs = []
-        pr_phases = []
-        repos_with_prs = []
-        phase3_repo_names: list[str] = []
+    if last_started_idx is not None and (last_finished_idx is None or last_started_idx > last_finished_idx):
+        return True
 
-        try:
-            # Phase 1: Get all repositories with open PRs (lightweight query)
-            print("\nPhase 1: Fetching repositories with open PRs...")
-            repos_with_prs = get_repositories_with_open_prs()
+    return None
 
-            if not repos_with_prs:
-                print("  No repositories with open PRs found")
-                # Display issues when no repositories with open PRs are found
-                # No PRs means llm_working_count = 0
-                display_issues_from_repos_without_prs(config, llm_working_count=0)
+
+def _phase_from_llm_statuses(llm_statuses: List[str]) -> Optional[str]:
+    """Infer phase from LLM statuses when review data is unavailable.
+
+    When the LLM statuses contain a reviewing event and all subsequent work
+    has finished (no started work without matching finished work),
+    this indicates phase 3.
+    """
+    if not llm_statuses:
+        return None
+
+    review_idx: Optional[int] = None
+    last_started_idx: Optional[int] = None
+    last_finished_idx: Optional[int] = None
+
+    for idx, status in enumerate(llm_statuses):
+        lowered = status.lower()
+        if "reviewing" in lowered:
+            review_idx = idx
+        if "started work" in lowered:
+            last_started_idx = idx
+        if "finished work" in lowered:
+            last_finished_idx = idx
+
+    # Require a reviewing event and a finished-work event that happens *after* reviewing.
+    if review_idx is None or last_finished_idx is None:
+        return None
+    if last_finished_idx <= review_idx:
+        return None
+
+    # Ensure there is no started-work event after the last finished-work event.
+    if last_started_idx is not None and last_started_idx > last_finished_idx:
+        return None
+
+    return PHASE_3
+
+    return None
+
+
+def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
+    """Determine the phase without considering comment reactions."""
+    is_draft = pr.get("isDraft", False)
+    reviews = pr.get("reviews", [])
+    latest_reviews = pr.get("latestReviews", [])
+    review_requests = pr.get("reviewRequests", [])
+    review_threads = pr.get("reviewThreads", [])
+    llm_statuses = pr.get("llm_statuses") or []
+
+    # Phase 1: Draft状態
+    # - reviewRequests が1件以上ある場合: 常に phase1
+    # - reviewRequests が空の場合:
+    #     - LLM が未完了 (llm_working_from_statuses(...) が True または None): LLM working
+    #     - LLM が完了済み (llm_working_from_statuses(...) が False): phase1
+    if is_draft:
+        if not review_requests:
+            llm_working = llm_working_from_statuses(llm_statuses)
+            if llm_working is False:
+                return PHASE_1
+            return PHASE_LLM_WORKING
+        return PHASE_1
+
+    # Phase 2 と Phase 3 の判定には reviews が必要
+    if not reviews or not latest_reviews:
+        # LLMステータスからreviewingと作業完了を検出できればphase3
+        status_phase = _phase_from_llm_statuses(llm_statuses)
+        if status_phase is not None:
+            return status_phase
+        return PHASE_LLM_WORKING
+
+    # 最新のレビューを取得
+    latest_review = reviews[-1]
+    author_login = latest_review.get("author", {}).get("login", "")
+
+    # Phase 2/3: copilot-pull-request-reviewer のレビュー後
+    if author_login == "copilot-pull-request-reviewer":
+        # レビューの状態を確認
+        review_state = latest_review.get("state", "")
+
+        # CHANGES_REQUESTEDの場合は確実にphase2
+        if review_state == "CHANGES_REQUESTED":
+            return PHASE_2
+
+        # COMMENTEDの場合、実際のreview threads(インラインコメント)を確認
+        # 未解決のレビュースレッドがある場合はphase2（修正が必要）、ない場合はphase3（レビュー待ち）
+        if review_state == "COMMENTED":
+            # Check actual review threads instead of text patterns
+            if has_unresolved_review_threads(review_threads):
+                return PHASE_2
+            # レビューコメントがない場合はphase3
+            return PHASE_3
+
+        # それ以外(APPROVED, DISMISSED, PENDING等)はphase3
+        return PHASE_3
+
+    # Phase 3: copilot-swe-agent の修正後
+    # ただし、copilot-pull-request-reviewerの未解決レビューがある場合はphase2
+    if author_login == "copilot-swe-agent":
+        # Find the positions of copilot-pull-request-reviewer and copilot-swe-agent reviews
+        # to determine if there's a re-review from the reviewer after swe-agent started working
+        latest_reviewer_index = None
+        latest_reviewer_state = None
+        first_swe_agent_index = None
+        swe_agent_review_count = 0
+
+        for i, review in enumerate(reviews):
+            reviewer_login = review.get("author", {}).get("login", "")
+
+            # Track copilot-swe-agent reviews
+            if reviewer_login == "copilot-swe-agent":
+                swe_agent_review_count += 1
+                if first_swe_agent_index is None:
+                    first_swe_agent_index = i
+
+            # Track the latest copilot-pull-request-reviewer review
+            if reviewer_login == "copilot-pull-request-reviewer":
+                latest_reviewer_index = i
+                latest_reviewer_state = review.get("state", "")
+
+        # CHANGES_REQUESTEDの場合は常にphase2
+        if latest_reviewer_state == "CHANGES_REQUESTED":
+            return PHASE_2
+
+        # Check if there are unresolved review threads
+        if has_unresolved_review_threads(review_threads):
+            # When copilot-pull-request-reviewer uses COMMENTED (not CHANGES_REQUESTED),
+            # it indicates suggestions rather than required changes.
+            # If swe-agent has posted even one review in response, the work is complete → phase3
+            # This is different from CHANGES_REQUESTED where we'd want stronger completion signals.
+
+            is_re_review = (
+                latest_reviewer_index is not None
+                and first_swe_agent_index is not None
+                and latest_reviewer_index > first_swe_agent_index
+            )
+
+            # Determine if swe-agent has completed work
+            if latest_reviewer_state == "COMMENTED":
+                # For COMMENTED reviews (suggestions only), any swe-agent review indicates completion
+                swe_agent_completed = swe_agent_review_count >= 1
             else:
-                print(f"  Found {len(repos_with_prs)} repositories with open PRs:")
-                for repo in repos_with_prs:
-                    print(f"    - {repo['name']}: {repo['openPRCount']} open PR(s)")
-
-                # Validate phase3_merge configuration for all repositories
-                # This must be done before processing PRs to fail fast
-                print("\nValidating phase3_merge configuration...")
-                for repo in repos_with_prs:
-                    repo_owner = repo.get("owner", "")
-                    repo_name = repo.get("name", "")
-                    if repo_owner and repo_name:
-                        validate_phase3_merge_config_required(config, repo_owner, repo_name)
-
-                # Phase 2: Get PR details for repositories with open PRs (detailed query)
-                print(f"\nPhase 2: Fetching PR details for {len(repos_with_prs)} repositories...")
-                all_prs = get_pr_details_batch(repos_with_prs)
-
-                if not all_prs:
-                    print("  No PRs found")
-                else:
-                    print(f"\n  Found {len(all_prs)} open PR(s) total")
-                    print(f"\n{'=' * 50}")
-                    print("Processing PRs:")
-                    print(f"{'=' * 50}")
-
-                    snapshots_enabled = config.get("enable_pr_phase_snapshots", DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS)
-                    # Track phases to detect if all PRs are in "LLM working"
-                    for pr in all_prs:
-                        try:
-                            phase = determine_phase(pr)
-
-                            try:
-                                record_reaction_snapshot(pr, phase, enable_snapshots=snapshots_enabled)
-                                phase = determine_phase(pr)
-                            except Exception as snapshot_error:
-                                print(f"    Failed to capture PR reaction/LLM status data: {snapshot_error}")
-                                log_error_to_file(
-                                    f"Failed to capture PR reaction/LLM status data for {pr.get('url', 'unknown')}",
-                                    snapshot_error,
-                                )
-
-                            pr_phases.append(phase)
-                            process_pr(pr, config, phase)
-
-                            # phase3検知時: 該当リポジトリをpullable検査の対象に登録
-                            if phase == PHASE_3:
-                                repo_name = pr.get("repository", {}).get("name", "")
-                                if repo_name and repo_name not in phase3_repo_names:
-                                    phase3_repo_names.append(repo_name)
-                        except Exception as pr_error:
-                            log_error_to_file(
-                                f"Failed to process PR {pr.get('url', 'unknown') or pr.get('title', 'unknown')}",
-                                pr_error,
-                            )
-                            pr_phases.append(PHASE_LLM_WORKING)
-
-                    # Count how many PRs are in "LLM working" phase
-                    # This count is used for rate limit protection - when too many PRs are being
-                    # worked on simultaneously, we pause auto-assignment to prevent API rate limits
-                    llm_working_count = sum(1 for phase in pr_phases if phase == PHASE_LLM_WORKING)
-                    max_llm_working_parallel = config.get("max_llm_working_parallel", DEFAULT_MAX_LLM_WORKING_PARALLEL)
-                    llm_working_below_cap = llm_working_count < max_llm_working_parallel
-
-                    # Look for new issues to assign when:
-                    # 1. All PRs are in "LLM working" phase (existing work is in progress), OR
-                    # 2. PR count is less than 3 (few PRs, so we can look for more work)
-                    # The llm_working_count throttles assignment when parallel work is too high
-                    total_pr_count = len(all_prs)
-                    all_llm_working = bool(pr_phases) and all(phase == PHASE_LLM_WORKING for phase in pr_phases)
-                    all_phase3 = bool(pr_phases) and all(phase == PHASE_3 for phase in pr_phases)
-                    active_parallel_prs = sum(1 for phase in pr_phases if phase != PHASE_3)
-
-                    if llm_working_below_cap or all_llm_working or active_parallel_prs < 3:
-                        if all_llm_working and total_pr_count >= 3:
-                            print(f"\n{'=' * 50}")
-                            print("All PRs are in 'LLM working' phase")
-                            print(f"{'=' * 50}")
-                        elif all_phase3 and total_pr_count >= 3:
-                            print(f"\n{'=' * 50}")
-                            print("All PRs are in 'phase3' (ready for human review); treating parallel count as 0")
-                            print(f"{'=' * 50}")
-                        elif llm_working_below_cap:
-                            print(f"\n{'=' * 50}")
-                            print(
-                                f"LLM working PRs below limit: {llm_working_count}/{max_llm_working_parallel} "
-                                "(showing available work)"
-                            )
-                            print(f"{'=' * 50}")
-                        elif active_parallel_prs < 3:
-                            print(f"\n{'=' * 50}")
-                            print(f"Active PR count (excluding phase3) is {active_parallel_prs} (less than 3)")
-                            print(f"{'=' * 50}")
-                        # Display issues and potentially auto-assign new work
-                        # Throttling is applied inside the function based on llm_working_count
-                        display_issues_from_repos_without_prs(config, llm_working_count=llm_working_count)
-
-            # Check GitHub Pages deployment status for configured repos
-            # This runs regardless of whether there are open PRs (covers post-merge case)
-            try:
-                current_user = get_current_user()
-                pages_repos = get_pages_repos_from_config(config, current_user)
-                if pages_repos:
-                    print(f"\n{'=' * 50}")
-                    print("GitHub Pages deployment check:")
-                    print(f"{'=' * 50}")
-                    check_pages_deployments_for_repos(pages_repos, config)
-            except Exception as pages_error:
-                log_error_to_file("Failed to check Pages deployment", pages_error)
-                current_user = None
-
-            # Local repository pullable check (background-based)
-            # 初回イテレーション: 全リポジトリをバックグラウンドで検査開始
-            # phase3検知リポジトリ: バックグラウンドでpullable検査をトリガー
-            # 蓄積された検査結果を表示（1秒ごとの逐次表示は廃止、次のintervalで一括表示）
-            try:
-                if current_user is None:
-                    current_user = get_current_user()
-                if iteration == 1:
-                    start_local_repo_monitoring(config, current_user)
-                else:
-                    for repo_name in phase3_repo_names:
-                        notify_phase3_detected(repo_name, config, current_user)
-                display_pending_local_repo_results()
-            except Exception as local_repo_error:
-                log_error_to_file("Failed to check local repos", local_repo_error)
-
-            # Reset consecutive-failure counter on a successful iteration
-            consecutive_failures = 0
-
-        except GitHubRateLimitError as e:
-            print(f"\nError: {e}")
-            rate_limit_info = getattr(e, "rate_limit_info", None)
-            if isinstance(rate_limit_info, dict):
-                used = rate_limit_info.get("used", "unknown")
-                remaining = rate_limit_info.get("remaining", "unknown")
-                limit = rate_limit_info.get("limit", "unknown")
-                reset = rate_limit_info.get("reset")
-                reset_display, reset_in_display = _format_rate_limit_reset(reset)
-                print(
-                    f"GraphQL API利用状況: used={used}, remaining={remaining}, limit={limit}, "
-                    f"reset={reset_display}, reset_in={reset_in_display}"
+                # For other states, require stronger completion signals
+                swe_agent_completed = (
+                    swe_agent_review_count > 1  # Multiple reviews indicate completion
+                    or is_re_review  # Re-review after swe-agent indicates completion
                 )
-            print("GitHub APIのレート制限に達しています。リセット後に再実行してください。")
-            print("確認コマンド: gh api rate_limit")
-            log_error_to_file("GitHub API rate limit exceeded during monitoring loop", e)
-            consecutive_failures += 1
-        except RuntimeError as e:
-            print(f"\nError: {e}")
-            print("Please ensure you are authenticated with gh CLI")
-            log_error_to_file("Runtime error during monitoring loop", e)
-            consecutive_failures += 1
-        except Exception as e:
-            print(f"\nUnexpected error: {e}")
-            traceback.print_exc()
-            log_error_to_file("Unexpected error during monitoring loop", e)
 
-            # Track consecutive unexpected failures to avoid infinite error loops
-            consecutive_failures += 1
+            if swe_agent_completed:
+                # Swe-agent completed work → phase3
+                return PHASE_3
+            else:
+                # Swe-agent just started or no clear completion signal → phase2
+                return PHASE_2
 
-            if consecutive_failures >= 3:
-                print("\nEncountered 3 consecutive unexpected errors; continuing monitoring with error counter capped.")
-                consecutive_failures = 3
+        # 未解決のレビューコメントがない場合、または最新のレビューアーが満足している場合はphase3
+        return PHASE_3
 
-        # Display status summary before waiting
-        # This helps users understand the current state at a glance,
-        # especially on terminals with limited display lines.
-        # Note: If an error occurred during data collection, the summary will show
-        # incomplete or empty data, which is acceptable as it reflects the actual
-        # state that was successfully retrieved before the error.
-        try:
-            after_rate_limit = get_rate_limit_info()
-            _display_rate_limit_usage(before_rate_limit, after_rate_limit)
-        except Exception as rate_limit_display_error:
-            log_error_to_file("Failed to display rate limit usage", rate_limit_display_error)
-            after_rate_limit = None
+    # LLMステータスからreviewingと作業完了を検出できればphase3
+    status_phase = _phase_from_llm_statuses(pr.get("llm_statuses") or [])
+    if status_phase is not None:
+        return status_phase
 
-        # Check if current consumption rate would exhaust the rate limit before reset
-        try:
-            should_throttle, throttled_interval = _check_rate_limit_throttle(
-                before_rate_limit, after_rate_limit, normal_interval_seconds
-            )
-        except Exception as throttle_error:
-            log_error_to_file("Failed to check rate limit throttle", throttle_error)
-            should_throttle = False
-            throttled_interval = normal_interval_seconds
-
-        try:
-            display_status_summary(all_prs, pr_phases, repos_with_prs, config)
-        except Exception as summary_error:
-            log_error_to_file("Failed to display status summary", summary_error)
-
-        # Check if PR state has not changed for too long and switch to reduced frequency mode
-        try:
-            use_reduced_frequency = check_no_state_change_timeout(all_prs, pr_phases, config)
-        except Exception as timeout_error:
-            log_error_to_file("Failed to evaluate reduced frequency interval", timeout_error)
-            use_reduced_frequency = False
-
-        # Determine which interval to use
-        if use_reduced_frequency:
-            # Use reduced frequency interval (default: 1h)
-            reduced_interval_str = (config or {}).get("reduced_frequency_interval", "1h")
-            try:
-                reduced_interval_seconds = parse_interval(reduced_interval_str)
-                current_interval_seconds = reduced_interval_seconds
-                current_interval_str = reduced_interval_str
-            except ValueError as e:
-                print(f"Error: Invalid reduced_frequency_interval format: {e}")
-                sys.exit(1)
-        elif should_throttle:
-            # Rate limit throttling: slow down to avoid exhausting the quota before reset
-            current_interval_seconds = throttled_interval
-            current_interval_str = format_elapsed_time(throttled_interval)
-            print(f"\n{'=' * 50}")
-            print("現在の消費ペースでは、レートリミットがリセットされる前に使い切る可能性があります。")
-            print(f"監視間隔を{current_interval_str}に延長します。")
-            print(f"{'=' * 50}")
-        else:
-            # Use normal interval (preserved separately to avoid contamination)
-            current_interval_seconds = normal_interval_seconds
-            current_interval_str = normal_interval_str
-
-        # Wait with countdown display and check for config changes
-        try:
-            new_config, new_interval_seconds, new_interval_str, new_config_mtime = wait_with_countdown(
-                current_interval_seconds,
-                current_interval_str,
-                config_path,
-                config_mtime,
-                self_update_callback=maybe_self_update
-                if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE)
-                else None,
-                self_update_interval_seconds=UPDATE_CHECK_INTERVAL_SECONDS,
-            )
-        except Exception as wait_error:
-            log_error_to_file("wait_with_countdown failed; falling back to sleep", wait_error)
-            time.sleep(current_interval_seconds)
-            continue
-
-        # Update config and interval based on what was returned from wait
-        # Config will be non-empty only if successfully reloaded during wait
-        config_reloaded = new_config_mtime != config_mtime
-        if config_reloaded and new_config:
-            config = new_config
-            # Update normal interval only on hot reload (config change).
-            # This prevents the normal interval from being contaminated by reduced frequency
-            # interval values that may be returned from wait_with_countdown().
-            normal_interval_seconds = new_interval_seconds
-            normal_interval_str = new_interval_str
-        # Always update mtime
-        config_mtime = new_config_mtime
+    return PHASE_LLM_WORKING
 
 
-if __name__ == "__main__":
-    main()
+def determine_phase(pr: Dict[str, Any]) -> str:
+    """Determine which phase the PR is in
+
+    Args:
+        pr: PR data dictionary
+
+    Returns:
+        Phase string: PHASE_1, PHASE_2, PHASE_3, or PHASE_LLM_WORKING
+    """
+    # Use commentNodes if available (new API), fall back to comments for legacy compatibility
+    comment_nodes = pr.get("commentNodes", pr.get("comments", []))
+
+    # Check if any comments have reactions - this indicates LLM is working
+    # When the coding agent is responding to PR comments, those comments
+    # may have reactions indicating the bot is processing them
+    if has_comments_with_reactions(comment_nodes):
+        if not comment_reactions_marked_finished(pr, comment_nodes):
+            llm_statuses = pr.get("llm_statuses") or []
+            llm_working = llm_working_from_statuses(llm_statuses)
+            if llm_working is False:
+                return _determine_phase_without_comment_reactions(pr)
+            return PHASE_LLM_WORKING
+
+    return _determine_phase_without_comment_reactions(pr)
+
+
+def get_llm_working_progress_label(pr: Dict[str, Any]) -> str:
+    """Describe how far the PR has progressed when in LLM working phase."""
+    base_phase = _determine_phase_without_comment_reactions(pr)
+
+    if pr.get("isDraft", False):
+        return "Phase 1 in progress"
+
+    if base_phase == PHASE_3:
+        return "Phase 2 completed"
+
+    if base_phase == PHASE_2:
+        return "Phase 2 in progress"
+
+    return "Phase 1 completed"
 
 {% endraw %}
 ```
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-47d323f Merge pull request #306 from cat2151/copilot/add-query-cost-indicator
-99ca8c5 レビュー指摘対応: 定数化・ceil丸め・docstring修正
-15c83e6 GraphQLクエリごとに意図・消費コストを表示し、レートリミット超過時に動的インターバル延長
-105aed7 Initial plan
-e0401a1 Merge pull request #303 from cat2151/copilot/refactor-large-file-detection
-8b0aa9e Split test_local_repo_watcher.py: move TestBackgroundMonitoring to separate file
-1dd503d Initial plan
-e38af6e Merge pull request #301 from cat2151/copilot/optimize-pullable-search
-719015b fix: PRレビューコメントへの対応
-85bd8dd feat: バックグラウンドスレッドでpullable検索を最適化
+f2003ec Merge pull request #322 from cat2151/copilot/get-pr-html-and-save
+5fda161 fetch_pr_htmlを認証なしに変更（pr_html_fetcher._fetch_pr_htmlを再利用）
+49c13f9 JSONにpr_urlとstatusを再追加（承認済みフォーマットに合わせる）
+cd01622 JSONをstatus元データ（is_draft + llm_statuses）のみに絞り込み
+73f87d2 pr_html_analyzer.py追加: HTML解析→6種status→JSON生成、pr_html_saver.pyから呼び出す
+1913f82 --fetch-pr-html オプションを既存アプリに追加、実装を新規モジュール pr_html_saver.py に移動
+c84dc0a PRのHTMLを取得してlogs/pr/に保存するスクリプト fetch_pr_html.py を追加
+27e5661 Initial plan
+d88a3a3 Revert "Merge pull request #311 from cat2151/copilot/reduce-graphql-consumption"
+a66141d Merge pull request #311 from cat2151/copilot/reduce-graphql-consumption
 
 ### 変更されたファイル:
+fetch_pr_html.py
 generated-docs/development-status-generated-prompt.md
 generated-docs/development-status.md
 generated-docs/project-overview-generated-prompt.md
 generated-docs/project-overview.md
-src/gh_pr_phase_monitor/button_clicker.py
-src/gh_pr_phase_monitor/click_config_validator.py
+src/gh_pr_phase_monitor/auto_updater.py
 src/gh_pr_phase_monitor/graphql_client.py
 src/gh_pr_phase_monitor/issue_fetcher.py
-src/gh_pr_phase_monitor/local_repo_watcher.py
 src/gh_pr_phase_monitor/main.py
-src/gh_pr_phase_monitor/phase_detector.py
 src/gh_pr_phase_monitor/pr_fetcher.py
+src/gh_pr_phase_monitor/pr_html_analyzer.py
+src/gh_pr_phase_monitor/pr_html_saver.py
+src/gh_pr_phase_monitor/rate_limit_handler.py
 src/gh_pr_phase_monitor/repository_fetcher.py
+tests/test_auto_updater.py
+tests/test_fetch_pr_html.py
 tests/test_graphql_query_intent_display.py
-tests/test_local_repo_watcher_background.py
+tests/test_pr_html_analyzer.py
 tests/test_rate_limit_throttle.py
 tests/test_rate_limit_usage_display.py
-tests/test_status_summary.py
 
 
 ---
-Generated at: 2026-03-03 07:04:23 JST
+Generated at: 2026-03-04 07:03:33 JST

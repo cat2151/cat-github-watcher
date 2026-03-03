@@ -1,4 +1,4 @@
-Last updated: 2026-03-03
+Last updated: 2026-03-04
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -509,6 +509,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📖 RULESETS.md
   📖 button-detection-improvements.ja.md
   📖 window-activation-feature.md
+📄 fetch_pr_html.py
 📁 generated-docs/
 📄 pytest.ini
 📄 requirements-automation.txt
@@ -547,8 +548,11 @@ MIT License - 詳細はLICENSEファイルを参照してください
     📄 pr_actions.py
     📄 pr_data_recorder.py
     📄 pr_fetcher.py
+    📄 pr_html_analyzer.py
     📄 pr_html_fetcher.py
+    📄 pr_html_saver.py
     📄 process_utils.py
+    📄 rate_limit_handler.py
     📄 repository_fetcher.py
     📄 snapshot_markdown.py
     📄 snapshot_path_utils.py
@@ -571,6 +575,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_config_rulesets_features.py
   📄 test_elapsed_time_display.py
   📄 test_error_logging.py
+  📄 test_fetch_pr_html.py
   📄 test_graphql_client_rate_limit.py
   📄 test_graphql_query_intent_display.py
   📄 test_has_comments_with_reactions.py
@@ -603,6 +608,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_pr_data_recorder.py
   📄 test_pr_data_recorder_html.py
   📄 test_pr_data_recorder_json.py
+  📄 test_pr_html_analyzer.py
   📄 test_pr_title_fix.py
   📄 test_rate_limit_reset_display.py
   📄 test_rate_limit_throttle.py
@@ -641,4 +647,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-03-03 07:04:23 JST
+Generated at: 2026-03-04 07:03:32 JST

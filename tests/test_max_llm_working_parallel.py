@@ -126,31 +126,17 @@ def test_assignment_proceeds_when_below_limit():
                     }
                 ]
 
-                # Mock issue response
-                mock_get_issues.side_effect = [
-                    # First call: top 10 issues
-                    [
-                        {
-                            "title": "Issue 1",
-                            "url": "https://github.com/testuser/test-repo/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                        },
-                    ],
-                    # Second call: good first issue
-                    [
-                        {
-                            "title": "Good first issue",
-                            "url": "https://github.com/testuser/test-repo/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                            "labels": ["good first issue"],
-                        }
-                    ],
+                # Single call returns all issues; client-side filtering finds the "good first issue"
+                mock_get_issues.return_value = [
+                    {
+                        "title": "Good first issue",
+                        "url": "https://github.com/testuser/test-repo/issues/1",
+                        "number": 1,
+                        "updatedAt": "2024-01-01T00:00:00Z",
+                        "labels": ["good first issue"],
+                        "assignees": [],
+                        "repository": {"owner": "testuser", "name": "test-repo"},
+                    },
                 ]
 
                 mock_assign.return_value = True
@@ -174,8 +160,8 @@ def test_assignment_proceeds_when_below_limit():
                 # Verify that assignment WAS attempted (below limit)
                 mock_assign.assert_called_once()
 
-                # Verify that issues were fetched twice (assignment + display)
-                assert mock_get_issues.call_count == 2
+                # Issues are fetched in a single call (no duplicate assignment query)
+                assert mock_get_issues.call_count == 1
 
 
 def test_default_limit_when_not_configured():
@@ -242,31 +228,17 @@ def test_custom_limit():
                     }
                 ]
 
-                # Mock issue response
-                mock_get_issues.side_effect = [
-                    # First call: top 10 issues
-                    [
-                        {
-                            "title": "Issue 1",
-                            "url": "https://github.com/testuser/test-repo/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                        },
-                    ],
-                    # Second call: good first issue
-                    [
-                        {
-                            "title": "Good first issue",
-                            "url": "https://github.com/testuser/test-repo/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                            "labels": ["good first issue"],
-                        }
-                    ],
+                # Single call returns all issues
+                mock_get_issues.return_value = [
+                    {
+                        "title": "Good first issue",
+                        "url": "https://github.com/testuser/test-repo/issues/1",
+                        "number": 1,
+                        "updatedAt": "2024-01-01T00:00:00Z",
+                        "labels": ["good first issue"],
+                        "assignees": [],
+                        "repository": {"owner": "testuser", "name": "test-repo"},
+                    },
                 ]
 
                 mock_assign.return_value = True
@@ -355,31 +327,17 @@ def test_zero_llm_working_count():
                     }
                 ]
 
-                # Mock issue response
-                mock_get_issues.side_effect = [
-                    # First call: top 10 issues
-                    [
-                        {
-                            "title": "Issue 1",
-                            "url": "https://github.com/testuser/test-repo/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                        },
-                    ],
-                    # Second call: good first issue
-                    [
-                        {
-                            "title": "Good first issue",
-                            "url": "https://github.com/testuser/test-repo/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                            "labels": ["good first issue"],
-                        }
-                    ],
+                # Single call returns all issues
+                mock_get_issues.return_value = [
+                    {
+                        "title": "Good first issue",
+                        "url": "https://github.com/testuser/test-repo/issues/1",
+                        "number": 1,
+                        "updatedAt": "2024-01-01T00:00:00Z",
+                        "labels": ["good first issue"],
+                        "assignees": [],
+                        "repository": {"owner": "testuser", "name": "test-repo"},
+                    },
                 ]
 
                 mock_assign.return_value = True

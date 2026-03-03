@@ -19,6 +19,26 @@ from .phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label
 from .state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from .time_utils import format_elapsed_time
 
+# Cross-iteration issue cache.
+# Key: "owner/name", Value: list of issues / last known openIssueCount.
+# Cache is invalidated per-repo when its openIssueCount changes, ensuring we always
+# reflect closed or newly-opened issues.  Label changes that don't alter the count
+# may not be detected immediately, but this is an acceptable trade-off given the
+# significant reduction in GraphQL API cost it provides.
+_cached_repo_issues: Dict[str, List[Dict[str, Any]]] = {}
+_cached_repo_issue_counts: Dict[str, int] = {}
+
+# Upper bound for the limit parameter when fetching all issues from a repo batch.
+# get_issues_from_repositories caps per-repo results at ISSUES_PER_REPO (50), so the
+# real maximum is num_repos * 50.  This constant just needs to be larger than that.
+_MAX_ISSUES_FETCH_LIMIT = 100_000
+
+
+def reset_issues_cache() -> None:
+    """Reset the issues cache (used in tests and on explicit invalidation)."""
+    _cached_repo_issues.clear()
+    _cached_repo_issue_counts.clear()
+
 
 def display_status_summary(
     all_prs: List[Dict[str, Any]],
@@ -162,9 +182,42 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
             for repo in repos_with_issues:
                 print(f"    - {repo['name']}: {repo['openIssueCount']} open issue(s)")
 
-            # Fetch top issues early to detect assigned work and reuse for display
             issue_limit = config.get("issue_display_limit", 10) if config else 10
-            top_issues = get_issues_from_repositories(repos_with_issues, limit=issue_limit)
+
+            # Fetch issues only for repos whose openIssueCount has changed since last check.
+            # On the very first run (empty cache) every repo is fetched.
+            repos_to_fetch = [
+                repo
+                for repo in repos_with_issues
+                if _cached_repo_issue_counts.get(f"{repo['owner']}/{repo['name']}") != repo.get("openIssueCount", 0)
+            ]
+
+            if repos_to_fetch:
+                # Single GraphQL call covering all changed repos, no server-side labels filter.
+                # _MAX_ISSUES_FETCH_LIMIT ensures the per-repo cap (ISSUES_PER_REPO=50) is the
+                # only effective limit, so all issues from the changed repos are returned.
+                newly_fetched = get_issues_from_repositories(repos_to_fetch, limit=_MAX_ISSUES_FETCH_LIMIT)
+
+                # Group by repo and update cache
+                newly_by_repo: Dict[str, List[Dict[str, Any]]] = {}
+                for issue in newly_fetched:
+                    r = issue["repository"]
+                    key = f"{r['owner']}/{r['name']}"
+                    newly_by_repo.setdefault(key, []).append(issue)
+
+                for repo in repos_to_fetch:
+                    key = f"{repo['owner']}/{repo['name']}"
+                    _cached_repo_issues[key] = newly_by_repo.get(key, [])
+                    _cached_repo_issue_counts[key] = repo.get("openIssueCount", 0)
+
+            # Combine cached issues for all current repos
+            all_fetched_issues: List[Dict[str, Any]] = []
+            for repo in repos_with_issues:
+                key = f"{repo['owner']}/{repo['name']}"
+                all_fetched_issues.extend(_cached_repo_issues.get(key, []))
+
+            # Top N issues for display (sorted by last update, descending)
+            top_issues = sorted(all_fetched_issues, key=lambda x: x.get("updatedAt", ""), reverse=True)[:issue_limit]
 
             assigned_issue_count = sum(1 for issue in top_issues if issue.get("assignees"))
             effective_llm_working_count = llm_working_count + assigned_issue_count
@@ -257,11 +310,16 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                     print(f"Checking for the oldest '{label_name}' to auto-assign to Copilot...")
                     print(f"{'=' * 50}")
 
-                    query_kwargs = {"limit": 1, "sort_by_number": True}
-                    if label_filter:
-                        query_kwargs["labels"] = label_filter
-
-                    candidate_issues = get_issues_from_repositories(repos_list, **query_kwargs)
+                    # Filter candidates from the already-fetched issue cache (no extra GraphQL query).
+                    repos_set = {(r["owner"], r["name"]) for r in repos_list}
+                    candidate_issues = [
+                        issue
+                        for issue in all_fetched_issues
+                        if (issue["repository"]["owner"], issue["repository"]["name"]) in repos_set
+                        and (label_filter is None or any(lbl in issue.get("labels", []) for lbl in label_filter))
+                    ]
+                    candidate_issues.sort(key=lambda x: x["number"])
+                    candidate_issues = candidate_issues[:1]
 
                     if candidate_issues:
                         issue = candidate_issues[0]

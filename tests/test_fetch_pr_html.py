@@ -40,50 +40,32 @@ class TestFetchPrHtml:
 
     def test_returns_html_on_success(self):
         html_body = "<html><body>PR content</body></html>"
-        token_mock = self._make_run(returncode=0, stdout="ghp_faketoken\n")
         curl_mock = self._make_run(returncode=0, stdout=f"{html_body}\n200")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result == html_body
 
     def test_returns_none_on_curl_failure(self):
-        token_mock = self._make_run(returncode=0, stdout="ghp_faketoken\n")
         curl_mock = self._make_run(returncode=1, stdout="")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result is None
 
     def test_returns_none_on_non_2xx_status(self):
         html_body = "<html>Not Found</html>"
-        token_mock = self._make_run(returncode=0, stdout="ghp_faketoken\n")
         curl_mock = self._make_run(returncode=0, stdout=f"{html_body}\n404")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result is None
 
-    def test_falls_back_to_no_auth_when_gh_fails(self):
-        html_body = "<html><body>PR</body></html>"
-        token_mock = self._make_run(returncode=1, stdout="")
-        curl_mock = self._make_run(returncode=0, stdout=f"{html_body}\n200")
-
-        with patch(
-            "src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]
-        ) as mock_run:
-            result = fetch_pr_html("https://github.com/owner/repo/pull/1")
-
-        assert result == html_body
-        # curl call should not have Authorization header
-        curl_call_args = mock_run.call_args_list[1][0][0]
-        assert "-H" not in curl_call_args
-
     def test_returns_none_on_subprocess_exception(self):
-        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=OSError("no curl")):
+        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", side_effect=OSError("no curl")):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result is None
@@ -92,10 +74,9 @@ class TestFetchPrHtml:
 class TestSavePrHtml:
     def test_saves_file_with_correct_name(self, tmp_path):
         html_content = "<html><body>PR</body></html>"
-        token_mock = MagicMock(returncode=0, stdout="ghp_tok\n")
         curl_mock = MagicMock(returncode=0, stdout=f"{html_content}\n200")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = save_pr_html("https://github.com/cat2151/cat-github-watcher/pull/42", tmp_path)
 
         assert result is not None
@@ -107,10 +88,9 @@ class TestSavePrHtml:
     def test_creates_output_directory(self, tmp_path):
         nested_dir = tmp_path / "a" / "b" / "logs" / "pr"
         html_content = "<html>test</html>"
-        token_mock = MagicMock(returncode=0, stdout="tok\n")
         curl_mock = MagicMock(returncode=0, stdout=f"{html_content}\n200")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = save_pr_html("https://github.com/o/my-repo/pull/7", nested_dir)
 
         assert result is not None
@@ -121,10 +101,9 @@ class TestSavePrHtml:
         assert result is None
 
     def test_returns_none_when_fetch_fails(self, tmp_path):
-        token_mock = MagicMock(returncode=1, stdout="")
         curl_mock = MagicMock(returncode=1, stdout="")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = save_pr_html("https://github.com/o/repo/pull/1", tmp_path)
 
         assert result is None

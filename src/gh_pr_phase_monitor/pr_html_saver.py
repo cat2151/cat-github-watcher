@@ -3,12 +3,12 @@ PRのHTMLを取得してlogs/pr/ディレクトリに保存するユーティリ
 """
 
 import re
-import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
 
 from .pr_html_analyzer import analyze_pr_html, save_analysis_json
+from .pr_html_fetcher import _fetch_pr_html
 
 DEFAULT_OUTPUT_DIR = Path("logs/pr")
 
@@ -29,7 +29,9 @@ def parse_pr_url(url: str) -> tuple[Optional[str], Optional[str], Optional[str]]
 
 
 def fetch_pr_html(pr_url: str) -> Optional[str]:
-    """PR HTMLページをcurlで取得する。gh auth tokenで認証を試みる。
+    """PR HTMLページをcurlで取得する（認証なし）。
+
+    実際の取得処理は pr_html_fetcher._fetch_pr_html() に委譲する。
 
     Args:
         pr_url: 取得対象のPR URL
@@ -37,45 +39,7 @@ def fetch_pr_html(pr_url: str) -> Optional[str]:
     Returns:
         HTML文字列。取得失敗時はNone
     """
-    try:
-        token_result = subprocess.run(
-            ["gh", "auth", "token"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-        cmd = ["curl", "-L", "-s", "-w", "\n%{http_code}", pr_url]
-        if token_result.returncode == 0 and token_result.stdout.strip():
-            token = token_result.stdout.strip()
-            cmd = [
-                "curl",
-                "-L",
-                "-s",
-                "-w",
-                "\n%{http_code}",
-                "-H",
-                f"Authorization: token {token}",
-                pr_url,
-            ]
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=30,
-            check=False,
-        )
-        if result.returncode == 0 and result.stdout:
-            parts = result.stdout.rsplit("\n", 1)
-            body = parts[0]
-            http_code = parts[1].strip() if len(parts) > 1 else ""
-            if body and http_code.startswith("2"):
-                return body
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
-        pass
-    return None
+    return _fetch_pr_html(pr_url)
 
 
 def save_pr_html(pr_url: str, output_dir: Path = DEFAULT_OUTPUT_DIR) -> Optional[Path]:

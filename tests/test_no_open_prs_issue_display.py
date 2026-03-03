@@ -28,10 +28,6 @@ def test_issue_url_is_colorized(capsys):
                     "title": "Issue 1",
                     "url": url,
                     "number": 1,
-                    "updatedAt": "2024-01-01T00:00:00Z",
-                    "labels": [],
-                    "assignees": [],
-                    "repository": {"owner": "testuser", "name": "test-repo"},
                 }
             ]
 
@@ -59,26 +55,39 @@ def test_display_issues_when_no_repos_with_prs():
                     }
                 ]
 
-                # Single call now returns all issues (including labeled ones for client-side filtering)
-                mock_get_issues.return_value = [
-                    {
-                        "title": "Good first issue",
-                        "url": "https://github.com/testuser/test-repo/issues/1",
-                        "number": 1,
-                        "updatedAt": "2024-01-01T00:00:00Z",
-                        "labels": ["good first issue"],
-                        "assignees": [],
-                        "repository": {"owner": "testuser", "name": "test-repo"},
-                    },
-                    {
-                        "title": "Issue 2",
-                        "url": "https://github.com/testuser/test-repo/issues/2",
-                        "number": 2,
-                        "updatedAt": "2024-01-02T00:00:00Z",
-                        "labels": [],
-                        "assignees": [],
-                        "repository": {"owner": "testuser", "name": "test-repo"},
-                    },
+                # Mock good first issue response
+                mock_get_issues.side_effect = [
+                    # First call: top 10 issues (used for detection/display)
+                    [
+                        {
+                            "title": "Issue 1",
+                            "url": "https://github.com/testuser/test-repo/issues/1",
+                            "number": 1,
+                            "updatedAt": "2024-01-01T00:00:00Z",
+                            "author": {"login": "contributor1"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                        },
+                        {
+                            "title": "Issue 2",
+                            "url": "https://github.com/testuser/test-repo/issues/2",
+                            "number": 2,
+                            "updatedAt": "2024-01-02T00:00:00Z",
+                            "author": {"login": "contributor2"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                        },
+                    ],
+                    # Second call: good first issue for assignment
+                    [
+                        {
+                            "title": "Good first issue",
+                            "url": "https://github.com/testuser/test-repo/issues/1",
+                            "number": 1,
+                            "updatedAt": "2024-01-01T00:00:00Z",
+                            "author": {"login": "contributor1"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                            "labels": ["good first issue"],
+                        }
+                    ],
                 ]
 
                 mock_assign.return_value = True
@@ -100,8 +109,18 @@ def test_display_issues_when_no_repos_with_prs():
                 # Verify that the function fetched repos without PRs
                 mock_get_repos.assert_called_once()
 
-                # Issues are now fetched in a single call (no duplicate assignment query)
-                assert mock_get_issues.call_count == 1
+                # Verify that issues were fetched twice (good first issue + top 10)
+                assert mock_get_issues.call_count == 2
+
+                # Verify first call was for top issues (used for detection/display)
+                first_call = mock_get_issues.call_args_list[0]
+                assert first_call[1]["limit"] == 10
+
+                # Verify second call was for good first issue assignment (with sort_by_number=True)
+                second_call = mock_get_issues.call_args_list[1]
+                assert second_call[1]["limit"] == 1
+                assert second_call[1]["labels"] == ["good first issue"]
+                assert second_call[1]["sort_by_number"] is True
 
                 # Verify assignment was attempted
                 mock_assign.assert_called_once()
@@ -201,17 +220,20 @@ def test_display_issues_with_custom_limit():
                 }
             ]
 
-            # Mock issue response - single call returns all issues; slicing is done client-side
-            mock_get_issues.return_value = [
-                {
-                    "title": f"Issue {i}",
-                    "url": f"https://github.com/testuser/test-repo/issues/{i}",
-                    "number": i,
-                    "updatedAt": f"2024-01-{i:02d}T00:00:00Z",
-                    "author": {"login": "contributor1"},
-                    "repository": {"owner": "testuser", "name": "test-repo"},
-                }
-                for i in range(1, 6)
+            # Mock issue response - only display issues call
+            mock_get_issues.side_effect = [
+                # Only call: top N issues with custom limit
+                [
+                    {
+                        "title": f"Issue {i}",
+                        "url": f"https://github.com/testuser/test-repo/issues/{i}",
+                        "number": i,
+                        "updatedAt": f"2024-01-{i:02d}T00:00:00Z",
+                        "author": {"login": "contributor1"},
+                        "repository": {"owner": "testuser", "name": "test-repo"},
+                    }
+                    for i in range(1, 6)
+                ],
             ]
 
             # Create config with custom issue_display_limit, no assign flags
@@ -223,8 +245,11 @@ def test_display_issues_with_custom_limit():
             # Verify that the function fetched repos without PRs
             mock_get_repos.assert_called_once()
 
-            # Verify that issues were fetched exactly once (no duplicate assignment query)
+            # Verify that issues were fetched once (top N only, no auto-assign)
             assert mock_get_issues.call_count == 1
+            # Check the call used the custom limit
+            call = mock_get_issues.call_args_list[0]
+            assert call[1]["limit"] == 5
 
 
 def test_display_issues_with_none_config():
@@ -242,17 +267,20 @@ def test_display_issues_with_none_config():
                 }
             ]
 
-            # Mock issue response - single call; default limit of 10 applied client-side
-            mock_get_issues.return_value = [
-                {
-                    "title": f"Issue {i}",
-                    "url": f"https://github.com/testuser/test-repo/issues/{i}",
-                    "number": i,
-                    "updatedAt": f"2024-01-{i:02d}T00:00:00Z",
-                    "author": {"login": "contributor1"},
-                    "repository": {"owner": "testuser", "name": "test-repo"},
-                }
-                for i in range(1, 11)
+            # Mock issue response - only display issues
+            mock_get_issues.side_effect = [
+                # Only call: top 10 issues
+                [
+                    {
+                        "title": f"Issue {i}",
+                        "url": f"https://github.com/testuser/test-repo/issues/{i}",
+                        "number": i,
+                        "updatedAt": f"2024-01-{i:02d}T00:00:00Z",
+                        "author": {"login": "contributor1"},
+                        "repository": {"owner": "testuser", "name": "test-repo"},
+                    }
+                    for i in range(1, 11)
+                ],
             ]
 
             # Call the function with None config - should use default limit of 10
@@ -261,8 +289,11 @@ def test_display_issues_with_none_config():
             # Verify that the function fetched repos without PRs
             mock_get_repos.assert_called_once()
 
-            # Verify that issues were fetched exactly once (no duplicate assignment query)
+            # Verify that issues were fetched once (top 10 only, no assign)
             assert mock_get_issues.call_count == 1
+            # Check the call used the default limit of 10
+            call = mock_get_issues.call_args_list[0]
+            assert call[1]["limit"] == 10
 
 
 def test_display_issues_with_assign_lowest_number():
@@ -282,26 +313,39 @@ def test_display_issues_with_assign_lowest_number():
                     }
                 ]
 
-                # Single call returns all issues; client-side filtering picks the one with lowest number
-                mock_get_issues.return_value = [
-                    {
-                        "title": "Issue with lowest number",
-                        "url": "https://github.com/testuser/test-repo/issues/5",
-                        "number": 5,
-                        "updatedAt": "2024-01-05T00:00:00Z",
-                        "labels": ["bug"],
-                        "assignees": [],
-                        "repository": {"owner": "testuser", "name": "test-repo"},
-                    },
-                    {
-                        "title": "Issue 2",
-                        "url": "https://github.com/testuser/test-repo/issues/10",
-                        "number": 10,
-                        "updatedAt": "2024-01-10T00:00:00Z",
-                        "labels": [],
-                        "assignees": [],
-                        "repository": {"owner": "testuser", "name": "test-repo"},
-                    },
+                # Mock lowest number issue response
+                mock_get_issues.side_effect = [
+                    # First call: top 10 issues for display/detection
+                    [
+                        {
+                            "title": "Issue 1",
+                            "url": "https://github.com/testuser/test-repo/issues/5",
+                            "number": 5,
+                            "updatedAt": "2024-01-05T00:00:00Z",
+                            "author": {"login": "contributor1"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                        },
+                        {
+                            "title": "Issue 2",
+                            "url": "https://github.com/testuser/test-repo/issues/10",
+                            "number": 10,
+                            "updatedAt": "2024-01-10T00:00:00Z",
+                            "author": {"login": "contributor2"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                        },
+                    ],
+                    # Second call: oldest issue
+                    [
+                        {
+                            "title": "Issue with lowest number",
+                            "url": "https://github.com/testuser/test-repo/issues/5",
+                            "number": 5,
+                            "updatedAt": "2024-01-05T00:00:00Z",
+                            "author": {"login": "contributor1"},
+                            "repository": {"owner": "testuser", "name": "test-repo"},
+                            "labels": ["bug"],
+                        }
+                    ],
                 ]
 
                 mock_assign.return_value = True
@@ -323,121 +367,22 @@ def test_display_issues_with_assign_lowest_number():
                 # Verify that the function fetched repos without PRs
                 mock_get_repos.assert_called_once()
 
-                # Issues are fetched in a single call (assignment done client-side)
-                assert mock_get_issues.call_count == 1
+                # Verify that issues were fetched twice (oldest issue + top 10)
+                assert mock_get_issues.call_count == 2
+
+                # Verify first call was for top issues (display/detection)
+                first_call = mock_get_issues.call_args_list[0]
+                assert first_call[1]["limit"] == 10
+
+                # Verify second call was for oldest issue (with sort_by_number=True, no labels)
+                second_call = mock_get_issues.call_args_list[1]
+                assert second_call[1]["limit"] == 1
+                assert second_call[1]["sort_by_number"] is True
+                # Should not have labels filter for oldest issue mode
+                assert "labels" not in second_call[1] or second_call[1]["labels"] is None
 
                 # Verify assignment was attempted
                 mock_assign.assert_called_once()
-
-
-def test_cache_skips_fetch_on_unchanged_issue_count():
-    """
-    Second call with the same openIssueCount must NOT invoke get_issues_from_repositories again.
-    This verifies the cross-iteration cache that reduces GraphQL consumption.
-    """
-    repo = {"name": "test-repo", "owner": "testuser", "openIssueCount": 5}
-    issue_data = [
-        {
-            "title": "Issue 1",
-            "url": "https://github.com/testuser/test-repo/issues/1",
-            "number": 1,
-            "updatedAt": "2024-01-01T00:00:00Z",
-            "labels": [],
-            "assignees": [],
-            "repository": {"owner": "testuser", "name": "test-repo"},
-        }
-    ]
-
-    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
-            mock_get_repos.return_value = [repo]
-            mock_get_issues.return_value = issue_data
-
-            # First call: cache is empty, should fetch
-            display_issues_from_repos_without_prs(None)
-            assert mock_get_issues.call_count == 1
-
-            # Second call: openIssueCount unchanged, should use cache (no new fetch)
-            display_issues_from_repos_without_prs(None)
-            assert mock_get_issues.call_count == 1, (
-                "get_issues_from_repositories should NOT be called again when openIssueCount is unchanged"
-            )
-
-
-def test_cache_refetches_when_issue_count_changes():
-    """
-    When openIssueCount changes between calls, the cache must be invalidated
-    and get_issues_from_repositories called again for that repo.
-    """
-    repo_v1 = {"name": "test-repo", "owner": "testuser", "openIssueCount": 5}
-    repo_v2 = {"name": "test-repo", "owner": "testuser", "openIssueCount": 6}
-    issue_data = [
-        {
-            "title": "Issue 1",
-            "url": "https://github.com/testuser/test-repo/issues/1",
-            "number": 1,
-            "updatedAt": "2024-01-01T00:00:00Z",
-            "labels": [],
-            "assignees": [],
-            "repository": {"owner": "testuser", "name": "test-repo"},
-        }
-    ]
-
-    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
-            mock_get_issues.return_value = issue_data
-
-            # First call: fetch for v1
-            mock_get_repos.return_value = [repo_v1]
-            display_issues_from_repos_without_prs(None)
-            assert mock_get_issues.call_count == 1
-
-            # Second call: openIssueCount changed → must re-fetch
-            mock_get_repos.return_value = [repo_v2]
-            display_issues_from_repos_without_prs(None)
-            assert mock_get_issues.call_count == 2, (
-                "get_issues_from_repositories must be called again when openIssueCount changes"
-            )
-
-
-def test_cache_invalidated_after_assignment():
-    """
-    After a successful auto-assignment, the cache for that repo must be invalidated
-    so the next iteration re-fetches fresh issue data (including updated assignees),
-    ensuring assigned_issue_count stays accurate for max_llm_working_parallel enforcement.
-    """
-    repo = {"name": "test-repo", "owner": "testuser", "openIssueCount": 2}
-    good_first_issue = {
-        "title": "Good first issue",
-        "url": "https://github.com/testuser/test-repo/issues/1",
-        "number": 1,
-        "updatedAt": "2024-01-01T00:00:00Z",
-        "labels": ["good first issue"],
-        "assignees": [],
-        "repository": {"owner": "testuser", "name": "test-repo"},
-    }
-    config = {
-        "assign_to_copilot": {},
-        "rulesets": [{"repositories": ["test-repo"], "assign_good_first_old": True}],
-    }
-
-    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
-                mock_get_repos.return_value = [repo]
-                mock_get_issues.return_value = [good_first_issue]
-                mock_assign.return_value = True
-
-                # First call: fetch and assign
-                display_issues_from_repos_without_prs(config)
-                assert mock_get_issues.call_count == 1
-
-                # Second call: even though openIssueCount is unchanged, cache should have
-                # been invalidated by the assignment → must re-fetch
-                display_issues_from_repos_without_prs(config)
-                assert mock_get_issues.call_count == 2, (
-                    "Cache must be invalidated after assignment so next iteration gets fresh assignees"
-                )
 
 
 if __name__ == "__main__":

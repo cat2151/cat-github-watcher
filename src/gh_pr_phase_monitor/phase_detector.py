@@ -300,6 +300,15 @@ def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
         # COMMENTEDの場合、実際のreview threads(インラインコメント)を確認
         # 未解決のレビュースレッドがある場合はphase2（修正が必要）、ない場合はphase3（レビュー待ち）
         if review_state == "COMMENTED":
+            # llm_statusesがphase3（reviewing→started work→finished work）を示していれば
+            # GraphQLの未解決スレッドより優先してphase3を返す。
+            # 理由: Copilotがフィードバックに対応済みでも、GitHubのスレッドが
+            # 明示的にresolveされない限りGraphQLではisResolved: Falseのまま残る。
+            # HTMLから抽出したllm_statusesは実際の作業完了を正確に反映するため、
+            # こちらをより信頼できるシグナルとして優先する。
+            status_phase = _phase_from_llm_statuses(llm_statuses)
+            if status_phase == PHASE_3:
+                return PHASE_3
             # Check actual review threads instead of text patterns
             if has_unresolved_review_threads(review_threads):
                 return PHASE_2

@@ -225,6 +225,41 @@ class TestDeterminePhase:
 
         assert determine_phase(pr) == "phase3"
 
+    def test_phase3_copilot_reviewer_commented_with_unresolved_threads_but_llm_statuses_indicate_phase3(self):
+        """Copilot reviewer with COMMENTED + unresolved review threads, but llm_statuses show reviewing→started→finished → phase3
+
+        This is the real-world scenario where:
+        1. copilot-pull-request-reviewer reviews and leaves inline comments (unresolved threads remain in GraphQL)
+        2. copilot-swe-agent addresses the feedback (started work → finished work after reviewing)
+        3. The GraphQL reviewThreads still show isResolved: False (not explicitly resolved)
+        4. But llm_statuses from HTML correctly show the full cycle: reviewing→started work→finished work
+        The llm_statuses signal should take precedence over unresolved GraphQL threads.
+        """
+        pr = {
+            "isDraft": False,
+            "reviews": [
+                {
+                    "author": {"login": "copilot-pull-request-reviewer"},
+                    "state": "COMMENTED",
+                    "body": "Copilot reviewed 2 out of 2 changed files in this pull request and generated 1 comment.",
+                }
+            ],
+            "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}],
+            "comments": [],
+            "reviewThreads": [
+                {"isResolved": False, "isOutdated": False},
+            ],
+            "llm_statuses": [
+                "Copilot started work on behalf of cat2151",
+                "Copilot finished work on behalf of cat2151",
+                "Copilot started reviewing on behalf of cat2151",
+                "Copilot started work on behalf of cat2151",
+                "Copilot finished work on behalf of cat2151",
+            ],
+        }
+
+        assert determine_phase(pr) == "phase3"
+
     def test_llm_working_when_comments_have_reactions(self):
         """PR with comments that have reactions should be 'LLM working'"""
         pr = {

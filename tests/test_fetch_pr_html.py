@@ -1,10 +1,10 @@
 """
-Tests for fetch_pr_html.py
+Tests for pr_html_saver module (and fetch_pr_html wrapper)
 """
 
 from unittest.mock import MagicMock, patch
 
-from fetch_pr_html import fetch_pr_html, parse_pr_url, save_pr_html
+from src.gh_pr_phase_monitor.pr_html_saver import fetch_pr_html, parse_pr_url, save_pr_html
 
 
 class TestParsePrUrl:
@@ -43,7 +43,7 @@ class TestFetchPrHtml:
         token_mock = self._make_run(returncode=0, stdout="ghp_faketoken\n")
         curl_mock = self._make_run(returncode=0, stdout=f"{html_body}\n200")
 
-        with patch("fetch_pr_html.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result == html_body
@@ -52,7 +52,7 @@ class TestFetchPrHtml:
         token_mock = self._make_run(returncode=0, stdout="ghp_faketoken\n")
         curl_mock = self._make_run(returncode=1, stdout="")
 
-        with patch("fetch_pr_html.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result is None
@@ -62,7 +62,7 @@ class TestFetchPrHtml:
         token_mock = self._make_run(returncode=0, stdout="ghp_faketoken\n")
         curl_mock = self._make_run(returncode=0, stdout=f"{html_body}\n404")
 
-        with patch("fetch_pr_html.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result is None
@@ -72,7 +72,9 @@ class TestFetchPrHtml:
         token_mock = self._make_run(returncode=1, stdout="")
         curl_mock = self._make_run(returncode=0, stdout=f"{html_body}\n200")
 
-        with patch("fetch_pr_html.subprocess.run", side_effect=[token_mock, curl_mock]) as mock_run:
+        with patch(
+            "src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]
+        ) as mock_run:
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result == html_body
@@ -81,7 +83,7 @@ class TestFetchPrHtml:
         assert "-H" not in curl_call_args
 
     def test_returns_none_on_subprocess_exception(self):
-        with patch("fetch_pr_html.subprocess.run", side_effect=OSError("no curl")):
+        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=OSError("no curl")):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result is None
@@ -93,7 +95,7 @@ class TestSavePrHtml:
         token_mock = MagicMock(returncode=0, stdout="ghp_tok\n")
         curl_mock = MagicMock(returncode=0, stdout=f"{html_content}\n200")
 
-        with patch("fetch_pr_html.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
             result = save_pr_html("https://github.com/cat2151/cat-github-watcher/pull/42", tmp_path)
 
         assert result is not None
@@ -108,7 +110,7 @@ class TestSavePrHtml:
         token_mock = MagicMock(returncode=0, stdout="tok\n")
         curl_mock = MagicMock(returncode=0, stdout=f"{html_content}\n200")
 
-        with patch("fetch_pr_html.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
             result = save_pr_html("https://github.com/o/my-repo/pull/7", nested_dir)
 
         assert result is not None
@@ -122,7 +124,50 @@ class TestSavePrHtml:
         token_mock = MagicMock(returncode=1, stdout="")
         curl_mock = MagicMock(returncode=1, stdout="")
 
-        with patch("fetch_pr_html.subprocess.run", side_effect=[token_mock, curl_mock]):
+        with patch("src.gh_pr_phase_monitor.pr_html_saver.subprocess.run", side_effect=[token_mock, curl_mock]):
             result = save_pr_html("https://github.com/o/repo/pull/1", tmp_path)
 
         assert result is None
+
+
+class TestMainFetchPrHtmlOption:
+    """Tests for --fetch-pr-html option in main.py"""
+
+    def test_exits_zero_on_success(self, tmp_path):
+        """--fetch-pr-html with valid URL and successful fetch exits with code 0"""
+        import sys
+
+        import pytest
+
+        saved_argv = sys.argv[:]
+        sys.argv = ["cat-github-watcher.py", "--fetch-pr-html", "https://github.com/o/repo/pull/1"]
+        try:
+            with patch(
+                "src.gh_pr_phase_monitor.pr_html_saver.save_pr_html",
+                return_value=tmp_path / "repo_1.html",
+            ):
+                from src.gh_pr_phase_monitor.main import main
+
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+                assert exc_info.value.code == 0
+        finally:
+            sys.argv = saved_argv
+
+    def test_exits_one_on_failure(self):
+        """--fetch-pr-html with fetch failure exits with code 1"""
+        import sys
+
+        import pytest
+
+        saved_argv = sys.argv[:]
+        sys.argv = ["cat-github-watcher.py", "--fetch-pr-html", "https://github.com/o/repo/pull/1"]
+        try:
+            with patch("src.gh_pr_phase_monitor.pr_html_saver.save_pr_html", return_value=None):
+                from src.gh_pr_phase_monitor.main import main
+
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+                assert exc_info.value.code == 1
+        finally:
+            sys.argv = saved_argv

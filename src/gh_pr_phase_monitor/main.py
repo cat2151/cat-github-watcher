@@ -69,6 +69,13 @@ def log_error_to_file(message: str, exc: Exception | None = None, base_dir: Path
 
 def main():
     """Main execution function"""
+    # --fetch-pr-html <URL> オプション: PR HTMLを取得してlogs/pr/に保存して終了
+    if len(sys.argv) >= 3 and sys.argv[1] == "--fetch-pr-html":
+        from .pr_html_saver import save_pr_html
+
+        result = save_pr_html(sys.argv[2])
+        sys.exit(0 if result else 1)
+
     config_path = "config.toml"
 
     if len(sys.argv) > 1:

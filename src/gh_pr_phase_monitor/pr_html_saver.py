@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from .pr_html_analyzer import analyze_pr_html, save_analysis_json
+
 DEFAULT_OUTPUT_DIR = Path("logs/pr")
 
 
@@ -104,4 +106,10 @@ def save_pr_html(pr_url: str, output_dir: Path = DEFAULT_OUTPUT_DIR) -> Optional
 
     output_file.write_text(html, encoding="utf-8")
     print(f"保存完了: {output_file}")
+
+    # HTML解析してステータスJSONを生成・保存
+    analysis = analyze_pr_html(html, pr_url)
+    save_analysis_json(analysis, output_file)
+    print(f"ステータス: {analysis['status']}")
+
     return output_file

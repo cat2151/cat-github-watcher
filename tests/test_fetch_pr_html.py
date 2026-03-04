@@ -122,7 +122,7 @@ class TestMainFetchPrHtmlOption:
         sys.argv = ["cat-github-watcher.py", "--fetch-pr-html", "https://github.com/o/repo/pull/1"]
         try:
             with patch(
-                "src.gh_pr_phase_monitor.main.save_pr_html",
+                "src.gh_pr_phase_monitor.phase.pr_html_saver.save_pr_html",
                 return_value=tmp_path / "repo_1.html",
             ):
                 from src.gh_pr_phase_monitor.main import main
@@ -142,7 +142,7 @@ class TestMainFetchPrHtmlOption:
         saved_argv = sys.argv[:]
         sys.argv = ["cat-github-watcher.py", "--fetch-pr-html", "https://github.com/o/repo/pull/1"]
         try:
-            with patch("src.gh_pr_phase_monitor.main.save_pr_html", return_value=None):
+            with patch("src.gh_pr_phase_monitor.phase.pr_html_saver.save_pr_html", return_value=None):
                 from src.gh_pr_phase_monitor.main import main
 
                 with pytest.raises(SystemExit) as exc_info:

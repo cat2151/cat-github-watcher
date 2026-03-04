@@ -42,6 +42,37 @@ def fetch_pr_html(pr_url: str) -> Optional[str]:
     return _fetch_pr_html(pr_url)
 
 
+def save_html_to_logs(html: str, pr_url: str, output_dir: Path = DEFAULT_OUTPUT_DIR) -> Optional[Path]:
+    """取得済みHTMLをlogs/pr/{repo_name}_{pr_number}.htmlに保存する（検証用）。
+
+    HTMLの再取得は行わない。引数の html をそのまま保存する。
+    保存と同時にHTMLを解析して {repo_name}_{pr_number}.json も出力する。
+
+    Args:
+        html: 保存するHTML文字列
+        pr_url: PR URL（ファイル名生成・JSON解析に使用）
+        output_dir: 保存先ディレクトリ（デフォルト: logs/pr）
+
+    Returns:
+        保存したファイルのPath。失敗時はNone
+    """
+    owner, repo_name, pr_number = parse_pr_url(pr_url)
+    if not owner or not repo_name or not pr_number:
+        return None
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = output_dir / f"{repo_name}_{pr_number}.html"
+
+    output_file.write_text(html, encoding="utf-8")
+
+    # HTML解析してstatusを算出するための元データJSONを生成・保存
+    analysis = analyze_pr_html(html, pr_url)
+    save_analysis_json(analysis, output_file)
+
+    return output_file
+
+
 def save_pr_html(pr_url: str, output_dir: Path = DEFAULT_OUTPUT_DIR) -> Optional[Path]:
     """PR HTMLを取得してlogs/pr/{repo_name}_{pr_number}.htmlに保存する。
 

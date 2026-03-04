@@ -15,6 +15,7 @@ from .phase_detector import (
     update_comment_reaction_resolution,
 )
 from .pr_html_fetcher import _fetch_pr_html, _html_to_simple_markdown
+from .pr_html_saver import save_html_to_logs
 from ..monitor.snapshot_markdown import _build_markdown, _prepare_markdown_raw, _summarize_reactions
 from ..monitor.snapshot_path_utils import _build_snapshot_dir_name, _format_timestamp
 
@@ -234,6 +235,7 @@ def record_reaction_snapshot(
             else:
                 fetched = None
             if fetched:
+                save_html_to_logs(fetched, pr_url)  # 検証用: 取得したHTMLとJSONをlogs/pr/に保存
                 html_md = _html_to_simple_markdown(fetched)
                 captured = _capture_llm_statuses(fetched, html_md)
                 if captured.get("statuses"):
@@ -277,6 +279,7 @@ def record_reaction_snapshot(
         # Fetch HTML when needed for deduplication or status capture
         fetched_html = _fetch_pr_html(pr_url)
         if fetched_html:
+            save_html_to_logs(fetched_html, pr_url)  # 検証用: 取得したHTMLとJSONをlogs/pr/に保存
             # Convert HTML to markdown for comparison to avoid HTML tag noise
             current_html_md = _html_to_simple_markdown(fetched_html)
             captured_status = _capture_llm_statuses(fetched_html, current_html_md)

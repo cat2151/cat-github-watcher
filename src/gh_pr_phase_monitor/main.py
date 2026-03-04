@@ -39,6 +39,7 @@ from .monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_
 from .phase.phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase, set_use_graphql_phase_detection
 from .actions.pr_actions import process_pr
 from .phase.pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
+from .phase.pr_html_saver import save_pr_html
 from .github.rate_limit_handler import (
     _check_rate_limit_throttle,
     _display_rate_limit_usage,
@@ -71,8 +72,6 @@ def main():
     """Main execution function"""
     # --fetch-pr-html <URL> オプション: PR HTMLを取得してlogs/pr/に保存して終了
     if len(sys.argv) >= 3 and sys.argv[1] == "--fetch-pr-html":
-        from .phase.pr_html_saver import save_pr_html
-
         result = save_pr_html(sys.argv[2])
         sys.exit(0 if result else 1)
 
@@ -212,6 +211,17 @@ def main():
                                 log_error_to_file(
                                     f"Failed to capture PR reaction/LLM status data for {pr.get('url', 'unknown')}",
                                     snapshot_error,
+                                )
+
+                            # 検証用: HTML と JSON を常時保存
+                            try:
+                                pr_url = pr.get("url", "")
+                                if pr_url:
+                                    save_pr_html(pr_url)
+                            except Exception as html_save_error:
+                                log_error_to_file(
+                                    f"Failed to save HTML/JSON for {pr.get('url', 'unknown')}",
+                                    html_save_error,
                                 )
 
                             pr_phases.append(phase)

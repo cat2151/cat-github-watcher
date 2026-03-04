@@ -80,7 +80,7 @@ The tool detects the following four phases:
 
 ### Prerequisites
 
-- Python 3.10 or higher is installed.
+- Python 3.11 or higher is installed.
 - GitHub CLI (`gh`) is installed and authenticated.
   ```bash
   gh auth login

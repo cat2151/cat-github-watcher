@@ -5,7 +5,10 @@ Configuration loading and parsing utilities
 import os
 from typing import Any, Dict
 
-import tomli
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib  # type: ignore[no-redef]
 
 from .colors import (
     DEFAULT_COLOR_SCHEME,
@@ -255,7 +258,7 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
         FileNotFoundError: If the configuration file is not found
     """
     with open(config_path, "rb") as f:
-        config = tomli.load(f)
+        config = tomllib.load(f)
 
     # Validate max_llm_working_parallel setting
     if "max_llm_working_parallel" in config:

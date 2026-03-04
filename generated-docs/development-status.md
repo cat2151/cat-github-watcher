@@ -1,50 +1,50 @@
-Last updated: 2026-03-04
+Last updated: 2026-03-05
 
 # Development Status
 
 ## 現在のIssues
-- [Issue #323](../issue-notes/323.md)と[Issue #314](../issue-notes/314.md)では、GraphQLの`reviewThreads`の`isResolved`が正しく反映されず、PRのフェーズがphase2と誤判定される根本的なロジック不備が確認されています。
-- この誤判定により、Copilotがフィードバック対応済みでもレビューが未解決とみなされ、PRが継続的にphase2に留まってしまう問題が発生しています。
-- [Issue #319](../issue-notes/319.md)ではGraphQLクエリの過剰消費が課題となっており、HTMLベースのデータ取得を活用したクエリ削減の検討が求められています。
+- [Issue #338](../issue-notes/338.md) & [Issue #334](../issue-notes/334.md): PRごとのHTMLとJSONファイルを常に保存し、フェーズ判定の検証とデバッグに利用するための実装を進めています。
+- [Issue #324](../issue-notes/324.md): 実際のPRがPhase3にもかかわらずPhase2と誤判定される問題があり、その原因を特定・修正する必要があります。
+- [Issue #335](../issue-notes/335.md): PRのPHASE1～3のステータス判定ロジックの見直しと変更を検討しています。
 
 ## 次の一手候補
-1.  [Issue #323](../issue-notes/323.md) fix: phase2/phase3誤検出の根本修正とllm_statuses優先への統一
-    -   最初の小さな一歩: `src/gh_pr_phase_monitor/phase_detector.py`の`_phase_from_llm_statuses`関数を修正し、LLMステータスリストに"reviewing"イベントが存在し、かつその後の"finished work"がない場合に`PHASE_2`を返すロジックを追加する。
-    -   Agent実行プロンプ:
-        ```
-        対象ファイル: `src/gh_pr_phase_monitor/phase_detector.py`
+1. [Issue #338](../issue-notes/338.md) & [Issue #334](../issue-notes/334.md): PR HTML/JSONの常時保存機能の検証と安定化
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/phase/pr_data_recorder.py` が、PR更新時に`src/gh_pr_phase_monitor/phase/pr_html_saver.py` のHTML/JSON保存機能を適切に呼び出していることを確認し、不足があれば実装する。
+   - Agent実行プロンプ:
+     ```
+     対象ファイル: src/gh_pr_phase_monitor/phase/pr_html_saver.py, src/gh_pr_phase_monitor/phase/pr_data_recorder.py
 
-        実行内容: `_phase_from_llm_statuses`関数を修正し、LLMステータスリストに"reviewing"イベントが存在し、かつその後の"finished work"がない場合に`PHASE_2`を返すロジックを追加してください。現状は`PHASE_3`のみを返していますが、`PHASE_2`の検出も可能に拡張します。具体的には、`review_idx`、`last_started_idx`、`last_finished_idx`を適切に追跡し、"reviewing"後に"started work"があり、"finished work"がない場合に`PHASE_2`を返す条件を追加してください。
+     実行内容: `src/gh_pr_phase_monitor/phase/pr_html_saver.py` 内の `save_pr_html` 関数が、監視ループ内でPRが更新されるたびに呼び出され、HTMLとそれに伴うJSONが `logs/pr/` ディレクトリに保存されるように `src/gh_pr_phase_monitor/phase/pr_data_recorder.py` を修正してください。既存の `save_pr_html` 関数が既にHTML解析とJSON保存を行っているため、`pr_data_recorder.py` からこれを適切に呼び出すように変更します。
 
-        確認事項: 既存の`PHASE_3`を返すロジックに影響を与えないこと。`determine_phase`関数や関連するテストケース（特に`tests/test_phase_detection_llm_status.py`）との整合性を確認すること。`llm_working_from_statuses`関数との役割分担を明確にすること。
+     確認事項: `save_pr_html` の呼び出しが既存の機能と重複しないこと、およびパフォーマンスへの影響が最小限であることを確認してください。
 
-        期待する出力: 修正された`src/gh_pr_phase_monitor/phase_detector.py`ファイル。
-        ```
+     期待する出力: `src/gh_pr_phase_monitor/phase/pr_data_recorder.py` の修正内容をdiff形式で出力し、変更が意図通りに動作することを確認するための簡単なテスト手順（例: `main.py` を実行して `logs/pr/` ディレクトリにPRごとのHTMLおよびJSONファイルが生成されることを確認）をmarkdown形式で記述してください。
+     ```
 
-2.  [Issue #319](../issue-notes/319.md) ムダにGraphQLクエリを消費しすぎ
-    -   最初の小さな一歩: `src/gh_pr_phase_monitor/pr_html_analyzer.py`が現在抽出している情報を見直し、`phase_detector.py`がGraphQLから取得している情報（特に`reviewThreads`の`isResolved`や`isOutdated`）をHTMLから抽出可能か調査する。
-    -   Agent実行プロンプ:
-        ```
-        対象ファイル: `src/gh_pr_phase_monitor/pr_html_analyzer.py`と`src/gh_pr_phase_monitor/phase_detector.py`
+2. [Issue #324](../issue-notes/324.md): PRのPhase3誤判定問題の原因調査
+   - 最初の小さな一歩: 誤判定が発生している実際のPRのHTMLと、現在のフェーズ判定ロジック (`phase_detector.py` や `llm_status_extractor.py`) を比較し、どこで乖離が生じているかを特定する。
+   - Agent実行プロンプ:
+     ```
+     対象ファイル: src/gh_pr_phase_monitor/phase/phase_detector.py, src/gh_pr_phase_monitor/phase/phase_detector_graphql.py, src/gh_pr_phase_monitor/phase/llm_status_extractor.py, および logs/pr/内の最新のPR HTML/JSONファイル
 
-        実行内容: `pr_html_analyzer.py`がPRのHTMLから、`phase_detector.py`で現在GraphQLから取得している`reviewThreads`内の`isResolved`や`isOutdated`などの情報を抽出できるか調査してください。具体的には、PRのHTMLスナップショット（例: `fetch_pr_html.py`で取得されるもの）から、未解決のレビューコメントスレッドを特定するためのDOM要素やテキストパターンを見つけてください。その結果をMarkdown形式で報告してください。
+     実行内容: 現在Phase3であるにもかかわらずPhase2と誤判定されているPR（もしあれば `logs/pr/` から取得できる最新のPRデータを使用）のHTML/JSONデータを分析し、`src/gh_pr_phase_monitor/phase/phase_detector.py` と `src/gh_pr_phase_monitor/phase/phase_detector_graphql.py` のロジック、およびLLMによるステータス抽出 (`src/gh_pr_phase_monitor/phase/llm_status_extractor.py`) の出力と照合して、誤判定の原因となっている具体的な条件やコード箇所を特定してください。
 
-        確認事項: HTML構造がGitHubのUI変更により変化する可能性を考慮し、頑健な抽出方法を検討すること。`pr_html_analyzer.py`の既存の処理フローに影響を与えないこと。
+     確認事項: 誤判定が特定のPRに限定されるのか、一般的な傾向なのかを確認し、`phase_detector_graphql.py` が現在のアクティブな判定ロジックとして使用されているかどうかも考慮に入れてください。
 
-        期待する出力: `reviewThreads`関連情報をHTMLから抽出する方法と、その際に利用可能なセレクタや正規表現パターンを記述したMarkdown形式の調査報告。
-        ```
+     期待する出力: 誤判定の原因となっている可能性のあるコード箇所（ファイル名と行番号）、およびその原因に関する仮説をmarkdown形式で記述してください。
+     ```
 
-3.  [Issue #314](../issue-notes/314.md) 現在観測できるPRが、すべて現実はphase3なのに、判定結果が誤ってphase2という判定をされてしまっている
-    -   最初の小さな一歩: 現在誤判定されている具体的なPRのHTMLスナップショットとGraphQLデータを収集し、`phase_detector.py`の`determine_phase`関数がどのように誤った判断を下しているか、ステップバイステップで原因を分析する。
-    -   Agent実行プロンプ:
-        ```
-        対象ファイル: `src/gh_pr_phase_monitor/phase_detector.py`, `tests/test_phase_detection_real_prs.py` (または新しいテストファイル), 誤判定されているPRのHTML/GraphQLデータ (存在する場合)
+3. [Issue #335](../issue-notes/335.md): PHASE1～3ステータス判定の新しい扱いに関する設計検討
+   - 最初の小さな一歩: 現在のPHASE1～3の定義と、それがコード内でどのように利用されているかを洗い出し、変更の必要性を具体的に定義するためのドキュメント案を作成する。
+   - Agent実行プロンプ:
+     ```
+     対象ファイル: src/gh_pr_phase_monitor/phase/phase_detector.py, src/gh_pr_phase_monitor/phase/phase_detector_graphql.py, src/gh_pr_phase_monitor/phase/llm_status_extractor.py, src/gh_pr_phase_monitor/actions/pr_actions.py, docs/RULESETS.md (もし関連定義があれば)
 
-        実行内容: 誤ってphase2と判定されている実際のPRのデータ（可能であればHTMLスナップショットとGraphQLレスポンス）を仮定し、`phase_detector.py`の`determine_phase`関数がそのデータをどのように処理し、最終的に誤った`PHASE_2`を返すのかを詳細に分析してください。特に、`has_unresolved_review_threads`や`llm_working_from_statuses`などの補助関数がどのような値を返しているか、どのパスで処理が進んでいるかをステップごとに記述してください。
+     実行内容: 現在のシステムにおけるPHASE1～3の定義、それぞれのフェーズへの移行条件、およびそれらが `src/gh_pr_phase_monitor/actions/pr_actions.py` など他のモジュールでどのように利用されているかを詳細に分析してください。その上で、[Issue #335](../issue-notes/335.md) の意図に基づき、これらのフェーズの扱いを変更するための設計案の概要をmarkdown形式で作成してください。変更のメリット・デメリット、既存システムへの影響についても簡潔に言及してください。
 
-        確認事項: 実際のPRデータがない場合は、典型的な誤判定を引き起こすであろう仮想的なデータ構造を想定して分析を進めること。分析結果は、[Issue #323](../issue-notes/323.md)の解決に役立つ具体的な洞察を提供すること。
+     確認事項: フェーズ定義の変更が、PRアクション（コメント投稿、マージなど）に与える影響、およびユーザーインターフェースでの表示に与える影響を考慮してください。
 
-        期待する出力: 誤判定の具体的な原因と、`phase_detector.py`内のどの条件分岐がその原因に関与しているかを明らかにする詳細な分析レポートをMarkdown形式で生成してください。
+     期待する出力: `PHASE1～3の扱い変更設計案` と題したmarkdownドキュメント。現状のフェーズ定義のまとめ、変更の目的、主要な変更点、影響範囲の概算を含めてください。
 
 ---
-Generated at: 2026-03-04 07:03:53 JST
+Generated at: 2026-03-05 07:04:24 JST

@@ -1,4 +1,4 @@
-Last updated: 2026-03-04
+Last updated: 2026-03-05
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -143,7 +143,7 @@ cat-github-watcher/
 
 ### 前提条件
 
-- Python 3.10 以上がインストールされている
+- Python 3.11 以上がインストールされている
 - GitHub CLI (`gh`) がインストールされ、認証済みである
   ```bash
   gh auth login
@@ -511,6 +511,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📖 window-activation-feature.md
 📄 fetch_pr_html.py
 📁 generated-docs/
+📄 pyproject.toml
 📄 pytest.ini
 📄 requirements-automation.txt
 📄 ruff.toml
@@ -521,45 +522,60 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 __init__.py
   📁 gh_pr_phase_monitor/
     📄 __init__.py
-    📄 auto_updater.py
-    📄 browser_automation.py
-    📄 browser_cooldown.py
-    📄 button_clicker.py
-    📄 click_config_validator.py
-    📄 colors.py
-    📄 comment_fetcher.py
-    📄 comment_manager.py
-    📄 config.py
-    📄 config_printer.py
-    📄 display.py
-    📄 github_auth.py
-    📄 github_client.py
-    📄 graphql_client.py
-    📄 interval_parser.py
-    📄 issue_fetcher.py
-    📄 llm_status_extractor.py
-    📄 local_repo_watcher.py
+    📁 actions/
+      📄 __init__.py
+      📄 pr_actions.py
+    📁 browser/
+      📄 __init__.py
+      📄 browser_automation.py
+      📄 browser_cooldown.py
+      📄 button_clicker.py
+      📄 click_config_validator.py
+      📄 window_manager.py
+    📁 core/
+      📄 __init__.py
+      📄 colors.py
+      📄 config.py
+      📄 config_printer.py
+      📄 interval_parser.py
+      📄 process_utils.py
+      📄 time_utils.py
+    📁 github/
+      📄 __init__.py
+      📄 comment_fetcher.py
+      📄 comment_manager.py
+      📄 github_auth.py
+      📄 github_client.py
+      📄 graphql_client.py
+      📄 issue_fetcher.py
+      📄 pr_fetcher.py
+      📄 rate_limit_handler.py
+      📄 repository_fetcher.py
     📄 main.py
-    📄 monitor.py
-    📄 notification_window.py
-    📄 notifier.py
-    📄 pages_watcher.py
-    📄 phase_detector.py
-    📄 pr_actions.py
-    📄 pr_data_recorder.py
-    📄 pr_fetcher.py
-    📄 pr_html_analyzer.py
-    📄 pr_html_fetcher.py
-    📄 pr_html_saver.py
-    📄 process_utils.py
-    📄 rate_limit_handler.py
-    📄 repository_fetcher.py
-    📄 snapshot_markdown.py
-    📄 snapshot_path_utils.py
-    📄 state_tracker.py
-    📄 time_utils.py
-    📄 wait_handler.py
-    📄 window_manager.py
+    📁 monitor/
+      📄 __init__.py
+      📄 auto_updater.py
+      📄 local_repo_watcher.py
+      📄 monitor.py
+      📄 pages_watcher.py
+      📄 snapshot_markdown.py
+      📄 snapshot_path_utils.py
+      📄 state_tracker.py
+    📁 phase/
+      📄 __init__.py
+      📄 llm_status_extractor.py
+      📄 phase_detector.py
+      📄 phase_detector_graphql.py
+      📄 pr_data_recorder.py
+      📄 pr_html_analyzer.py
+      📄 pr_html_fetcher.py
+      📄 pr_html_saver.py
+    📁 ui/
+      📄 __init__.py
+      📄 display.py
+      📄 notification_window.py
+      📄 notifier.py
+      📄 wait_handler.py
 📁 tests/
   📄 test_assign_issue_to_copilot.py
   📄 test_auto_update_config.py
@@ -647,4 +663,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-03-04 07:03:32 JST
+Generated at: 2026-03-05 07:04:05 JST

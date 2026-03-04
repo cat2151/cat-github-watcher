@@ -26,6 +26,7 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -65,6 +66,7 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             "repository": {"name": "repo1", "owner": "owner"},
             "title": "PR 1",
             "url": "https://github.com/owner/repo1/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         pr2 = {
             "isDraft": False,
@@ -73,6 +75,7 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             "repository": {"name": "repo2", "owner": "owner"},
             "title": "PR 2",
             "url": "https://github.com/owner/repo2/pull/2",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -122,6 +125,7 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -158,6 +162,7 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -191,6 +196,7 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -226,6 +232,7 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             # No phase3_merge section - should use defaults
@@ -265,6 +272,7 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {

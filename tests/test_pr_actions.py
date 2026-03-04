@@ -78,6 +78,7 @@ class TestProcessPR:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
 
         with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser:
@@ -200,6 +201,7 @@ class TestProcessPR:
                 }
             ],
             "latestReviews": [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"}],
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
 
         process_pr(pr, {}, phase=PHASE_LLM_WORKING)
@@ -279,6 +281,7 @@ class TestProcessPR:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
 
         with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser:
@@ -314,6 +317,7 @@ class TestPhase3Notifications:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "ntfy": {"enabled": True, "topic": "test-topic", "message": "PR ready: {url}"},
@@ -345,6 +349,7 @@ class TestPhase3Notifications:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {"ntfy": {"enabled": False, "topic": "test-topic"}}
 
@@ -367,6 +372,7 @@ class TestPhase3Notifications:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {}
 
@@ -389,6 +395,7 @@ class TestPhase3Notifications:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "ntfy": {"enabled": True, "topic": "test-topic", "message": "PR ready: {url}"},

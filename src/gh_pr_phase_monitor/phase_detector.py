@@ -15,6 +15,22 @@ PHASE_3 = "phase3"
 # Tracks comment reaction signatures that were confirmed as "finished" via HTML snapshot analysis.
 _finished_reaction_signatures: Dict[str, str] = {}
 
+# Feature B (GraphQL-based phase detection) flag.
+# When False (default), only HTML/llm_statuses-based detection (Feature A) is used.
+# Set to True via use_graphql_phase_detection = true in config.toml.
+_use_graphql_phase_detection: bool = False
+
+
+def set_use_graphql_phase_detection(enabled: bool) -> None:
+    """Enable or disable GraphQL-based phase detection (Feature B).
+
+    When disabled (default), phase is determined solely from llm_statuses extracted from HTML.
+    When enabled, falls back to GraphQL reviews/reviewThreads data when llm_statuses lack a
+    reviewing event.
+    """
+    global _use_graphql_phase_detection
+    _use_graphql_phase_detection = enabled
+
 
 def _build_pr_key(pr: Dict[str, Any]) -> str:
     """Build a stable key for tracking reaction resolution state."""
@@ -258,10 +274,7 @@ def _phase_from_llm_statuses(llm_statuses: List[str]) -> Optional[str]:
 def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
     """Determine the phase without considering comment reactions."""
     is_draft = pr.get("isDraft", False)
-    reviews = pr.get("reviews", [])
-    latest_reviews = pr.get("latestReviews", [])
     review_requests = pr.get("reviewRequests", [])
-    review_threads = pr.get("reviewThreads", [])
     llm_statuses = pr.get("llm_statuses") or []
 
     # Phase 1: Draft状態
@@ -281,100 +294,18 @@ def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
     # reviewingイベントがある場合、HTMLから抽出したllm_statusesはGraphQLデータより
     # 正確にフィードバック対応状況を反映する（GraphQLのスレッドは明示的にresolveされない
     # 限りisResolved: Falseのまま残るため）。
-    # reviewingイベントがない場合（Noneを返す）はGraphQLデータにフォールバック。
+    # reviewingイベントがない場合（Noneを返す）はFeature B（GraphQL）にフォールバック（要設定）。
     status_phase = _phase_from_llm_statuses(llm_statuses)
     if status_phase is not None:
         return status_phase
 
-    # llm_statusesにreviewingイベントがない場合: GraphQLデータにフォールバック
-    if not reviews or not latest_reviews:
-        return PHASE_LLM_WORKING
+    # llm_statusesにreviewingイベントがない場合: Feature B（GraphQL）を使用するか確認
+    if _use_graphql_phase_detection:
+        from .phase_detector_graphql import _determine_phase_from_graphql_data
 
-    # 最新のレビューを取得
-    latest_review = reviews[-1]
-    author_login = latest_review.get("author", {}).get("login", "")
+        return _determine_phase_from_graphql_data(pr)
 
-    # Phase 2/3: copilot-pull-request-reviewer のレビュー後
-    if author_login == "copilot-pull-request-reviewer":
-        # レビューの状態を確認
-        review_state = latest_review.get("state", "")
-
-        # CHANGES_REQUESTEDの場合は確実にphase2
-        if review_state == "CHANGES_REQUESTED":
-            return PHASE_2
-
-        # COMMENTEDの場合、実際のreview threads(インラインコメント)を確認
-        # 未解決のレビュースレッドがある場合はphase2（修正が必要）、ない場合はphase3（レビュー待ち）
-        if review_state == "COMMENTED":
-            if has_unresolved_review_threads(review_threads):
-                return PHASE_2
-            return PHASE_3
-
-        # それ以外(APPROVED, DISMISSED, PENDING等)はphase3
-        return PHASE_3
-
-    # Phase 3: copilot-swe-agent の修正後
-    # ただし、copilot-pull-request-reviewerの未解決レビューがある場合はphase2
-    if author_login == "copilot-swe-agent":
-        # Find the positions of copilot-pull-request-reviewer and copilot-swe-agent reviews
-        # to determine if there's a re-review from the reviewer after swe-agent started working
-        latest_reviewer_index = None
-        latest_reviewer_state = None
-        first_swe_agent_index = None
-        swe_agent_review_count = 0
-
-        for i, review in enumerate(reviews):
-            reviewer_login = review.get("author", {}).get("login", "")
-
-            # Track copilot-swe-agent reviews
-            if reviewer_login == "copilot-swe-agent":
-                swe_agent_review_count += 1
-                if first_swe_agent_index is None:
-                    first_swe_agent_index = i
-
-            # Track the latest copilot-pull-request-reviewer review
-            if reviewer_login == "copilot-pull-request-reviewer":
-                latest_reviewer_index = i
-                latest_reviewer_state = review.get("state", "")
-
-        # CHANGES_REQUESTEDの場合は常にphase2
-        if latest_reviewer_state == "CHANGES_REQUESTED":
-            return PHASE_2
-
-        # Check if there are unresolved review threads
-        if has_unresolved_review_threads(review_threads):
-            # When copilot-pull-request-reviewer uses COMMENTED (not CHANGES_REQUESTED),
-            # it indicates suggestions rather than required changes.
-            # If swe-agent has posted even one review in response, the work is complete → phase3
-            # This is different from CHANGES_REQUESTED where we'd want stronger completion signals.
-
-            is_re_review = (
-                latest_reviewer_index is not None
-                and first_swe_agent_index is not None
-                and latest_reviewer_index > first_swe_agent_index
-            )
-
-            # Determine if swe-agent has completed work
-            if latest_reviewer_state == "COMMENTED":
-                # For COMMENTED reviews (suggestions only), any swe-agent review indicates completion
-                swe_agent_completed = swe_agent_review_count >= 1
-            else:
-                # For other states, require stronger completion signals
-                swe_agent_completed = (
-                    swe_agent_review_count > 1  # Multiple reviews indicate completion
-                    or is_re_review  # Re-review after swe-agent indicates completion
-                )
-
-            if swe_agent_completed:
-                # Swe-agent completed work → phase3
-                return PHASE_3
-            else:
-                # Swe-agent just started or no clear completion signal → phase2
-                return PHASE_2
-
-        # 未解決のレビューコメントがない場合、または最新のレビューアーが満足している場合はphase3
-        return PHASE_3
-
+    # Feature B無効時（デフォルト）: reviewingイベントなし = LLM working
     return PHASE_LLM_WORKING
 
 

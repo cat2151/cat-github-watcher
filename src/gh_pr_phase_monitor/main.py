@@ -36,7 +36,7 @@ from .local_repo_watcher import (
 )
 from .monitor import check_no_state_change_timeout
 from .pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
-from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
+from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase, set_use_graphql_phase_detection
 from .pr_actions import process_pr
 from .pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
 from .rate_limit_handler import (
@@ -93,6 +93,8 @@ def main():
         print("Expected format:")
         print('interval = "1m"  # Check interval (e.g., "30s", "1m", "5m")')
         print()
+
+    set_use_graphql_phase_detection(config.get("use_graphql_phase_detection", False))
 
     # Get interval setting (default to 1 minute if not specified)
     # Keep the normal interval separate from the current interval to prevent the normal
@@ -415,6 +417,7 @@ def main():
         config_reloaded = new_config_mtime != config_mtime
         if config_reloaded and new_config:
             config = new_config
+            set_use_graphql_phase_detection(config.get("use_graphql_phase_detection", False))
             # Update normal interval only on hot reload (config change).
             # This prevents the normal interval from being contaminated by reduced frequency
             # interval values that may be returned from wait_with_countdown().

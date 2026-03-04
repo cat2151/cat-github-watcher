@@ -271,6 +271,7 @@ class TestDisplayStatusSummary:
                     {"author": {"login": "copilot-pull-request-reviewer"}, "state": "CHANGES_REQUESTED"},
                 ],
                 "repository": {"name": "repo1", "owner": "owner"},
+                "llm_statuses": ["Copilot started reviewing"],
             },
             {
                 "title": "Reviewed PR",
@@ -287,6 +288,7 @@ class TestDisplayStatusSummary:
                     {"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"},
                 ],
                 "repository": {"name": "repo1", "owner": "owner"},
+                "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
             },
         ]
 

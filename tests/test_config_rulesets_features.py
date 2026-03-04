@@ -2,7 +2,7 @@
 Tests for ruleset-based assign flags
 """
 
-from src.gh_pr_phase_monitor.config import resolve_execution_config_for_repo
+from src.gh_pr_phase_monitor.core.config import resolve_execution_config_for_repo
 
 
 class TestResolveExecutionConfigCombined:

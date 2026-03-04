@@ -12,7 +12,7 @@ def test_display_rate_limit_usage_shows_consumed_and_remaining(capsys):
     after = _make_rate_limit(remaining=4758)
 
     with patch(
-        "src.gh_pr_phase_monitor.rate_limit_handler._format_rate_limit_reset",
+        "src.gh_pr_phase_monitor.github.rate_limit_handler._format_rate_limit_reset",
         return_value=("2026-03-01 01:00:00 UTC", "58分"),
     ):
         _display_rate_limit_usage(before, after)
@@ -28,7 +28,7 @@ def test_display_rate_limit_usage_no_before_omits_consumed(capsys):
     after = _make_rate_limit(remaining=4800)
 
     with patch(
-        "src.gh_pr_phase_monitor.rate_limit_handler._format_rate_limit_reset",
+        "src.gh_pr_phase_monitor.github.rate_limit_handler._format_rate_limit_reset",
         return_value=("2026-03-01 01:00:00 UTC", "30分"),
     ):
         _display_rate_limit_usage(None, after)
@@ -51,7 +51,7 @@ def test_display_rate_limit_usage_zero_consumed(capsys):
     after = _make_rate_limit(remaining=5000)
 
     with patch(
-        "src.gh_pr_phase_monitor.rate_limit_handler._format_rate_limit_reset",
+        "src.gh_pr_phase_monitor.github.rate_limit_handler._format_rate_limit_reset",
         return_value=("2026-03-01 01:00:00 UTC", "60分"),
     ):
         _display_rate_limit_usage(before, after)
@@ -66,7 +66,7 @@ def test_display_rate_limit_usage_negative_consumed_shows_reset_note(capsys):
     after = _make_rate_limit(remaining=4900)
 
     with patch(
-        "src.gh_pr_phase_monitor.rate_limit_handler._format_rate_limit_reset",
+        "src.gh_pr_phase_monitor.github.rate_limit_handler._format_rate_limit_reset",
         return_value=("2026-03-01 01:00:00 UTC", "60分"),
     ):
         _display_rate_limit_usage(before, after)

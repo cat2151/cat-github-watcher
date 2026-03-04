@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
-from .colors import Colors
+from ..core.colors import Colors
 
 # tkinter imports are optional - used for on-screen notification window
 try:

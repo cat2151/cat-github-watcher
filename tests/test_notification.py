@@ -4,7 +4,7 @@ Tests for notification functionality
 
 from unittest.mock import MagicMock, patch
 
-from src.gh_pr_phase_monitor.notifier import (
+from src.gh_pr_phase_monitor.ui.notifier import (
     format_notification_message,
     is_valid_topic,
     send_all_phase3_notification,
@@ -280,7 +280,7 @@ class TestSendNtfyNotification:
 class TestSendPhase3Notification:
     """Test the send_phase3_notification function"""
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_notification_disabled(self, mock_send):
         """Test when notifications are disabled"""
         config = {"ntfy": {"enabled": False, "topic": "test-topic"}}
@@ -288,7 +288,7 @@ class TestSendPhase3Notification:
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_notification_enabled_no_topic(self, mock_send):
         """Test when notifications are enabled but no topic configured"""
         config = {"ntfy": {"enabled": True}}
@@ -296,7 +296,7 @@ class TestSendPhase3Notification:
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_successful_notification(self, mock_send):
         """Test successful phase3 notification"""
         mock_send.return_value = True
@@ -311,7 +311,7 @@ class TestSendPhase3Notification:
         assert result is True
         mock_send.assert_called_once()
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_default_message_template(self, mock_send):
         """Test with default message template"""
         mock_send.return_value = True
@@ -323,7 +323,7 @@ class TestSendPhase3Notification:
         assert "PR is ready for review:" in call_args[0][1]
         assert "https://github.com/owner/repo/pull/1" in call_args[0][1]
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_no_ntfy_config(self, mock_send):
         """Test when ntfy config is not present"""
         config = {}
@@ -331,7 +331,7 @@ class TestSendPhase3Notification:
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_custom_priority(self, mock_send):
         """Test notification with custom priority from config"""
         mock_send.return_value = True
@@ -349,7 +349,7 @@ class TestSendPhase3Notification:
         call_args = mock_send.call_args
         assert call_args[1]["priority"] == 5
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_default_priority_when_not_specified(self, mock_send):
         """Test that default priority is used when not in config"""
         mock_send.return_value = True
@@ -366,7 +366,7 @@ class TestSendPhase3Notification:
         call_args = mock_send.call_args
         assert call_args[1]["priority"] == 4
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_action_button_is_included(self, mock_send):
         """Test that action button is included in phase3 notification"""
         mock_send.return_value = True
@@ -390,7 +390,7 @@ class TestSendPhase3Notification:
 class TestSendAllPhase3Notification:
     """Test the send_all_phase3_notification function"""
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_notification_disabled(self, mock_send):
         """Test when notifications are disabled"""
         config = {"ntfy": {"enabled": False, "topic": "test-topic"}}
@@ -398,7 +398,7 @@ class TestSendAllPhase3Notification:
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_notification_enabled_no_topic(self, mock_send):
         """Test when notifications are enabled but no topic configured"""
         config = {"ntfy": {"enabled": True}}
@@ -406,7 +406,7 @@ class TestSendAllPhase3Notification:
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_successful_notification(self, mock_send):
         """Test successful all-phase3 notification"""
         mock_send.return_value = True
@@ -424,7 +424,7 @@ class TestSendAllPhase3Notification:
         call_args = mock_send.call_args
         assert call_args[0][1] == "All PRs are ready!"
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_default_message(self, mock_send):
         """Test with default message when not configured"""
         mock_send.return_value = True
@@ -435,7 +435,7 @@ class TestSendAllPhase3Notification:
         call_args = mock_send.call_args
         assert "All PRs are now in phase3 (ready for review)" in call_args[0][1]
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_no_ntfy_config(self, mock_send):
         """Test when ntfy config is not present"""
         config = {}
@@ -443,7 +443,7 @@ class TestSendAllPhase3Notification:
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_custom_priority(self, mock_send):
         """Test notification with custom priority from config"""
         mock_send.return_value = True
@@ -461,7 +461,7 @@ class TestSendAllPhase3Notification:
         call_args = mock_send.call_args
         assert call_args[1]["priority"] == 5
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_default_priority_when_not_specified(self, mock_send):
         """Test that default priority is used when not in config"""
         mock_send.return_value = True
@@ -478,7 +478,7 @@ class TestSendAllPhase3Notification:
         call_args = mock_send.call_args
         assert call_args[1]["priority"] == 4
 
-    @patch("src.gh_pr_phase_monitor.notifier.send_ntfy_notification")
+    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
     def test_notification_title(self, mock_send):
         """Test that notification has correct title"""
         mock_send.return_value = True

@@ -5,7 +5,7 @@ Issue fetching module for GitHub issues
 import json
 from typing import Any, Dict, List, Optional
 
-from .browser_automation import assign_issue_to_copilot_automated, is_pyautogui_available
+from ..browser.browser_automation import assign_issue_to_copilot_automated, is_pyautogui_available
 from .graphql_client import execute_graphql_query
 
 # GraphQL pagination constants

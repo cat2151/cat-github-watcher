@@ -4,32 +4,32 @@ GitHub PR Phase Monitor
 Monitors PR phases and opens browser for actionable phases
 """
 
-from .auto_updater import maybe_self_update
-from .colors import Colors, colorize_phase
-from .comment_manager import (
+from .monitor.auto_updater import maybe_self_update
+from .core.colors import Colors, colorize_phase
+from .github.comment_manager import (
     has_copilot_apply_comment,
     has_problematic_pr_title,
     post_phase2_comment,
     post_pr_title_fix_comment,
 )
-from .config import get_assign_to_copilot_config, get_config_mtime, get_phase3_merge_config, load_config, parse_interval
-from .display import display_issues_from_repos_without_prs, display_status_summary
-from .github_client import (
+from .core.config import get_assign_to_copilot_config, get_config_mtime, get_phase3_merge_config, load_config, parse_interval
+from .ui.display import display_issues_from_repos_without_prs, display_status_summary
+from .github.github_client import (
     get_current_user,
     get_existing_comments,
     get_pr_data,
     get_pr_details_batch,
     get_repositories_with_open_prs,
 )
-from .monitor import check_no_state_change_timeout
-from .phase_detector import (
+from .monitor.monitor import check_no_state_change_timeout
+from .phase.phase_detector import (
     determine_phase,
     has_comments_with_reactions,
     has_inline_review_comments,
     has_unresolved_review_threads,
 )
-from .pr_actions import mark_pr_ready, open_browser, process_pr, process_repository
-from .state_tracker import (
+from .actions.pr_actions import mark_pr_ready, open_browser, process_pr, process_repository
+from .monitor.state_tracker import (
     cleanup_old_pr_states,
     get_last_state,
     get_pr_state_time,
@@ -38,8 +38,8 @@ from .state_tracker import (
     set_pr_state_time,
     set_reduced_frequency_mode,
 )
-from .time_utils import format_elapsed_time
-from .wait_handler import wait_with_countdown
+from .core.time_utils import format_elapsed_time
+from .ui.wait_handler import wait_with_countdown
 
 __all__ = [
     # Colors

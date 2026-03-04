@@ -7,9 +7,9 @@ when cat-window-watcher process is running or not.
 import subprocess
 from unittest.mock import MagicMock, patch
 
-import src.gh_pr_phase_monitor.browser_automation as browser_automation
-import src.gh_pr_phase_monitor.browser_cooldown as browser_cooldown
-from src.gh_pr_phase_monitor.config import (
+import src.gh_pr_phase_monitor.browser.browser_automation as browser_automation
+import src.gh_pr_phase_monitor.browser.browser_cooldown as browser_cooldown
+from src.gh_pr_phase_monitor.core.config import (
     DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE,
     is_process_running,
 )
@@ -114,11 +114,11 @@ class TestAutoraiseBehavior:
 
     def test_should_autoraise_returns_true_when_config_disabled(self):
         """Test that _should_autoraise_window returns True when check is disabled"""
-        from src.gh_pr_phase_monitor.browser_automation import _should_autoraise_window
+        from src.gh_pr_phase_monitor.browser.browser_automation import _should_autoraise_window
 
         config = {"check_process_before_autoraise": False}
 
-        with patch("src.gh_pr_phase_monitor.browser_automation.is_process_running") as mock_is_running:
+        with patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running") as mock_is_running:
             mock_is_running.return_value = True  # Process is running
 
             result = _should_autoraise_window(config)
@@ -128,11 +128,11 @@ class TestAutoraiseBehavior:
 
     def test_should_autoraise_returns_false_when_process_running_and_config_enabled(self):
         """Test that _should_autoraise_window returns False when cat-window-watcher is running"""
-        from src.gh_pr_phase_monitor.browser_automation import _should_autoraise_window
+        from src.gh_pr_phase_monitor.browser.browser_automation import _should_autoraise_window
 
         config = {"check_process_before_autoraise": True}
 
-        with patch("src.gh_pr_phase_monitor.browser_automation.is_process_running") as mock_is_running:
+        with patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running") as mock_is_running:
             mock_is_running.return_value = True  # Process is running
 
             result = _should_autoraise_window(config)
@@ -141,11 +141,11 @@ class TestAutoraiseBehavior:
 
     def test_should_autoraise_returns_true_when_process_not_running_and_config_enabled(self):
         """Test that _should_autoraise_window returns True when cat-window-watcher is not running"""
-        from src.gh_pr_phase_monitor.browser_automation import _should_autoraise_window
+        from src.gh_pr_phase_monitor.browser.browser_automation import _should_autoraise_window
 
         config = {"check_process_before_autoraise": True}
 
-        with patch("src.gh_pr_phase_monitor.browser_automation.is_process_running") as mock_is_running:
+        with patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running") as mock_is_running:
             mock_is_running.return_value = False  # Process is not running
 
             result = _should_autoraise_window(config)
@@ -154,9 +154,9 @@ class TestAutoraiseBehavior:
 
     def test_should_autoraise_uses_default_when_config_not_provided(self):
         """Test that _should_autoraise_window uses default config when not provided"""
-        from src.gh_pr_phase_monitor.browser_automation import _should_autoraise_window
+        from src.gh_pr_phase_monitor.browser.browser_automation import _should_autoraise_window
 
-        with patch("src.gh_pr_phase_monitor.browser_automation.is_process_running") as mock_is_running:
+        with patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running") as mock_is_running:
             mock_is_running.return_value = False
 
             result = _should_autoraise_window(None)
@@ -166,11 +166,11 @@ class TestAutoraiseBehavior:
 
     def test_should_autoraise_uses_default_when_key_not_in_config(self):
         """Test that _should_autoraise_window uses default when key is not in config"""
-        from src.gh_pr_phase_monitor.browser_automation import _should_autoraise_window
+        from src.gh_pr_phase_monitor.browser.browser_automation import _should_autoraise_window
 
         config = {}  # Empty config
 
-        with patch("src.gh_pr_phase_monitor.browser_automation.is_process_running") as mock_is_running:
+        with patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running") as mock_is_running:
             mock_is_running.return_value = False
 
             result = _should_autoraise_window(config)
@@ -187,16 +187,16 @@ class TestBrowserAutomationIntegration:
         browser_cooldown._last_browser_open_time = None
         browser_automation._issue_assign_attempted.clear()
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
-    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser_automation.is_process_running")
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running")
     @patch("time.sleep")
     def test_assign_issue_uses_autoraise_false_when_process_running(
         self, mock_sleep, mock_is_running, mock_webbrowser, mock_click
     ):
         """Test that assign_issue_to_copilot_automated uses autoraise=False when cat-window-watcher is running"""
-        from src.gh_pr_phase_monitor.browser_automation import assign_issue_to_copilot_automated
+        from src.gh_pr_phase_monitor.browser.browser_automation import assign_issue_to_copilot_automated
 
         mock_is_running.return_value = True
         mock_webbrowser.open.return_value = True
@@ -211,16 +211,16 @@ class TestBrowserAutomationIntegration:
         call_args = mock_webbrowser.open.call_args
         assert call_args[1]["autoraise"] is False
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
-    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser_automation.is_process_running")
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running")
     @patch("time.sleep")
     def test_assign_issue_uses_autoraise_true_when_process_not_running(
         self, mock_sleep, mock_is_running, mock_webbrowser, mock_click
     ):
         """Test that assign_issue_to_copilot_automated uses autoraise=True when cat-window-watcher is not running"""
-        from src.gh_pr_phase_monitor.browser_automation import assign_issue_to_copilot_automated
+        from src.gh_pr_phase_monitor.browser.browser_automation import assign_issue_to_copilot_automated
 
         mock_is_running.return_value = False
         mock_webbrowser.open.return_value = True
@@ -235,16 +235,16 @@ class TestBrowserAutomationIntegration:
         call_args = mock_webbrowser.open.call_args
         assert call_args[1]["autoraise"] is True
 
-    @patch("src.gh_pr_phase_monitor.browser_automation.PYAUTOGUI_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser_automation._click_button_with_image")
-    @patch("src.gh_pr_phase_monitor.browser_automation.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser_automation.is_process_running")
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running")
     @patch("time.sleep")
     def test_merge_pr_uses_autoraise_false_when_process_running(
         self, mock_sleep, mock_is_running, mock_webbrowser, mock_click
     ):
         """Test that merge_pr_automated uses autoraise=False when cat-window-watcher is running"""
-        from src.gh_pr_phase_monitor.browser_automation import merge_pr_automated
+        from src.gh_pr_phase_monitor.browser.browser_automation import merge_pr_automated
 
         mock_is_running.return_value = True
         mock_webbrowser.open.return_value = True
@@ -268,11 +268,11 @@ class TestOpenBrowserIntegration:
         browser_cooldown._last_browser_open_time = None
         browser_automation._issue_assign_attempted.clear()
 
-    @patch("src.gh_pr_phase_monitor.pr_actions.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser_automation.is_process_running")
+    @patch("src.gh_pr_phase_monitor.actions.pr_actions.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running")
     def test_open_browser_uses_autoraise_false_when_process_running(self, mock_is_running, mock_webbrowser):
         """Test that open_browser uses autoraise=False when cat-window-watcher is running"""
-        from src.gh_pr_phase_monitor.pr_actions import open_browser
+        from src.gh_pr_phase_monitor.actions.pr_actions import open_browser
 
         mock_is_running.return_value = True
         mock_webbrowser.open.return_value = True
@@ -286,11 +286,11 @@ class TestOpenBrowserIntegration:
         call_args = mock_webbrowser.open.call_args
         assert call_args[1]["autoraise"] is False
 
-    @patch("src.gh_pr_phase_monitor.pr_actions.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser_automation.is_process_running")
+    @patch("src.gh_pr_phase_monitor.actions.pr_actions.webbrowser")
+    @patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running")
     def test_open_browser_uses_autoraise_true_when_process_not_running(self, mock_is_running, mock_webbrowser):
         """Test that open_browser uses autoraise=True when cat-window-watcher is not running"""
-        from src.gh_pr_phase_monitor.pr_actions import open_browser
+        from src.gh_pr_phase_monitor.actions.pr_actions import open_browser
 
         mock_is_running.return_value = False
         mock_webbrowser.open.return_value = True

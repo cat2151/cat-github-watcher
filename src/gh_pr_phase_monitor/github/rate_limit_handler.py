@@ -10,7 +10,7 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-from .time_utils import format_elapsed_time
+from ..core.time_utils import format_elapsed_time
 
 MAX_RATE_LIMIT_THROTTLE_SECONDS = 600
 

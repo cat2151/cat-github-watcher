@@ -1,6 +1,6 @@
 """Tests for wait_with_countdown self-update callback handling."""
 
-import src.gh_pr_phase_monitor.wait_handler as wait_handler
+import src.gh_pr_phase_monitor.ui.wait_handler as wait_handler
 
 
 def _patch_time(monkeypatch, start=0.0):

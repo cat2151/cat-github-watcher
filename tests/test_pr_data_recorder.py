@@ -4,14 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from src.gh_pr_phase_monitor.phase_detector import (
+from src.gh_pr_phase_monitor.phase.phase_detector import (
     PHASE_1,
     PHASE_LLM_WORKING,
     comment_reactions_marked_finished,
     determine_phase,
     reset_comment_reaction_resolution_cache,
 )
-from src.gh_pr_phase_monitor.pr_data_recorder import (
+from src.gh_pr_phase_monitor.phase.pr_data_recorder import (
     DEFAULT_SNAPSHOT_BASE_DIR,
     record_reaction_snapshot,
     reset_snapshot_cache,

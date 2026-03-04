@@ -21,7 +21,7 @@ sys.modules.setdefault("tkinter", types.ModuleType("tkinter"))
 sys.modules.setdefault("tkinter.messagebox", types.ModuleType("tkinter.messagebox"))
 os.environ.setdefault("DISPLAY", ":0")
 
-local_repo_watcher = importlib.import_module("src.gh_pr_phase_monitor.local_repo_watcher")
+local_repo_watcher = importlib.import_module("src.gh_pr_phase_monitor.monitor.local_repo_watcher")
 
 
 class TestBackgroundMonitoring:

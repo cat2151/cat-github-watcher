@@ -4,8 +4,8 @@ Tests for PR actions with ruleset-based phase3_merge on/off flags
 
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor import pr_actions
-from src.gh_pr_phase_monitor.pr_actions import process_pr
+from src.gh_pr_phase_monitor.actions import pr_actions
+from src.gh_pr_phase_monitor.actions.pr_actions import process_pr
 
 
 class TestProcessPRWithRulesetPhase3MergeFlag:
@@ -44,9 +44,9 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_merge.return_value = True
             mock_comment.return_value = True
@@ -95,9 +95,9 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_merge.return_value = True
             mock_comment.return_value = True
@@ -142,9 +142,9 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr_automated") as mock_merge_auto,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr_automated") as mock_merge_auto,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_merge_auto.return_value = True
             mock_comment.return_value = True
@@ -178,9 +178,9 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             process_pr(pr, config)
             # Merge should not be attempted
@@ -212,9 +212,9 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_merge.return_value = True
             mock_comment.return_value = True
@@ -246,9 +246,9 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_merge.return_value = True
             mock_comment.return_value = True
@@ -288,9 +288,9 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_merge.return_value = True
             mock_comment.return_value = True

@@ -4,7 +4,7 @@ Tests for pr_html_saver module (and fetch_pr_html wrapper)
 
 from unittest.mock import MagicMock, patch
 
-from src.gh_pr_phase_monitor.pr_html_saver import fetch_pr_html, parse_pr_url, save_pr_html
+from src.gh_pr_phase_monitor.phase.pr_html_saver import fetch_pr_html, parse_pr_url, save_pr_html
 
 
 class TestParsePrUrl:
@@ -42,7 +42,7 @@ class TestFetchPrHtml:
         html_body = "<html><body>PR content</body></html>"
         curl_mock = self._make_run(returncode=0, stdout=f"{html_body}\n200")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
+        with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result == html_body
@@ -50,7 +50,7 @@ class TestFetchPrHtml:
     def test_returns_none_on_curl_failure(self):
         curl_mock = self._make_run(returncode=1, stdout="")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
+        with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result is None
@@ -59,13 +59,13 @@ class TestFetchPrHtml:
         html_body = "<html>Not Found</html>"
         curl_mock = self._make_run(returncode=0, stdout=f"{html_body}\n404")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
+        with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result is None
 
     def test_returns_none_on_subprocess_exception(self):
-        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", side_effect=OSError("no curl")):
+        with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run", side_effect=OSError("no curl")):
             result = fetch_pr_html("https://github.com/owner/repo/pull/1")
 
         assert result is None
@@ -76,7 +76,7 @@ class TestSavePrHtml:
         html_content = "<html><body>PR</body></html>"
         curl_mock = MagicMock(returncode=0, stdout=f"{html_content}\n200")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
+        with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = save_pr_html("https://github.com/cat2151/cat-github-watcher/pull/42", tmp_path)
 
         assert result is not None
@@ -90,7 +90,7 @@ class TestSavePrHtml:
         html_content = "<html>test</html>"
         curl_mock = MagicMock(returncode=0, stdout=f"{html_content}\n200")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
+        with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = save_pr_html("https://github.com/o/my-repo/pull/7", nested_dir)
 
         assert result is not None
@@ -103,7 +103,7 @@ class TestSavePrHtml:
     def test_returns_none_when_fetch_fails(self, tmp_path):
         curl_mock = MagicMock(returncode=1, stdout="")
 
-        with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run", return_value=curl_mock):
+        with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run", return_value=curl_mock):
             result = save_pr_html("https://github.com/o/repo/pull/1", tmp_path)
 
         assert result is None
@@ -122,7 +122,7 @@ class TestMainFetchPrHtmlOption:
         sys.argv = ["cat-github-watcher.py", "--fetch-pr-html", "https://github.com/o/repo/pull/1"]
         try:
             with patch(
-                "src.gh_pr_phase_monitor.pr_html_saver.save_pr_html",
+                "src.gh_pr_phase_monitor.phase.pr_html_saver.save_pr_html",
                 return_value=tmp_path / "repo_1.html",
             ):
                 from src.gh_pr_phase_monitor.main import main
@@ -142,7 +142,7 @@ class TestMainFetchPrHtmlOption:
         saved_argv = sys.argv[:]
         sys.argv = ["cat-github-watcher.py", "--fetch-pr-html", "https://github.com/o/repo/pull/1"]
         try:
-            with patch("src.gh_pr_phase_monitor.pr_html_saver.save_pr_html", return_value=None):
+            with patch("src.gh_pr_phase_monitor.phase.pr_html_saver.save_pr_html", return_value=None):
                 from src.gh_pr_phase_monitor.main import main
 
                 with pytest.raises(SystemExit) as exc_info:

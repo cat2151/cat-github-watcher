@@ -7,17 +7,17 @@ import traceback
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from . import github_client
-from .colors import colorize_phase, colorize_url
-from .config import (
+from ..github import github_client
+from ..core.colors import colorize_phase, colorize_url
+from ..core.config import (
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
     get_assign_to_copilot_config,
     resolve_execution_config_for_repo,
 )
-from .github_client import assign_issue_to_copilot, get_issues_from_repositories
-from .phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label
-from .state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
-from .time_utils import format_elapsed_time
+from ..github.github_client import assign_issue_to_copilot, get_issues_from_repositories
+from ..phase.phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label
+from ..monitor.state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
+from ..core.time_utils import format_elapsed_time
 
 
 def display_status_summary(

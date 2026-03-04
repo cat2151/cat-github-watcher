@@ -12,9 +12,9 @@ This test reproduces the bug where:
 import time
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor import state_tracker
-from src.gh_pr_phase_monitor.monitor import check_no_state_change_timeout
-from src.gh_pr_phase_monitor.phase_detector import PHASE_2, PHASE_3
+from src.gh_pr_phase_monitor.monitor import state_tracker
+from src.gh_pr_phase_monitor.monitor.monitor import check_no_state_change_timeout
+from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_2, PHASE_3
 
 
 class TestIntervalContaminationBug:

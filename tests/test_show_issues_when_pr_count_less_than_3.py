@@ -8,7 +8,7 @@ This test ensures the behavior requested in the issue:
 
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
+from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
 
 
 def _create_mock_pr(repo_name: str, title: str, url: str, phase: str):

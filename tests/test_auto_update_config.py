@@ -1,6 +1,6 @@
 """Config defaults for auto-update."""
 
-from src.gh_pr_phase_monitor.config import DEFAULT_ENABLE_AUTO_UPDATE, load_config
+from src.gh_pr_phase_monitor.core.config import DEFAULT_ENABLE_AUTO_UPDATE, load_config
 
 
 def test_auto_update_defaults_disabled(tmp_path):

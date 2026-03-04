@@ -5,7 +5,7 @@ This test ensures that the owner field in repos_with_prs is treated as a string,
 not a dictionary, preventing AttributeError: 'str' object has no attribute 'get'
 """
 
-from src.gh_pr_phase_monitor.config import validate_phase3_merge_config_required
+from src.gh_pr_phase_monitor.core.config import validate_phase3_merge_config_required
 
 
 class TestReposWithPrsStructure:

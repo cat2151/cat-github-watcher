@@ -33,14 +33,14 @@ from .button_clicker import (
     reset_user_cancelled_notification,
     set_user_cancelled_notification,
 )
-from .config import (
+from ..core.config import (
     DEFAULT_ASSIGN_TO_COPILOT_CONFIG,
     DEFAULT_CHECK_PROCESS_BEFORE_AUTORAISE,
     get_assign_to_copilot_config,
     get_phase3_merge_config,
     is_process_running,
 )
-from .notification_window import (
+from ..ui.notification_window import (
     NotificationWindow,
     _close_notification_window,
     _start_button_notification,

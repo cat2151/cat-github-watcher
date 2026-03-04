@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.gh_pr_phase_monitor.graphql_client import GitHubRateLimitError, execute_graphql_query
+from src.gh_pr_phase_monitor.github.graphql_client import GitHubRateLimitError, execute_graphql_query
 
 
 def test_execute_graphql_query_raises_rate_limit_error_on_api_limit_exceeded():

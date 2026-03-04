@@ -9,13 +9,13 @@ import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .auto_updater import (
+from .monitor.auto_updater import (
     UPDATE_CHECK_INTERVAL_SECONDS,
     apply_startup_restart_if_needed,
     maybe_self_update,
     start_startup_self_update_check,
 )
-from .config import (
+from .core.config import (
     DEFAULT_ENABLE_AUTO_UPDATE,
     DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
@@ -25,27 +25,27 @@ from .config import (
     print_config,
     validate_phase3_merge_config_required,
 )
-from .display import display_issues_from_repos_without_prs, display_status_summary
-from .github_auth import get_current_user
-from .github_client import get_pr_details_batch, get_repositories_with_open_prs
-from .graphql_client import GitHubRateLimitError, get_rate_limit_info
-from .local_repo_watcher import (
+from .ui.display import display_issues_from_repos_without_prs, display_status_summary
+from .github.github_auth import get_current_user
+from .github.github_client import get_pr_details_batch, get_repositories_with_open_prs
+from .github.graphql_client import GitHubRateLimitError, get_rate_limit_info
+from .monitor.local_repo_watcher import (
     display_pending_local_repo_results,
     notify_phase3_detected,
     start_local_repo_monitoring,
 )
-from .monitor import check_no_state_change_timeout
-from .pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
-from .phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase, set_use_graphql_phase_detection
-from .pr_actions import process_pr
-from .pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
-from .rate_limit_handler import (
+from .monitor.monitor import check_no_state_change_timeout
+from .monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
+from .phase.phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase, set_use_graphql_phase_detection
+from .actions.pr_actions import process_pr
+from .phase.pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
+from .github.rate_limit_handler import (
     _check_rate_limit_throttle,
     _display_rate_limit_usage,
     _format_rate_limit_reset,
 )
-from .time_utils import format_elapsed_time
-from .wait_handler import wait_with_countdown
+from .core.time_utils import format_elapsed_time
+from .ui.wait_handler import wait_with_countdown
 
 LOG_DIR = Path("logs")
 
@@ -71,7 +71,7 @@ def main():
     """Main execution function"""
     # --fetch-pr-html <URL> オプション: PR HTMLを取得してlogs/pr/に保存して終了
     if len(sys.argv) >= 3 and sys.argv[1] == "--fetch-pr-html":
-        from .pr_html_saver import save_pr_html
+        from .phase.pr_html_saver import save_pr_html
 
         result = save_pr_html(sys.argv[2])
         sys.exit(0 if result else 1)

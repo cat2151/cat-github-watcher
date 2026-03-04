@@ -4,7 +4,7 @@ Tests for phase3_merge configuration validation (fail-fast on missing comment)
 
 import pytest
 
-from src.gh_pr_phase_monitor.config import validate_phase3_merge_config_required
+from src.gh_pr_phase_monitor.core.config import validate_phase3_merge_config_required
 
 
 class TestValidatePhase3MergeConfigRequired:

@@ -4,7 +4,7 @@ Tests for issue assignment priority and filtering in display_issues_from_repos_w
 
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor.display import display_issues_from_repos_without_prs
+from src.gh_pr_phase_monitor.ui.display import display_issues_from_repos_without_prs
 
 
 def test_assign_only_fetches_from_enabled_repos():
@@ -13,9 +13,9 @@ def test_assign_only_fetches_from_enabled_repos():
     assign_good_first_old or assign_old is enabled.
     This prevents fetching issues from repos that don't have assignment enabled.
     """
-    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
+    with patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories") as mock_get_issues:
+            with patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot") as mock_assign:
                 # Mock response: two repos without PRs but with issues
                 mock_get_repos.return_value = [
                     {"name": "repo-with-assign", "owner": "testuser", "openIssueCount": 2},
@@ -76,9 +76,9 @@ def test_priority_prefers_ci_failure_then_deploy_then_good_first():
     """
     Verify assignment priority: ci-failure > deploy-pages-failure > good first issue
     """
-    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
+    with patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories") as mock_get_issues:
+            with patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot") as mock_assign:
                 mock_get_repos.return_value = [{"name": "test-repo", "owner": "testuser", "openIssueCount": 1}]
 
                 mock_get_issues.side_effect = [
@@ -123,9 +123,9 @@ def test_fallback_to_deploy_pages_failure_when_no_ci_failure():
     """
     When ci-failure issues are unavailable, fall back to deploy-pages-failure before good first issues.
     """
-    with patch("src.gh_pr_phase_monitor.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.display.assign_issue_to_copilot") as mock_assign:
+    with patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
+        with patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories") as mock_get_issues:
+            with patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot") as mock_assign:
                 mock_get_repos.return_value = [{"name": "test-repo", "owner": "testuser", "openIssueCount": 1}]
 
                 mock_get_issues.side_effect = [

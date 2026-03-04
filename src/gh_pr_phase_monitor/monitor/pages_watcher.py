@@ -10,13 +10,13 @@ import subprocess
 import webbrowser
 from typing import Any, Dict, List, Optional, Set
 
-from .browser_automation import (
+from ..browser.browser_automation import (
     _can_open_browser,
     _get_remaining_cooldown,
     _record_browser_open,
     _should_autoraise_window,
 )
-from .config import resolve_execution_config_for_repo
+from ..core.config import resolve_execution_config_for_repo
 
 # Track which repo+SHA combinations have been handled (browser opened or dry-run shown)
 # Key format: "{owner}/{repo}@{sha}" for deployed, "{owner}/{repo}@errored:{sha}" for errored

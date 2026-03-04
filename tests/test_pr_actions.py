@@ -4,10 +4,10 @@ Tests for PR actions including browser opening behavior
 
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor import pr_actions
-from src.gh_pr_phase_monitor.colors import colorize_url
-from src.gh_pr_phase_monitor.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
-from src.gh_pr_phase_monitor.pr_actions import process_pr
+from src.gh_pr_phase_monitor.actions import pr_actions
+from src.gh_pr_phase_monitor.core.colors import colorize_url
+from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
+from src.gh_pr_phase_monitor.actions.pr_actions import process_pr
 
 
 class TestProcessPR:
@@ -32,8 +32,8 @@ class TestProcessPR:
         config = {"enable_execution_phase1_to_phase2": True}
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser,
-            patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready,
         ):
             mock_ready.return_value = True
             process_pr(pr, config)
@@ -59,8 +59,8 @@ class TestProcessPR:
         config = {"enable_execution_phase2_to_phase3": True}
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase2_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment") as mock_comment,
         ):
             mock_comment.return_value = True
             process_pr(pr, config)
@@ -81,7 +81,7 @@ class TestProcessPR:
             "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser:
             config = {}
             process_pr(pr, config)
             # Browser should be called for phase3 with URL and config
@@ -98,7 +98,7 @@ class TestProcessPR:
             "url": "https://github.com/test-owner/test-repo/pull/1",
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser:
             process_pr(pr, {})
             # Browser should not be called for LLM working
             mock_browser.assert_not_called()
@@ -138,7 +138,7 @@ class TestProcessPR:
             "url": "https://github.com/test-owner/test-repo/pull/3",
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser:
             mock_browser.return_value = True
             process_pr(pr, {"display_pr_author": True}, phase=PHASE_3)
 
@@ -284,7 +284,7 @@ class TestProcessPR:
             "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.open_browser") as mock_browser:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser:
             # First call should open browser
             process_pr(pr, {})
             assert mock_browser.call_count == 1
@@ -330,8 +330,8 @@ class TestPhase3Notifications:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.send_phase3_notification") as mock_notify,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
         ):
             mock_notify.return_value = True
             process_pr(pr, config)
@@ -354,8 +354,8 @@ class TestPhase3Notifications:
         config = {"ntfy": {"enabled": False, "topic": "test-topic"}}
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.send_phase3_notification") as mock_notify,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
         ):
             process_pr(pr, config)
             # Notification should not be sent
@@ -377,8 +377,8 @@ class TestPhase3Notifications:
         config = {}
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.send_phase3_notification") as mock_notify,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
         ):
             process_pr(pr, config)
             # Notification should not be sent
@@ -408,8 +408,8 @@ class TestPhase3Notifications:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.send_phase3_notification") as mock_notify,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
         ):
             mock_notify.return_value = True
             # First call should send notification
@@ -441,9 +441,9 @@ class TestPhase3Notifications:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.send_phase3_notification") as mock_notify,
-            patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready,
         ):
             mock_ready.return_value = True
             process_pr(pr, config)
@@ -472,9 +472,9 @@ class TestPhase3Notifications:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.send_phase3_notification") as mock_notify,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase2_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment") as mock_comment,
         ):
             mock_comment.return_value = True
             process_pr(pr, config)

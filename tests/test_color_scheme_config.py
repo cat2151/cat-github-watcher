@@ -7,8 +7,8 @@ import tempfile
 
 import pytest
 
-from src.gh_pr_phase_monitor.colors import DEFAULT_COLOR_SCHEME, colorize_phase, colorize_url, set_color_scheme
-from src.gh_pr_phase_monitor.config import load_config
+from src.gh_pr_phase_monitor.core.colors import DEFAULT_COLOR_SCHEME, colorize_phase, colorize_url, set_color_scheme
+from src.gh_pr_phase_monitor.core.config import load_config
 
 
 @pytest.fixture(autouse=True)

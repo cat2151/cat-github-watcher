@@ -5,9 +5,9 @@ Monitoring logic for state changes and frequency adjustment
 import time
 from typing import Any, Dict, List, Optional
 
-from .config import parse_interval
+from ..core.config import parse_interval
 from .state_tracker import get_last_state, is_reduced_frequency_mode, set_last_state, set_reduced_frequency_mode
-from .time_utils import format_elapsed_time
+from ..core.time_utils import format_elapsed_time
 
 
 def check_no_state_change_timeout(

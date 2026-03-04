@@ -6,7 +6,7 @@ to ensure the correct window is in focus before automated button clicking.
 
 from typing import Any, Dict, Optional
 
-from .notification_window import _sanitize_notification_text
+from ..ui.notification_window import _sanitize_notification_text
 
 # PyGetWindow imports are optional - will be imported only if automation is enabled
 try:

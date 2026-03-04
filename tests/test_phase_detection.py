@@ -9,7 +9,7 @@ Tests cover the following scenarios:
 """
 
 from src.gh_pr_phase_monitor import determine_phase
-from src.gh_pr_phase_monitor.phase_detector import _phase_from_llm_statuses
+from src.gh_pr_phase_monitor.phase.phase_detector import _phase_from_llm_statuses
 
 
 class TestPhaseFromLlmStatuses:

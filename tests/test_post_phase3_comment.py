@@ -5,7 +5,7 @@ Tests for post_phase3_comment function
 import subprocess
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor.comment_manager import post_phase3_comment
+from src.gh_pr_phase_monitor.github.comment_manager import post_phase3_comment
 
 
 class TestPostPhase3Comment:

@@ -2,7 +2,7 @@
 Tests for HTML to simple markdown conversion
 """
 
-from src.gh_pr_phase_monitor.pr_html_fetcher import _html_to_simple_markdown
+from src.gh_pr_phase_monitor.phase.pr_html_fetcher import _html_to_simple_markdown
 
 
 def test_html_to_simple_markdown():

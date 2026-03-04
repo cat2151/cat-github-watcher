@@ -29,6 +29,7 @@ class TestPhase3Merge:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {"comment": "Merging"},
@@ -61,6 +62,7 @@ class TestPhase3Merge:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -100,6 +102,7 @@ class TestPhase3Merge:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -142,6 +145,7 @@ class TestPhase3Merge:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -265,6 +269,7 @@ class TestPhase3Merge:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -299,6 +304,7 @@ class TestPhase3Merge:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -339,6 +345,7 @@ class TestPhase3Merge:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -379,6 +386,7 @@ class TestPhase3Merge:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {
@@ -419,6 +427,7 @@ class TestPhase3Merge:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "phase3_merge": {

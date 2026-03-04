@@ -34,6 +34,7 @@ def _create_mock_pr(repo_name: str, title: str, url: str, phase: str):
         base_pr["latestReviews"] = [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "COMMENTED"}]
         base_pr["reviewRequests"] = []
         base_pr["reviewThreads"] = [{"isResolved": False, "isOutdated": False}]  # Unresolved thread
+        base_pr["llm_statuses"] = ["Copilot started reviewing"]
     elif phase == PHASE_3:
         # Phase 3: Copilot reviewer approved or commented without unresolved threads
         base_pr["isDraft"] = False
@@ -41,6 +42,7 @@ def _create_mock_pr(repo_name: str, title: str, url: str, phase: str):
         base_pr["latestReviews"] = [{"author": {"login": "copilot-pull-request-reviewer"}, "state": "APPROVED"}]
         base_pr["reviewRequests"] = []
         base_pr["reviewThreads"] = []  # No unresolved threads
+        base_pr["llm_statuses"] = ["Copilot started reviewing", "Copilot started work", "Copilot finished work"]
     else:  # PHASE_LLM_WORKING
         # LLM working: No reviews or no copilot-pull-request-reviewer reviews
         base_pr["isDraft"] = False

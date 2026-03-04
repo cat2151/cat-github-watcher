@@ -75,6 +75,7 @@ class TestDryRunMode:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing"],
         }
         config = {}  # No execution flag means default (false)
 
@@ -98,6 +99,7 @@ class TestDryRunMode:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing"],
         }
         config = {
             "rulesets": [
@@ -125,6 +127,7 @@ class TestDryRunMode:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "ntfy": {"enabled": True, "topic": "test-topic"},
@@ -150,6 +153,7 @@ class TestDryRunMode:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/1",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
         config = {
             "ntfy": {"enabled": True, "topic": "test-topic"},
@@ -181,6 +185,7 @@ class TestDryRunMode:
             "repository": {"name": "test-repo", "owner": "test-owner"},
             "title": "Test PR",
             "url": "https://github.com/test-owner/test-repo/pull/2",
+            "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
 
         # First process in dry-run mode

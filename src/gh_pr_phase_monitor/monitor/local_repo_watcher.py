@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from .auto_updater import REPO_ROOT, restart_application
-from .colors import Colors
+from ..core.colors import Colors
 
 # Status constants (same classification as cat-repo-auditor)
 STATUS_PULLABLE = "pullable"  # behind > 0, ahead == 0, not dirty → can pull now

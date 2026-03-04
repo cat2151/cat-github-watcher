@@ -5,9 +5,9 @@ Test to verify that the application exits when PR state does not change for too 
 import time
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor import state_tracker
-from src.gh_pr_phase_monitor.monitor import check_no_state_change_timeout
-from src.gh_pr_phase_monitor.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
+from src.gh_pr_phase_monitor.monitor import state_tracker
+from src.gh_pr_phase_monitor.monitor.monitor import check_no_state_change_timeout
+from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
 
 
 class TestNoChangeTimeout:

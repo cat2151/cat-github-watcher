@@ -4,7 +4,7 @@ import json
 import subprocess
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor.graphql_client import execute_graphql_query
+from src.gh_pr_phase_monitor.github.graphql_client import execute_graphql_query
 
 
 def _make_subprocess_result(data: dict) -> subprocess.CompletedProcess:

@@ -5,7 +5,7 @@ Markdown formatting utilities for PR phase snapshots.
 import json
 from typing import Any, Dict, List
 
-from .phase_detector import PHASE_LLM_WORKING
+from ..phase.phase_detector import PHASE_LLM_WORKING
 from .snapshot_path_utils import _extract_pr_number
 
 

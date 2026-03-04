@@ -15,8 +15,8 @@ from .phase_detector import (
     update_comment_reaction_resolution,
 )
 from .pr_html_fetcher import _fetch_pr_html, _html_to_simple_markdown
-from .snapshot_markdown import _build_markdown, _prepare_markdown_raw, _summarize_reactions
-from .snapshot_path_utils import _build_snapshot_dir_name, _format_timestamp
+from ..monitor.snapshot_markdown import _build_markdown, _prepare_markdown_raw, _summarize_reactions
+from ..monitor.snapshot_path_utils import _build_snapshot_dir_name, _format_timestamp
 
 # Snapshots are stored alongside screenshots (not inside) for easy discovery
 DEFAULT_SNAPSHOT_BASE_DIR = Path("pr_phase_snapshots")

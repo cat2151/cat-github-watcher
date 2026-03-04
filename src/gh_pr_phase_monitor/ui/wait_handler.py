@@ -10,8 +10,8 @@ try:
 except ImportError:
     import tomli as tomllib  # type: ignore[no-redef]
 
-from .config import get_config_mtime, load_config, parse_interval, print_config
-from .time_utils import format_elapsed_time
+from ..core.config import get_config_mtime, load_config, parse_interval, print_config
+from ..core.time_utils import format_elapsed_time
 
 
 def _log_self_update_error(exc: Exception) -> None:

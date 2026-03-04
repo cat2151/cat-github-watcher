@@ -7,15 +7,15 @@ from unittest.mock import patch
 
 import pytest
 
-from src.gh_pr_phase_monitor.phase_detector import (
+from src.gh_pr_phase_monitor.phase.phase_detector import (
     PHASE_LLM_WORKING,
 )
-from src.gh_pr_phase_monitor.pr_data_recorder import (
+from src.gh_pr_phase_monitor.phase.pr_data_recorder import (
     record_reaction_snapshot,
     reset_snapshot_cache,
     save_pr_snapshot,
 )
-from src.gh_pr_phase_monitor.snapshot_markdown import _escape_newlines, _json_to_markdown
+from src.gh_pr_phase_monitor.monitor.snapshot_markdown import _escape_newlines, _json_to_markdown
 
 
 def _sample_pr():
@@ -210,7 +210,7 @@ def test_record_reaction_snapshot_across_iterations(tmp_path):
     # Mock HTML fetching to return deterministic content
     mock_html = "<html><body><h1>Test PR</h1></body></html>"
 
-    with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = mock_html + "\n200"
 
@@ -284,7 +284,7 @@ def test_record_reaction_snapshot_html_tag_changes_ignored(tmp_path):
     </html>
     """
 
-    with patch("src.gh_pr_phase_monitor.pr_html_fetcher.subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run") as mock_run:
         # First iteration - should record snapshot
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = mock_html_1 + "\n200"

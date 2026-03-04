@@ -3,7 +3,7 @@ Tests for phase detection with real PR scenarios and LLM statuses
 """
 
 from src.gh_pr_phase_monitor import determine_phase
-from src.gh_pr_phase_monitor.phase_detector import (
+from src.gh_pr_phase_monitor.phase.phase_detector import (
     PHASE_3,
     PHASE_LLM_WORKING,
     reset_comment_reaction_resolution_cache,

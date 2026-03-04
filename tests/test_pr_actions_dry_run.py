@@ -4,8 +4,8 @@ Tests for dry-run behavior when execution flags are false (default)
 
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor import pr_actions
-from src.gh_pr_phase_monitor.pr_actions import process_pr
+from src.gh_pr_phase_monitor.actions import pr_actions
+from src.gh_pr_phase_monitor.actions.pr_actions import process_pr
 
 
 class TestDryRunMode:
@@ -29,7 +29,7 @@ class TestDryRunMode:
         }
         config = {}  # No execution flag means default (false)
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
             process_pr(pr, config)
             # mark_pr_ready should not be called in dry-run mode
             mock_ready.assert_not_called()
@@ -54,7 +54,7 @@ class TestDryRunMode:
             ]
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
             mock_ready.return_value = True
             process_pr(pr, config)
             # mark_pr_ready should be called when execution is enabled
@@ -79,7 +79,7 @@ class TestDryRunMode:
         }
         config = {}  # No execution flag means default (false)
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.post_phase2_comment") as mock_comment:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment") as mock_comment:
             process_pr(pr, config)
             # post_phase2_comment should not be called in dry-run mode
             mock_comment.assert_not_called()
@@ -110,7 +110,7 @@ class TestDryRunMode:
             ]
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.post_phase2_comment") as mock_comment:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment") as mock_comment:
             mock_comment.return_value = True
             process_pr(pr, config)
             # post_phase2_comment should be called when execution is enabled
@@ -135,8 +135,8 @@ class TestDryRunMode:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.send_phase3_notification") as mock_notify,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
         ):
             process_pr(pr, config)
             # send_phase3_notification should not be called in dry-run mode
@@ -166,8 +166,8 @@ class TestDryRunMode:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.send_phase3_notification") as mock_notify,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
         ):
             mock_notify.return_value = True
             process_pr(pr, config)
@@ -200,8 +200,8 @@ class TestDryRunMode:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.send_phase3_notification") as mock_notify,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
         ):
             process_pr(pr, config_dry)
             # Notification should not be sent in dry-run mode
@@ -219,8 +219,8 @@ class TestDryRunMode:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.send_phase3_notification") as mock_notify,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
         ):
             mock_notify.return_value = True
             process_pr(pr, config_exec)

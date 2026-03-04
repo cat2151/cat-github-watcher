@@ -10,11 +10,11 @@ import time
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor.display import display_status_summary
-from src.gh_pr_phase_monitor.phase_detector import PHASE_1, PHASE_LLM_WORKING
-from src.gh_pr_phase_monitor.state_tracker import _pr_state_times
-from src.gh_pr_phase_monitor.time_utils import format_elapsed_time
-from src.gh_pr_phase_monitor.wait_handler import wait_with_countdown
+from src.gh_pr_phase_monitor.ui.display import display_status_summary
+from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_1, PHASE_LLM_WORKING
+from src.gh_pr_phase_monitor.monitor.state_tracker import _pr_state_times
+from src.gh_pr_phase_monitor.core.time_utils import format_elapsed_time
+from src.gh_pr_phase_monitor.ui.wait_handler import wait_with_countdown
 
 
 class TestElapsedTimeDisplay:

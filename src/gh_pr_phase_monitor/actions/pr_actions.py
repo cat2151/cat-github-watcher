@@ -7,23 +7,23 @@ import webbrowser
 from pathlib import Path
 from typing import Any, Dict, Optional, Set, Tuple
 
-from .browser_automation import (
+from ..browser.browser_automation import (
     _can_open_browser,
     _get_remaining_cooldown,
     _record_browser_open,
     _should_autoraise_window,
     merge_pr_automated,
 )
-from .colors import colorize_phase, colorize_url
-from .comment_manager import (
+from ..core.colors import colorize_phase, colorize_url
+from ..github.comment_manager import (
     has_problematic_pr_title,
     post_phase2_comment,
     post_phase3_comment,
     post_pr_title_fix_comment,
 )
-from .config import get_phase3_merge_config, print_repo_execution_config, resolve_execution_config_for_repo
-from .notifier import send_phase3_notification
-from .phase_detector import (
+from ..core.config import get_phase3_merge_config, print_repo_execution_config, resolve_execution_config_for_repo
+from ..ui.notifier import send_phase3_notification
+from ..phase.phase_detector import (
     PHASE_1,
     PHASE_2,
     PHASE_3,
@@ -316,7 +316,7 @@ def process_repository(repo_dir: Path, config: Dict[str, Any] = None) -> None:
         repo_dir: Repository directory
         config: Configuration dictionary (optional)
     """
-    from .github_client import get_pr_data
+    from ..github.github_client import get_pr_data
 
     print(f"\n=== Processing: {repo_dir} ===")
 

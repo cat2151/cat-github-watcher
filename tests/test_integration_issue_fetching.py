@@ -9,12 +9,12 @@ with no open PRs but with open issues.
 import json
 from unittest.mock import MagicMock, patch
 
-from src.gh_pr_phase_monitor.github_client import (
+from src.gh_pr_phase_monitor.github.github_client import (
     get_all_repositories,
     get_issues_from_repositories,
     get_repositories_with_no_prs_and_open_issues,
 )
-from src.gh_pr_phase_monitor.phase_detector import PHASE_LLM_WORKING, determine_phase
+from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_LLM_WORKING, determine_phase
 
 
 def test_integration_all_prs_llm_working():
@@ -47,7 +47,7 @@ def test_integration_all_prs_llm_working():
     print("✓ All PRs are in 'LLM working' phase")
 
     # Step 2: Mock get_all_repositories to return repos with mixed states
-    with patch("src.gh_pr_phase_monitor.github_client.get_current_user") as mock_user:
+    with patch("src.gh_pr_phase_monitor.github.github_client.get_current_user") as mock_user:
         mock_user.return_value = "testuser"
 
         with patch("subprocess.run") as mock_run:

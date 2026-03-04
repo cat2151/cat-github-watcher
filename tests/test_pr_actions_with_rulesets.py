@@ -4,8 +4,8 @@ Tests for PR actions with ruleset-based configuration
 
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor import pr_actions
-from src.gh_pr_phase_monitor.pr_actions import process_pr
+from src.gh_pr_phase_monitor.actions import pr_actions
+from src.gh_pr_phase_monitor.actions.pr_actions import process_pr
 
 
 class TestProcessPRWithRulesets:
@@ -38,7 +38,7 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
             mock_ready.return_value = True
             process_pr(pr, config)
             # Should be called because ruleset enables it for this repo
@@ -71,7 +71,7 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
             process_pr(pr, config)
             # Should not be called because ruleset disables it for this repo
             mock_ready.assert_not_called()
@@ -106,7 +106,7 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
             mock_ready.return_value = True
 
             process_pr(pr1, config)
@@ -136,7 +136,7 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
             mock_ready.return_value = True
             process_pr(pr, config)
             mock_ready.assert_called_once()
@@ -168,7 +168,7 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.post_phase2_comment") as mock_comment:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment") as mock_comment:
             mock_comment.return_value = True
             process_pr(pr, config)
             mock_comment.assert_called_once()
@@ -198,8 +198,8 @@ class TestProcessPRWithRulesets:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.send_phase3_notification") as mock_notify,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
         ):
             mock_notify.return_value = True
             process_pr(pr, config)
@@ -232,7 +232,7 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
             process_pr(pr, config)
             # Should not be called because second ruleset overrides first
             mock_ready.assert_not_called()
@@ -268,7 +268,7 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
             mock_ready.return_value = True
 
             # enabled-repo should execute
@@ -302,7 +302,7 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready:
+        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
             process_pr(pr, config)
             # phase1 should be disabled by ruleset
             mock_ready.assert_not_called()

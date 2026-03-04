@@ -9,7 +9,7 @@ import time
 
 import pytest
 
-from src.gh_pr_phase_monitor.config import get_config_mtime, load_config
+from src.gh_pr_phase_monitor.core.config import get_config_mtime, load_config
 
 
 class TestConfigMtime:

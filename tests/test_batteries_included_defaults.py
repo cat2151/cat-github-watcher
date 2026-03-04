@@ -3,7 +3,7 @@ Tests for batteries-included default configuration values
 Tests that phase3_merge and assign_to_copilot work with defaults when TOML sections are missing
 """
 
-from src.gh_pr_phase_monitor.config import (
+from src.gh_pr_phase_monitor.core.config import (
     DEFAULT_ASSIGN_TO_COPILOT_CONFIG,
     DEFAULT_PHASE3_MERGE_CONFIG,
     get_assign_to_copilot_config,

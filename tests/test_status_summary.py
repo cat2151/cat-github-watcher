@@ -8,8 +8,8 @@ display a summary of LLM working status at the end before entering the waiting s
 
 from unittest.mock import patch
 
-from src.gh_pr_phase_monitor.display import display_status_summary
-from src.gh_pr_phase_monitor.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
+from src.gh_pr_phase_monitor.ui.display import display_status_summary
+from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
 
 
 class TestDisplayStatusSummary:

@@ -5,7 +5,7 @@ Tests for PR title fix functionality
 import subprocess
 from unittest.mock import MagicMock, patch
 
-from src.gh_pr_phase_monitor.comment_manager import (
+from src.gh_pr_phase_monitor.github.comment_manager import (
     has_pr_title_fix_comment,
     has_problematic_pr_title,
     post_pr_title_fix_comment,
@@ -102,8 +102,8 @@ class TestHasPRTitleFixComment:
 class TestPostPRTitleFixComment:
     """Test the post_pr_title_fix_comment function"""
 
-    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
-    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.subprocess.run")
     def test_post_comment_success_for_claude_agent(self, mock_run, mock_get_comments):
         """Should post comment successfully for Claude agent"""
         mock_get_comments.return_value = []
@@ -130,8 +130,8 @@ class TestPostPRTitleFixComment:
         assert "@claude[agent]" in cmd[5]
         assert "PR titleとPR冒頭を、以下の方針で修正してください：" in cmd[5]
 
-    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
-    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.subprocess.run")
     def test_post_comment_success_for_codex_agent(self, mock_run, mock_get_comments):
         """Should post comment successfully for Codex agent"""
         mock_get_comments.return_value = []
@@ -150,8 +150,8 @@ class TestPostPRTitleFixComment:
         # Check for Codex mention
         assert "@codex[agent]" in cmd[5]
 
-    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
-    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.subprocess.run")
     def test_post_comment_skips_if_exists(self, mock_run, mock_get_comments):
         """Should skip posting if comment already exists"""
         mock_get_comments.return_value = [
@@ -169,8 +169,8 @@ class TestPostPRTitleFixComment:
         assert result is None
         mock_run.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
-    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.subprocess.run")
     def test_post_comment_failure(self, mock_run, mock_get_comments):
         """Should handle comment posting failure"""
         mock_get_comments.return_value = []
@@ -188,7 +188,7 @@ class TestPostPRTitleFixComment:
 
         assert result is False
 
-    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.get_existing_comments")
     def test_post_comment_no_url(self, mock_get_comments):
         """Should return False when PR has no URL"""
         mock_get_comments.return_value = []
@@ -199,8 +199,8 @@ class TestPostPRTitleFixComment:
 
         assert result is False
 
-    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
-    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.subprocess.run")
     def test_post_comment_uses_configured_agent_name(self, mock_run, mock_get_comments):
         """Should use configured agent name override"""
         mock_get_comments.return_value = []
@@ -219,8 +219,8 @@ class TestPostPRTitleFixComment:
         cmd = mock_run.call_args[0][0]
         assert "@custom-agent" in cmd[5]
 
-    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
-    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.subprocess.run")
     def test_post_comment_handles_missing_stderr(self, mock_run, mock_get_comments):
         """Should handle missing stderr gracefully"""
         mock_get_comments.return_value = []
@@ -238,8 +238,8 @@ class TestPostPRTitleFixComment:
 
         assert result is False
 
-    @patch("src.gh_pr_phase_monitor.comment_manager.get_existing_comments")
-    @patch("src.gh_pr_phase_monitor.comment_manager.subprocess.run")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.get_existing_comments")
+    @patch("src.gh_pr_phase_monitor.github.comment_manager.subprocess.run")
     def test_post_comment_fallback_to_copilot(self, mock_run, mock_get_comments):
         """Should fall back to @copilot for unknown authors"""
         mock_get_comments.return_value = []

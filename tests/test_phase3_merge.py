@@ -4,9 +4,9 @@ Tests for Phase3 merge functionality
 
 from unittest.mock import MagicMock, patch
 
-from src.gh_pr_phase_monitor import pr_actions
-from src.gh_pr_phase_monitor.config import DEFAULT_PHASE3_MERGE_CONFIG
-from src.gh_pr_phase_monitor.pr_actions import merge_pr, process_pr
+from src.gh_pr_phase_monitor.actions import pr_actions
+from src.gh_pr_phase_monitor.core.config import DEFAULT_PHASE3_MERGE_CONFIG
+from src.gh_pr_phase_monitor.actions.pr_actions import merge_pr, process_pr
 
 
 class TestPhase3Merge:
@@ -42,9 +42,9 @@ class TestPhase3Merge:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             process_pr(pr, config)
             # Merge should not be attempted
@@ -79,9 +79,9 @@ class TestPhase3Merge:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_merge.return_value = True
             mock_comment.return_value = True
@@ -119,9 +119,9 @@ class TestPhase3Merge:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr_automated") as mock_merge_auto,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr_automated") as mock_merge_auto,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_merge_auto.return_value = True
             mock_comment.return_value = True
@@ -162,9 +162,9 @@ class TestPhase3Merge:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_merge.return_value = True
             mock_comment.return_value = True
@@ -205,10 +205,10 @@ class TestPhase3Merge:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
-            patch("src.gh_pr_phase_monitor.pr_actions.mark_pr_ready") as mock_ready,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready,
         ):
             mock_ready.return_value = True
             process_pr(pr, config)
@@ -247,10 +247,10 @@ class TestPhase3Merge:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase2_comment") as mock_phase2_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment") as mock_phase2_comment,
         ):
             mock_phase2_comment.return_value = True
             process_pr(pr, config)
@@ -284,9 +284,9 @@ class TestPhase3Merge:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             process_pr(pr, config)
             # Merge should not be attempted in dry-run mode
@@ -321,9 +321,9 @@ class TestPhase3Merge:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_comment.return_value = False  # Comment posting fails
             process_pr(pr, config)
@@ -362,9 +362,9 @@ class TestPhase3Merge:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_comment.return_value = True
             mock_merge.return_value = False  # Merge fails
@@ -403,9 +403,9 @@ class TestPhase3Merge:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr_automated") as mock_merge_auto,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr_automated") as mock_merge_auto,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_comment.return_value = True
             mock_merge_auto.return_value = False  # Merge fails
@@ -444,9 +444,9 @@ class TestPhase3Merge:
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.pr_actions.post_phase3_comment") as mock_comment,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
+            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
         ):
             mock_comment.return_value = True
             mock_merge.return_value = True  # Merge succeeds

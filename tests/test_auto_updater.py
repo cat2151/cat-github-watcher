@@ -17,7 +17,7 @@ sys.modules.setdefault("tkinter", types.ModuleType("tkinter"))
 sys.modules.setdefault("tkinter.messagebox", types.ModuleType("tkinter.messagebox"))
 os.environ.setdefault("DISPLAY", ":0")
 
-auto_updater = importlib.import_module("src.gh_pr_phase_monitor.auto_updater")
+auto_updater = importlib.import_module("src.gh_pr_phase_monitor.monitor.auto_updater")
 
 _THREAD_TIMEOUT = 3
 

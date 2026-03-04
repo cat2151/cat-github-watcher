@@ -5,12 +5,12 @@ Tests for LLM status-based phase detection (HTML snapshot analysis)
 from datetime import datetime
 
 from src.gh_pr_phase_monitor import determine_phase
-from src.gh_pr_phase_monitor.phase_detector import (
+from src.gh_pr_phase_monitor.phase.phase_detector import (
     PHASE_3,
     PHASE_LLM_WORKING,
     reset_comment_reaction_resolution_cache,
 )
-from src.gh_pr_phase_monitor.pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
+from src.gh_pr_phase_monitor.phase.pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
 
 
 class TestDeterminePhaseWithLLMStatus:

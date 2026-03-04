@@ -72,6 +72,12 @@ DEFAULT_DISPLAY_LLM_STATUS_TIMELINE = False
 # Default setting for auto-update (disabled by default for safety)
 DEFAULT_ENABLE_AUTO_UPDATE = False
 
+# Default mode for startup auto-update: foreground (main thread with explicit prints).
+# When True, auto-update runs synchronously in the main thread before the monitoring loop,
+# so users immediately see the update status at startup.
+# Set to false in config.toml to use the legacy background-thread mode.
+DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND = True
+
 # Default setting for saving pr_phase_snapshots (disabled by default for safety/privacy)
 DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS = False
 

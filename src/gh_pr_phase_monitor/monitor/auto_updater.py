@@ -181,6 +181,21 @@ def apply_startup_restart_if_needed() -> None:
         restart_application()
 
 
+def run_startup_self_update_foreground(repo_root: Path | None = None) -> None:
+    """起動時の自動アップデートをメインスレッドで明示的にprintしながら実行する（フォアグラウンドモード）。
+
+    ユーザーが起動直後にアップデートの状況を把握できるよう、主要なステップを標準出力に出力する。
+    更新が見つかった場合は maybe_self_update() 内でアプリを再起動する。
+    """
+    print("Auto-update: checking for updates...")
+    try:
+        updated = maybe_self_update(repo_root=repo_root)
+        if not updated:
+            print("Auto-update: already up to date.")
+    except Exception as e:
+        print(f"Auto-update: check failed: {e}")
+
+
 def start_startup_self_update_check(repo_root: Path | None = None) -> None:
     """起動直後に別スレッドで自己リポジトリのアップデートチェックを一度実行する。
 

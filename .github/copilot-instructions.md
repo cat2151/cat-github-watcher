@@ -54,11 +54,14 @@ from .phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
 # ツール実行
 python cat-github-watcher.py [config.toml]
 
-# テスト実行（全58+テスト）
-pytest tests/
+# テスト実行（初回のみ: pytestインストール）
+pip install pytest
+
+# テスト実行（PYTHONPATH=. が必須。ないと src モジュールが見つからずエラーになる）
+PYTHONPATH=. pytest tests/
 
 # 特定テストファイル実行
-pytest tests/test_phase_detection.py -v
+PYTHONPATH=. pytest tests/test_phase_detection.py -v
 
 # Lint/フォーマット（ruff使用）
 ruff check . --fix

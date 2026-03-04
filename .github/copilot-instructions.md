@@ -142,5 +142,9 @@ ruff format .
 ## コミット前にすること
 - ruffでlintとformatをすること
 
+## 出力ファイル名の設計方針
+- **このアプリは常時ownerが単一になる設計のため、いかなる出力ファイル名にもowner名を含めないこと。** シンプルさを優先する。例: `logs/pr/{repo_name}_{pr_number}.html` は正しい。`{owner}_{repo_name}_{pr_number}.html` のようにownerを含めるのは誤り。
+
 ## html / json 保存機能
 - 引数optionでURLを指定しなくても、PRのURLをfetchしたときは必ずhtmlを保存するし、そこからstatusを算出するときにjsonを生成して保存する。もしこの機能が動作していないなら、生成をやめてuserに報告すること
+- logs/pr/ 配下のファイル名は `{repo_name}_{pr_number}.html` / `.json` とすること（上記の出力ファイル名の設計方針に従いownerは含めない）

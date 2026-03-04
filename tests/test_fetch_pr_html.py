@@ -4,7 +4,7 @@ Tests for pr_html_saver module (and fetch_pr_html wrapper)
 
 from unittest.mock import MagicMock, patch
 
-from src.gh_pr_phase_monitor.phase.pr_html_saver import fetch_pr_html, parse_pr_url, save_pr_html
+from src.gh_pr_phase_monitor.phase.pr_html_saver import fetch_pr_html, parse_pr_url, save_html_to_logs, save_pr_html
 
 
 class TestParsePrUrl:
@@ -107,6 +107,62 @@ class TestSavePrHtml:
             result = save_pr_html("https://github.com/o/repo/pull/1", tmp_path)
 
         assert result is None
+
+
+class TestSaveHtmlToLogs:
+    def test_invalid_url_returns_none(self, tmp_path):
+        result = save_html_to_logs("<html>content</html>", "https://example.com/not-a-pr", output_dir=tmp_path)
+        assert result is None
+
+    def test_invalid_url_prints_to_stderr(self, tmp_path, capsys):
+        save_html_to_logs("<html></html>", "https://example.com/bad", output_dir=tmp_path)
+        captured = capsys.readouterr()
+        assert "エラー" in captured.err
+
+    def test_saves_html_with_owner_in_filename(self, tmp_path):
+        html = "<html><body>PR</body></html>"
+        result = save_html_to_logs(html, "https://github.com/cat2151/my-repo/pull/5", output_dir=tmp_path)
+        assert result is not None
+        expected = tmp_path / "cat2151_my-repo_5.html"
+        assert result == expected
+        assert expected.exists()
+        assert expected.read_text(encoding="utf-8") == html
+
+    def test_saves_json_alongside_html(self, tmp_path):
+        html = "<html><body>PR</body></html>"
+        result = save_html_to_logs(html, "https://github.com/cat2151/my-repo/pull/5", output_dir=tmp_path)
+        assert result is not None
+        json_path = result.with_suffix(".json")
+        assert json_path.exists()
+
+    def test_uses_pre_computed_analysis_without_reanalysis(self, tmp_path):
+        html = "<html><body>PR</body></html>"
+        precomputed = {"pr_url": "https://github.com/o/r/pull/1", "is_draft": True, "llm_statuses": [], "status": "PHASE1A_DRAFT_LLM_WORKING"}
+        from unittest.mock import patch
+        with patch("src.gh_pr_phase_monitor.phase.pr_html_saver.analyze_pr_html") as mock_analyze:
+            save_html_to_logs(html, "https://github.com/o/r/pull/1", analysis=precomputed, output_dir=tmp_path)
+            mock_analyze.assert_not_called()
+
+    def test_skips_write_when_content_unchanged(self, tmp_path):
+        html = "<html><body>PR</body></html>"
+        url = "https://github.com/cat2151/my-repo/pull/7"
+        analysis = {"pr_url": url, "is_draft": False, "llm_statuses": [], "status": "PHASE1C_REVIEW_IN_PROGRESS"}
+        save_html_to_logs(html, url, analysis=analysis, output_dir=tmp_path)
+        html_file = tmp_path / "cat2151_my-repo_7.html"
+        json_file = html_file.with_suffix(".json")
+        mtime_html = html_file.stat().st_mtime_ns
+        mtime_json = json_file.stat().st_mtime_ns
+        # Second call with identical content – files should not be touched
+        save_html_to_logs(html, url, analysis=analysis, output_dir=tmp_path)
+        assert html_file.stat().st_mtime_ns == mtime_html
+        assert json_file.stat().st_mtime_ns == mtime_json
+
+    def test_creates_output_directory(self, tmp_path):
+        nested = tmp_path / "a" / "b"
+        html = "<html></html>"
+        result = save_html_to_logs(html, "https://github.com/o/r/pull/3", output_dir=nested)
+        assert result is not None
+        assert nested.exists()
 
 
 class TestMainFetchPrHtmlOption:

@@ -15,6 +15,7 @@ from .phase_detector import (
     update_comment_reaction_resolution,
 )
 from .pr_html_fetcher import _fetch_pr_html, _html_to_simple_markdown
+from .pr_html_analyzer import _determine_html_status
 from .pr_html_saver import save_html_to_logs
 from ..monitor.snapshot_markdown import _build_markdown, _prepare_markdown_raw, _summarize_reactions
 from ..monitor.snapshot_path_utils import _build_snapshot_dir_name, _format_timestamp
@@ -27,6 +28,16 @@ _recorded_in_current_iteration: Set[str] = set()
 
 # Store previous iteration's content for comparison (PR key -> {json, html_md, llm_statuses})
 _previous_pr_content: Dict[str, Dict[str, Any]] = {}
+
+
+def _build_logs_analysis(pr_url: str, is_draft: bool, statuses: list) -> dict:
+    """logs/pr/ 保存用の解析結果辞書を構築する。"""
+    return {
+        "pr_url": pr_url,
+        "is_draft": is_draft,
+        "llm_statuses": statuses,
+        "status": _determine_html_status(statuses, is_draft),
+    }
 
 
 def _write_if_changed(path: Path, content: str) -> None:
@@ -235,11 +246,15 @@ def record_reaction_snapshot(
             else:
                 fetched = None
             if fetched:
-                save_html_to_logs(fetched, pr_url)  # 検証用: 取得したHTMLとJSONをlogs/pr/に保存
                 html_md = _html_to_simple_markdown(fetched)
                 captured = _capture_llm_statuses(fetched, html_md)
                 if captured.get("statuses"):
                     pr["llm_statuses"] = captured["statuses"]
+                if enable_snapshots:
+                    save_html_to_logs(
+                        fetched, pr_url,
+                        analysis=_build_logs_analysis(pr_url, is_draft, captured.get("statuses", [])),
+                    )
         return None
 
     # Check once flag: prevent duplicate recording within the same iteration
@@ -279,7 +294,6 @@ def record_reaction_snapshot(
         # Fetch HTML when needed for deduplication or status capture
         fetched_html = _fetch_pr_html(pr_url)
         if fetched_html:
-            save_html_to_logs(fetched_html, pr_url)  # 検証用: 取得したHTMLとJSONをlogs/pr/に保存
             # Convert HTML to markdown for comparison to avoid HTML tag noise
             current_html_md = _html_to_simple_markdown(fetched_html)
             captured_status = _capture_llm_statuses(fetched_html, current_html_md)
@@ -287,6 +301,12 @@ def record_reaction_snapshot(
             if captured_status["statuses"]:
                 latest_llm_statuses = captured_status["statuses"]
                 pr["llm_statuses"] = latest_llm_statuses
+            if enable_snapshots:
+                _is_draft = pr.get("isDraft", False)
+                save_html_to_logs(
+                    fetched_html, pr_url,
+                    analysis=_build_logs_analysis(pr_url, _is_draft, captured_status.get("statuses", [])),
+                )
 
     # Check if content has changed (compare markdown instead of raw HTML)
     html_changed = current_html_md != previous_html_md

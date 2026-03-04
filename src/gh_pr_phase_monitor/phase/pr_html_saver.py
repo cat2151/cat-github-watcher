@@ -2,6 +2,7 @@
 PRのHTMLを取得してlogs/pr/ディレクトリに保存するユーティリティ。
 """
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -9,6 +10,18 @@ from typing import Optional
 
 from .pr_html_analyzer import analyze_pr_html, save_analysis_json
 from .pr_html_fetcher import _fetch_pr_html
+
+
+def _write_if_changed(path: Path, content: str) -> None:
+    """内容が変わったときだけファイルに書き込む。"""
+    if path.exists():
+        try:
+            if path.read_text(encoding="utf-8") == content:
+                return
+        except OSError:
+            # 読み取り失敗時は上書きして最新状態に復元する
+            pass
+    path.write_text(content, encoding="utf-8")
 
 DEFAULT_OUTPUT_DIR = Path("logs/pr")
 
@@ -42,15 +55,22 @@ def fetch_pr_html(pr_url: str) -> Optional[str]:
     return _fetch_pr_html(pr_url)
 
 
-def save_html_to_logs(html: str, pr_url: str, output_dir: Path = DEFAULT_OUTPUT_DIR) -> Optional[Path]:
-    """取得済みHTMLをlogs/pr/{repo_name}_{pr_number}.htmlに保存する（検証用）。
+def save_html_to_logs(
+    html: str,
+    pr_url: str,
+    analysis: Optional[dict] = None,
+    output_dir: Path = DEFAULT_OUTPUT_DIR,
+) -> Optional[Path]:
+    """取得済みHTMLをlogs/pr/{owner}_{repo_name}_{pr_number}.htmlに保存する（検証用）。
 
     HTMLの再取得は行わない。引数の html をそのまま保存する。
-    保存と同時にHTMLを解析して {repo_name}_{pr_number}.json も出力する。
+    内容が変わっていない場合は書き込みをスキップする。
+    保存と同時に {owner}_{repo_name}_{pr_number}.json も出力する。
 
     Args:
         html: 保存するHTML文字列
         pr_url: PR URL（ファイル名生成・JSON解析に使用）
+        analysis: 事前計算済みの解析結果。省略時は analyze_pr_html() で算出する。
         output_dir: 保存先ディレクトリ（デフォルト: logs/pr）
 
     Returns:
@@ -58,17 +78,19 @@ def save_html_to_logs(html: str, pr_url: str, output_dir: Path = DEFAULT_OUTPUT_
     """
     owner, repo_name, pr_number = parse_pr_url(pr_url)
     if not owner or not repo_name or not pr_number:
+        print(f"エラー: 無効なPR URLのためHTMLを保存できませんでした: {pr_url}", file=sys.stderr)
         return None
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / f"{repo_name}_{pr_number}.html"
+    output_file = output_dir / f"{owner}_{repo_name}_{pr_number}.html"
 
-    output_file.write_text(html, encoding="utf-8")
+    _write_if_changed(output_file, html)
 
     # HTML解析してstatusを算出するための元データJSONを生成・保存
-    analysis = analyze_pr_html(html, pr_url)
-    save_analysis_json(analysis, output_file)
+    if analysis is None:
+        analysis = analyze_pr_html(html, pr_url)
+    _write_if_changed(output_file.with_suffix(".json"), json.dumps(analysis, ensure_ascii=False, indent=2))
 
     return output_file
 

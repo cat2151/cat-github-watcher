@@ -61,11 +61,11 @@ def save_html_to_logs(
     analysis: Optional[dict] = None,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
 ) -> Optional[Path]:
-    """取得済みHTMLをlogs/pr/{owner}_{repo_name}_{pr_number}.htmlに保存する（検証用）。
+    """取得済みHTMLをlogs/pr/{repo_name}_{pr_number}.htmlに保存する（検証用）。
 
     HTMLの再取得は行わない。引数の html をそのまま保存する。
     内容が変わっていない場合は書き込みをスキップする。
-    保存と同時に {owner}_{repo_name}_{pr_number}.json も出力する。
+    保存と同時に {repo_name}_{pr_number}.json も出力する。
 
     Args:
         html: 保存するHTML文字列
@@ -83,7 +83,7 @@ def save_html_to_logs(
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / f"{owner}_{repo_name}_{pr_number}.html"
+    output_file = output_dir / f"{repo_name}_{pr_number}.html"
 
     _write_if_changed(output_file, html)
 

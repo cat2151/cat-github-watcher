@@ -123,7 +123,7 @@ class TestSaveHtmlToLogs:
         html = "<html><body>PR</body></html>"
         result = save_html_to_logs(html, "https://github.com/cat2151/my-repo/pull/5", output_dir=tmp_path)
         assert result is not None
-        expected = tmp_path / "cat2151_my-repo_5.html"
+        expected = tmp_path / "my-repo_5.html"
         assert result == expected
         assert expected.exists()
         assert expected.read_text(encoding="utf-8") == html
@@ -148,7 +148,7 @@ class TestSaveHtmlToLogs:
         url = "https://github.com/cat2151/my-repo/pull/7"
         analysis = {"pr_url": url, "is_draft": False, "llm_statuses": [], "status": "PHASE1C_REVIEW_IN_PROGRESS"}
         save_html_to_logs(html, url, analysis=analysis, output_dir=tmp_path)
-        html_file = tmp_path / "cat2151_my-repo_7.html"
+        html_file = tmp_path / "my-repo_7.html"
         json_file = html_file.with_suffix(".json")
         mtime_html = html_file.stat().st_mtime_ns
         mtime_json = json_file.stat().st_mtime_ns

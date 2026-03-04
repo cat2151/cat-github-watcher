@@ -144,3 +144,4 @@ ruff format .
 
 ## html / json 保存機能
 - 引数optionでURLを指定しなくても、PRのURLをfetchしたときは必ずhtmlを保存するし、そこからstatusを算出するときにjsonを生成して保存する。もしこの機能が動作していないなら、生成をやめてuserに報告すること
+- logs/pr/ 配下のファイル名は `{repo_name}_{pr_number}.html` / `.json` とすること。ownerはファイル名に含めないこと。このアプリは常時ownerが単一になる設計のため、ownerをファイル名に含める必要はなく、シンプルさを優先する

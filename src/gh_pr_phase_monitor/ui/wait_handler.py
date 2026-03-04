@@ -17,7 +17,7 @@ from ..core.time_utils import format_elapsed_time
 def _log_self_update_error(exc: Exception) -> None:
     """Log self-update errors without raising, mirroring main loop behavior."""
     try:
-        from .main import log_error_to_file
+        from ..main import log_error_to_file
 
         log_error_to_file("Auto-update callback failed during wait", exc)
     except Exception:

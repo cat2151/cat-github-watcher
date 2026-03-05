@@ -288,6 +288,12 @@ def record_reaction_snapshot(
         if captured_status["statuses"]:
             latest_llm_statuses = captured_status["statuses"]
             pr["llm_statuses"] = latest_llm_statuses
+        if pr_url:
+            _is_draft = pr.get("isDraft", False)
+            save_html_to_logs(
+                html_content, pr_url,
+                analysis=_build_logs_analysis(pr_url, _is_draft, captured_status.get("statuses", [])),
+            )
 
     if fetched_html is None and pr_url and should_fetch_html:
         # Fetch HTML when needed for deduplication or status capture

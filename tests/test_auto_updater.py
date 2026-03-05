@@ -201,7 +201,7 @@ def test_run_startup_self_update_foreground_prints_and_no_update(monkeypatch, ca
 
     captured = capsys.readouterr()
     assert "Auto-update" in captured.out
-    assert "up to date" in captured.out
+    assert "check complete" in captured.out
 
 
 def test_run_startup_self_update_foreground_prints_and_update_applied(monkeypatch, capsys):

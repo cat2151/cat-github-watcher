@@ -187,13 +187,13 @@ def run_startup_self_update_foreground(repo_root: Path | None = None) -> None:
     ユーザーが起動直後にアップデートの状況を把握できるよう、主要なステップを標準出力に出力する。
     更新が見つかった場合は maybe_self_update() 内でアプリを再起動する。
     """
-    print("Auto-update: checking for updates...")
+    print("Auto-update: checking for updates...", flush=True)
     try:
         updated = maybe_self_update(repo_root=repo_root)
         if not updated:
-            print("Auto-update: already up to date.")
+            print("Auto-update: check complete (no update applied).", flush=True)
     except Exception as e:
-        print(f"Auto-update: check failed: {e}")
+        print(f"Auto-update: check failed: {e}", flush=True)
 
 
 def start_startup_self_update_check(repo_root: Path | None = None) -> None:

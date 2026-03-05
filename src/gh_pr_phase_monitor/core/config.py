@@ -317,6 +317,16 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
             config["enable_auto_update"] = DEFAULT_ENABLE_AUTO_UPDATE
     else:
         config["enable_auto_update"] = DEFAULT_ENABLE_AUTO_UPDATE
+    if "startup_auto_update_foreground" in config:
+        try:
+            config["startup_auto_update_foreground"] = _validate_boolean_flag(
+                config["startup_auto_update_foreground"], "startup_auto_update_foreground"
+            )
+        except ValueError as e:
+            print(f"Warning: {e}. Using default value: {DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND}")
+            config["startup_auto_update_foreground"] = DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND
+    else:
+        config["startup_auto_update_foreground"] = DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND
     if "auto_git_pull" in config:
         try:
             config["auto_git_pull"] = _validate_boolean_flag(config["auto_git_pull"], "auto_git_pull")

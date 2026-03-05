@@ -7,18 +7,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from .llm_status_extractor import _extract_llm_statuses
-from .phase_detector import (
+from ..html.llm_status_extractor import _extract_llm_statuses
+from ..phase_detector import (
     PHASE_LLM_WORKING,
     has_comments_with_reactions,
     llm_working_from_statuses,
     update_comment_reaction_resolution,
 )
-from .pr_html_fetcher import _fetch_pr_html, _html_to_simple_markdown
-from .pr_html_analyzer import _determine_html_status
-from .pr_html_saver import save_html_to_logs
-from ..monitor.snapshot_markdown import _build_markdown, _prepare_markdown_raw, _summarize_reactions
-from ..monitor.snapshot_path_utils import _build_snapshot_dir_name, _format_timestamp
+from ..html.pr_html_fetcher import _fetch_pr_html, _html_to_simple_markdown
+from ..html.pr_html_analyzer import _determine_html_status
+from ..html.pr_html_saver import save_html_to_logs
+from ...monitor.snapshot_markdown import _build_markdown, _prepare_markdown_raw, _summarize_reactions
+from ...monitor.snapshot_path_utils import _build_snapshot_dir_name, _format_timestamp
 
 # Snapshots are stored alongside screenshots (not inside) for easy discovery
 DEFAULT_SNAPSHOT_BASE_DIR = Path("pr_phase_snapshots")
@@ -221,6 +221,17 @@ def record_reaction_snapshot(
         Paths for created snapshot files, or None when no snapshot is recorded.
     """
     if phase != PHASE_LLM_WORKING:
+        # すべてのopenなPRをlogs/prに保存する（phaseに関わらず）
+        pr_url = pr.get("url", "")
+        if pr_url:
+            fetched = html_content or _fetch_pr_html(pr_url)
+            if fetched:
+                is_draft = pr.get("isDraft", False)
+                statuses = pr.get("llm_statuses", [])
+                save_html_to_logs(
+                    fetched, pr_url,
+                    analysis=_build_logs_analysis(pr_url, is_draft, statuses),
+                )
         return None
 
     comment_nodes = pr.get("commentNodes", pr.get("comments", []))

@@ -301,7 +301,7 @@ def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
 
     # llm_statusesにreviewingイベントがない場合: Feature B（GraphQL）を使用するか確認
     if _use_graphql_phase_detection:
-        from .phase_detector_graphql import _determine_phase_from_graphql_data
+        from .legacy.phase_detector_graphql import _determine_phase_from_graphql_data
 
         return _determine_phase_from_graphql_data(pr)
 

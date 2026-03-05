@@ -8,12 +8,12 @@ from unittest.mock import patch
 
 import pytest
 
-from src.gh_pr_phase_monitor.phase.llm_status_extractor import _extract_llm_statuses
-from src.gh_pr_phase_monitor.phase.pr_data_recorder import (
+from src.gh_pr_phase_monitor.phase.html.llm_status_extractor import _extract_llm_statuses
+from src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder import (
     reset_snapshot_cache,
     save_pr_snapshot,
 )
-from src.gh_pr_phase_monitor.phase.pr_html_fetcher import _fetch_pr_html, _html_to_simple_markdown
+from src.gh_pr_phase_monitor.phase.html.pr_html_fetcher import _fetch_pr_html, _html_to_simple_markdown
 
 
 def _sample_pr():
@@ -49,7 +49,7 @@ def test_fetch_pr_html_mocked():
     """Test HTML fetching with mock"""
     mock_html = "<html><body><h1>Test PR</h1></body></html>"
 
-    with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.phase.html.pr_html_fetcher.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = mock_html + "\n200"
 
@@ -59,7 +59,7 @@ def test_fetch_pr_html_mocked():
 
 def test_fetch_pr_html_failure():
     """Test HTML fetching failure handling"""
-    with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.phase.html.pr_html_fetcher.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 1
         mock_run.return_value.stdout = ""
 
@@ -71,7 +71,7 @@ def test_fetch_pr_html_non_2xx_returns_none():
     """Test that HTTP non-2xx responses return None"""
     error_html = "<html><body>Not Found</body></html>"
 
-    with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.phase.html.pr_html_fetcher.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = error_html + "\n404"
 
@@ -98,7 +98,7 @@ def test_save_pr_snapshot_with_html(tmp_path):
     """
     current_time = datetime(2024, 1, 2, 3, 4, 5)
 
-    with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.phase.html.pr_html_fetcher.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = mock_html + "\n200"
 
@@ -300,7 +300,7 @@ def test_save_pr_snapshot_without_html_when_fetch_fails(tmp_path):
     """Test that save_pr_snapshot works even when HTML fetch fails"""
     current_time = datetime(2024, 1, 2, 3, 4, 5)
 
-    with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.phase.html.pr_html_fetcher.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 1
         mock_run.return_value.stdout = ""
 
@@ -325,7 +325,7 @@ def test_save_pr_snapshot_with_fetch_html_disabled(tmp_path):
     """Test that save_pr_snapshot skips HTML fetch when fetch_html=False"""
     current_time = datetime(2024, 1, 2, 3, 4, 5)
 
-    with patch("src.gh_pr_phase_monitor.phase.pr_html_fetcher.subprocess.run") as mock_run:
+    with patch("src.gh_pr_phase_monitor.phase.html.pr_html_fetcher.subprocess.run") as mock_run:
         result = save_pr_snapshot(
             _sample_pr(),
             reason="comment_reactions_detected",

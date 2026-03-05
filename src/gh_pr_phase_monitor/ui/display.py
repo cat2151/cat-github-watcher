@@ -68,15 +68,19 @@ def display_status_summary(
         # Calculate elapsed time
         elapsed = current_time - get_pr_state_time(url, phase)
 
-        # Display phase with colors using the same format
-        progress_label = get_llm_working_progress_label(pr) if phase == PHASE_LLM_WORKING else None
-        phase_display = colorize_phase(phase, progress_label)
+        # Display phase/status with colors using the same format as process_pr()
+        html_status = pr.get("html_status")
+        llm_statuses = pr.get("llm_statuses") or []
+        if html_status:
+            # 1A~3Aのstatusを直接表示する（HTMLによるstatus判定機能モード）
+            phase_display = colorize_phase(html_status)
+            status_suffix = f" (Latest LLM status: {llm_statuses[-1]})" if llm_statuses else ""
+        else:
+            # フォールバック: 従来のphaseベースの表示
+            progress_label = get_llm_working_progress_label(pr) if phase == PHASE_LLM_WORKING else None
+            phase_display = colorize_phase(phase, progress_label)
+            status_suffix = f" (Latest LLM status: {llm_statuses[-1]})" if phase == PHASE_LLM_WORKING and llm_statuses else ""
         author_suffix = f" (Author: {author_login})" if display_pr_author else ""
-        status_suffix = ""
-        if phase == PHASE_LLM_WORKING:
-            llm_statuses = pr.get("llm_statuses") or []
-            if llm_statuses:
-                status_suffix = f" (Latest LLM status: {llm_statuses[-1]})"
         base_line = f"  [{repo_name}] {phase_display}{status_suffix} {title}{author_suffix}"
 
         # Show elapsed time if state has persisted for more than 60 seconds

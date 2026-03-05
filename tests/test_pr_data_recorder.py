@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -11,7 +12,7 @@ from src.gh_pr_phase_monitor.phase.phase_detector import (
     determine_phase,
     reset_comment_reaction_resolution_cache,
 )
-from src.gh_pr_phase_monitor.phase.pr_data_recorder import (
+from src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder import (
     DEFAULT_SNAPSHOT_BASE_DIR,
     record_reaction_snapshot,
     reset_snapshot_cache,
@@ -90,6 +91,43 @@ def test_record_reaction_snapshot_respects_phase_and_reactions(tmp_path):
     result = record_reaction_snapshot(pr, phase=PHASE_LLM_WORKING, base_dir=tmp_path, current_time=current_time)
     assert result is not None
     assert result["markdown_path"].exists()
+
+
+def test_record_reaction_snapshot_saves_html_to_logs_for_non_llm_working_phase(tmp_path):
+    """非PHASE_LLM_WORKINGのopenなPRもlogs/prに保存されることを確認する。"""
+    pr = _sample_pr()
+    pr_url = pr["url"]
+
+    with patch("src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder._fetch_pr_html") as mock_fetch:
+        with patch("src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder.save_html_to_logs") as mock_save:
+            mock_fetch.return_value = "<html><body>PR page</body></html>"
+            result = record_reaction_snapshot(
+                pr, phase="phase1", base_dir=tmp_path, current_time=datetime(2024, 1, 2, 3, 4, 5),
+                html_content=None,
+            )
+            assert result is None
+            mock_fetch.assert_called_once_with(pr_url)
+            mock_save.assert_called_once()
+            assert mock_save.call_args[0][1] == pr_url
+
+
+def test_record_reaction_snapshot_saves_html_to_logs_using_html_content_for_non_llm_working(tmp_path):
+    """html_content が与えられた場合はネットワーク取得なしでlogs/prに保存されることを確認する。"""
+    pr = _sample_pr()
+    pre_fetched = "<html><body>Pre-fetched PR page</body></html>"
+
+    with patch("src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder._fetch_pr_html") as mock_fetch:
+        with patch("src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder.save_html_to_logs") as mock_save:
+            result = record_reaction_snapshot(
+                pr, phase="phase2", base_dir=tmp_path, current_time=datetime(2024, 1, 2, 3, 4, 5),
+                html_content=pre_fetched,
+            )
+            assert result is None
+            mock_fetch.assert_not_called()
+            mock_save.assert_called_once()
+            call_args = mock_save.call_args
+            assert call_args[0][0] == pre_fetched
+            assert call_args[0][1] == pr["url"]
 
 
 def test_record_reaction_snapshot_sets_llm_statuses_on_pr(tmp_path):

@@ -4,7 +4,7 @@ Tests for pr_html_analyzer module
 
 import json
 
-from src.gh_pr_phase_monitor.phase.pr_html_analyzer import (
+from src.gh_pr_phase_monitor.phase.html.pr_html_analyzer import (
     PHASE1A_DRAFT_LLM_WORKING,
     PHASE1B_DRAFT_LLM_FINISHED_WORK,
     PHASE1C_REVIEW_IN_PROGRESS,

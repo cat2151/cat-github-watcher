@@ -221,6 +221,17 @@ def record_reaction_snapshot(
         Paths for created snapshot files, or None when no snapshot is recorded.
     """
     if phase != PHASE_LLM_WORKING:
+        # すべてのopenなPRをlogs/prに保存する（phaseに関わらず）
+        pr_url = pr.get("url", "")
+        if pr_url:
+            fetched = html_content or _fetch_pr_html(pr_url)
+            if fetched:
+                is_draft = pr.get("isDraft", False)
+                statuses = pr.get("llm_statuses", [])
+                save_html_to_logs(
+                    fetched, pr_url,
+                    analysis=_build_logs_analysis(pr_url, is_draft, statuses),
+                )
         return None
 
     comment_nodes = pr.get("commentNodes", pr.get("comments", []))

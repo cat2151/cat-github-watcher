@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .llm_status_extractor import _extract_llm_statuses
-from .phase_detector import PHASE_3, _phase_from_llm_statuses, llm_working_from_statuses
+from ..phase_detector import PHASE_3, _phase_from_llm_statuses, llm_working_from_statuses
 from .pr_html_fetcher import _html_to_simple_markdown
 
 # 6種のステータス定数

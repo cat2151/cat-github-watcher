@@ -12,7 +12,7 @@ from src.gh_pr_phase_monitor.phase.phase_detector import (
     determine_phase,
     reset_comment_reaction_resolution_cache,
 )
-from src.gh_pr_phase_monitor.phase.pr_data_recorder import (
+from src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder import (
     DEFAULT_SNAPSHOT_BASE_DIR,
     record_reaction_snapshot,
     reset_snapshot_cache,
@@ -98,8 +98,8 @@ def test_record_reaction_snapshot_saves_html_to_logs_for_non_llm_working_phase(t
     pr = _sample_pr()
     pr_url = pr["url"]
 
-    with patch("src.gh_pr_phase_monitor.phase.pr_data_recorder._fetch_pr_html") as mock_fetch:
-        with patch("src.gh_pr_phase_monitor.phase.pr_data_recorder.save_html_to_logs") as mock_save:
+    with patch("src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder._fetch_pr_html") as mock_fetch:
+        with patch("src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder.save_html_to_logs") as mock_save:
             mock_fetch.return_value = "<html><body>PR page</body></html>"
             result = record_reaction_snapshot(
                 pr, phase="phase1", base_dir=tmp_path, current_time=datetime(2024, 1, 2, 3, 4, 5),
@@ -116,8 +116,8 @@ def test_record_reaction_snapshot_saves_html_to_logs_using_html_content_for_non_
     pr = _sample_pr()
     pre_fetched = "<html><body>Pre-fetched PR page</body></html>"
 
-    with patch("src.gh_pr_phase_monitor.phase.pr_data_recorder._fetch_pr_html") as mock_fetch:
-        with patch("src.gh_pr_phase_monitor.phase.pr_data_recorder.save_html_to_logs") as mock_save:
+    with patch("src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder._fetch_pr_html") as mock_fetch:
+        with patch("src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder.save_html_to_logs") as mock_save:
             result = record_reaction_snapshot(
                 pr, phase="phase2", base_dir=tmp_path, current_time=datetime(2024, 1, 2, 3, 4, 5),
                 html_content=pre_fetched,

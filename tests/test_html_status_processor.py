@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-from src.gh_pr_phase_monitor.phase.html_status_processor import fetch_and_analyze_pr_html
-from src.gh_pr_phase_monitor.phase.pr_html_analyzer import (
+from src.gh_pr_phase_monitor.phase.html.html_status_processor import fetch_and_analyze_pr_html
+from src.gh_pr_phase_monitor.phase.html.pr_html_analyzer import (
     PHASE1A_DRAFT_LLM_WORKING,
     PHASE1B_DRAFT_LLM_FINISHED_WORK,
     PHASE1C_REVIEW_IN_PROGRESS,
@@ -31,7 +31,7 @@ def test_fetch_and_analyze_pr_html_returns_none_when_no_url():
 
 def test_fetch_and_analyze_pr_html_returns_none_when_fetch_fails():
     pr = _make_pr()
-    with patch("src.gh_pr_phase_monitor.phase.html_status_processor._fetch_pr_html") as mock_fetch:
+    with patch("src.gh_pr_phase_monitor.phase.html.html_status_processor._fetch_pr_html") as mock_fetch:
         mock_fetch.return_value = None
         result = fetch_and_analyze_pr_html(pr)
         assert result is None
@@ -50,9 +50,9 @@ def test_fetch_and_analyze_pr_html_saves_html_and_updates_pr():
     }
 
     with (
-        patch("src.gh_pr_phase_monitor.phase.html_status_processor._fetch_pr_html") as mock_fetch,
-        patch("src.gh_pr_phase_monitor.phase.html_status_processor.analyze_pr_html") as mock_analyze,
-        patch("src.gh_pr_phase_monitor.phase.html_status_processor.save_html_to_logs") as mock_save,
+        patch("src.gh_pr_phase_monitor.phase.html.html_status_processor._fetch_pr_html") as mock_fetch,
+        patch("src.gh_pr_phase_monitor.phase.html.html_status_processor.analyze_pr_html") as mock_analyze,
+        patch("src.gh_pr_phase_monitor.phase.html.html_status_processor.save_html_to_logs") as mock_save,
     ):
         mock_fetch.return_value = mock_html
         mock_analyze.return_value = mock_analysis
@@ -87,9 +87,9 @@ def test_fetch_and_analyze_pr_html_called_for_all_phases():
         }
 
         with (
-            patch("src.gh_pr_phase_monitor.phase.html_status_processor._fetch_pr_html") as mock_fetch,
-            patch("src.gh_pr_phase_monitor.phase.html_status_processor.analyze_pr_html") as mock_analyze,
-            patch("src.gh_pr_phase_monitor.phase.html_status_processor.save_html_to_logs") as mock_save,
+            patch("src.gh_pr_phase_monitor.phase.html.html_status_processor._fetch_pr_html") as mock_fetch,
+            patch("src.gh_pr_phase_monitor.phase.html.html_status_processor.analyze_pr_html") as mock_analyze,
+            patch("src.gh_pr_phase_monitor.phase.html.html_status_processor.save_html_to_logs") as mock_save,
         ):
             mock_fetch.return_value = mock_html
             mock_analyze.return_value = mock_analysis
@@ -127,9 +127,9 @@ def test_fetch_and_analyze_pr_html_updates_llm_statuses_for_phase_detection():
     }
 
     with (
-        patch("src.gh_pr_phase_monitor.phase.html_status_processor._fetch_pr_html") as mock_fetch,
-        patch("src.gh_pr_phase_monitor.phase.html_status_processor.analyze_pr_html") as mock_analyze,
-        patch("src.gh_pr_phase_monitor.phase.html_status_processor.save_html_to_logs"),
+        patch("src.gh_pr_phase_monitor.phase.html.html_status_processor._fetch_pr_html") as mock_fetch,
+        patch("src.gh_pr_phase_monitor.phase.html.html_status_processor.analyze_pr_html") as mock_analyze,
+        patch("src.gh_pr_phase_monitor.phase.html.html_status_processor.save_html_to_logs"),
     ):
         mock_fetch.return_value = "<html><body>PR content</body></html>"
         mock_analyze.return_value = mock_analysis

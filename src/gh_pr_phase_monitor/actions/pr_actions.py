@@ -31,7 +31,7 @@ from ..phase.phase_detector import (
     determine_phase,
     get_llm_working_progress_label,
 )
-from ..phase.pr_html_analyzer import (
+from ..phase.html.pr_html_analyzer import (
     PHASE1B_DRAFT_LLM_FINISHED_WORK,
     PHASE2A_REVIEW_COMPLETED,
     PHASE3A_LLM_FEEDBACK_FINISHED_WORK,

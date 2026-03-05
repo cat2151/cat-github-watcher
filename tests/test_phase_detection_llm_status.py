@@ -10,7 +10,7 @@ from src.gh_pr_phase_monitor.phase.phase_detector import (
     PHASE_LLM_WORKING,
     reset_comment_reaction_resolution_cache,
 )
-from src.gh_pr_phase_monitor.phase.pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
+from src.gh_pr_phase_monitor.phase.legacy.pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
 
 
 class TestDeterminePhaseWithLLMStatus:

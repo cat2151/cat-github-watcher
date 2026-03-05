@@ -11,7 +11,7 @@ Future direction: deprecation.
 
 from typing import Any, Dict
 
-from .phase_detector import PHASE_2, PHASE_3, PHASE_LLM_WORKING, has_unresolved_review_threads
+from ..phase_detector import PHASE_2, PHASE_3, PHASE_LLM_WORKING, has_unresolved_review_threads
 
 
 def _determine_phase_from_graphql_data(pr: Dict[str, Any]) -> str:

@@ -39,7 +39,7 @@ from .monitor.monitor import check_no_state_change_timeout
 from .monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
 from .phase.phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase, set_use_graphql_phase_detection
 from .actions.pr_actions import process_pr
-from .phase.html_status_processor import fetch_and_analyze_pr_html
+from .phase.html.html_status_processor import fetch_and_analyze_pr_html
 from .github.rate_limit_handler import (
     _check_rate_limit_throttle,
     _display_rate_limit_usage,
@@ -72,7 +72,7 @@ def main():
     """Main execution function"""
     # --fetch-pr-html <URL> オプション: PR HTMLを取得してlogs/pr/に保存して終了
     if len(sys.argv) >= 3 and sys.argv[1] == "--fetch-pr-html":
-        from .phase.pr_html_saver import save_pr_html
+        from .phase.html.pr_html_saver import save_pr_html
 
         result = save_pr_html(sys.argv[2])
         sys.exit(0 if result else 1)

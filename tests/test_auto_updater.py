@@ -191,3 +191,47 @@ def test_concurrent_calls_do_not_double_update(monkeypatch):
 
     # ロック + インターバル再チェックにより pull は1回のみ実行される
     assert pull_count["n"] == 1
+
+
+def test_run_startup_self_update_foreground_prints_and_no_update(monkeypatch, capsys):
+    """run_startup_self_update_foreground() がアップデートなしの場合に起動チェックメッセージを表示することを確認。"""
+    monkeypatch.setattr(auto_updater, "maybe_self_update", lambda repo_root=None: False)
+
+    auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
+
+    captured = capsys.readouterr()
+    assert "Auto-update" in captured.out
+    assert "check complete" in captured.out
+
+
+def test_run_startup_self_update_foreground_prints_and_update_applied(monkeypatch, capsys):
+    """run_startup_self_update_foreground() がアップデートありの場合にチェックメッセージを表示することを確認。"""
+    restarted = []
+    monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
+    monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: "abc")
+    monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "def")
+    monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
+    monkeypatch.setattr(auto_updater, "_pull_fast_forward", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(auto_updater, "restart_application", lambda: restarted.append(True))
+
+    auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
+
+    captured = capsys.readouterr()
+    assert "Auto-update" in captured.out
+    assert restarted, "restart_application should have been called"
+
+
+def test_run_startup_self_update_foreground_swallows_exceptions(monkeypatch, capsys):
+    """run_startup_self_update_foreground() が例外をキャッチして出力し、クラッシュしないことを確認。"""
+
+    def raise_error(repo_root=None):
+        raise RuntimeError("simulated error")
+
+    monkeypatch.setattr(auto_updater, "maybe_self_update", raise_error)
+
+    auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
+
+    captured = capsys.readouterr()
+    assert "Auto-update" in captured.out
+    assert "failed" in captured.out

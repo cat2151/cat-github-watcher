@@ -13,12 +13,14 @@ from .monitor.auto_updater import (
     UPDATE_CHECK_INTERVAL_SECONDS,
     apply_startup_restart_if_needed,
     maybe_self_update,
+    run_startup_self_update_foreground,
     start_startup_self_update_check,
 )
 from .core.config import (
     DEFAULT_ENABLE_AUTO_UPDATE,
     DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
+    DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND,
     get_config_mtime,
     load_config,
     parse_interval,
@@ -125,9 +127,12 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    # 起動直後に別スレッドで自己リポジトリのアップデートチェックを一度実行
+    # 起動直後に自己リポジトリのアップデートチェックを実行
     if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE):
-        start_startup_self_update_check()
+        if config.get("startup_auto_update_foreground", DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND):
+            run_startup_self_update_foreground()
+        else:
+            start_startup_self_update_check()
 
     # Infinite monitoring loop
     iteration = 0

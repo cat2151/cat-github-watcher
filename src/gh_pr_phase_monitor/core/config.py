@@ -72,6 +72,12 @@ DEFAULT_DISPLAY_LLM_STATUS_TIMELINE = False
 # Default setting for auto-update (disabled by default for safety)
 DEFAULT_ENABLE_AUTO_UPDATE = False
 
+# Default mode for startup auto-update: foreground (main thread with explicit prints).
+# When True, auto-update runs synchronously in the main thread before the monitoring loop,
+# so users immediately see the update status at startup.
+# Set to false in config.toml to use the legacy background-thread mode.
+DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND = True
+
 # Default setting for saving pr_phase_snapshots (disabled by default for safety/privacy)
 DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS = False
 
@@ -311,6 +317,16 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
             config["enable_auto_update"] = DEFAULT_ENABLE_AUTO_UPDATE
     else:
         config["enable_auto_update"] = DEFAULT_ENABLE_AUTO_UPDATE
+    if "startup_auto_update_foreground" in config:
+        try:
+            config["startup_auto_update_foreground"] = _validate_boolean_flag(
+                config["startup_auto_update_foreground"], "startup_auto_update_foreground"
+            )
+        except ValueError as e:
+            print(f"Warning: {e}. Using default value: {DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND}")
+            config["startup_auto_update_foreground"] = DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND
+    else:
+        config["startup_auto_update_foreground"] = DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND
     if "auto_git_pull" in config:
         try:
             config["auto_git_pull"] = _validate_boolean_flag(config["auto_git_pull"], "auto_git_pull")

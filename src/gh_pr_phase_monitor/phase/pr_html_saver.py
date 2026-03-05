@@ -12,16 +12,21 @@ from .pr_html_analyzer import analyze_pr_html, save_analysis_json
 from .pr_html_fetcher import _fetch_pr_html
 
 
-def _write_if_changed(path: Path, content: str) -> None:
-    """内容が変わったときだけファイルに書き込む。"""
+def _write_if_changed(path: Path, content: str) -> bool:
+    """内容が変わったときだけファイルに書き込む。
+
+    Returns:
+        True if the file was written, False if skipped (content unchanged).
+    """
     if path.exists():
         try:
             if path.read_text(encoding="utf-8") == content:
-                return
+                return False
         except OSError:
             # 読み取り失敗時は上書きして最新状態に復元する
             pass
     path.write_text(content, encoding="utf-8")
+    return True
 
 DEFAULT_OUTPUT_DIR = Path("logs/pr")
 
@@ -85,12 +90,19 @@ def save_html_to_logs(
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"{repo_name}_{pr_number}.html"
 
-    _write_if_changed(output_file, html)
+    if _write_if_changed(output_file, html):
+        print(f"保存: {output_file}")
+    else:
+        print(f"スキップ（変更なし）: {output_file}")
 
     # HTML解析してstatusを算出するための元データJSONを生成・保存
     if analysis is None:
         analysis = analyze_pr_html(html, pr_url)
-    _write_if_changed(output_file.with_suffix(".json"), json.dumps(analysis, ensure_ascii=False, indent=2))
+    json_file = output_file.with_suffix(".json")
+    if _write_if_changed(json_file, json.dumps(analysis, ensure_ascii=False, indent=2)):
+        print(f"保存: {json_file}")
+    else:
+        print(f"スキップ（変更なし）: {json_file}")
 
     return output_file
 

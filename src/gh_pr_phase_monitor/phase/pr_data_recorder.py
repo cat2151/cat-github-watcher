@@ -250,11 +250,10 @@ def record_reaction_snapshot(
                 captured = _capture_llm_statuses(fetched, html_md)
                 if captured.get("statuses"):
                     pr["llm_statuses"] = captured["statuses"]
-                if enable_snapshots:
-                    save_html_to_logs(
-                        fetched, pr_url,
-                        analysis=_build_logs_analysis(pr_url, is_draft, captured.get("statuses", [])),
-                    )
+                save_html_to_logs(
+                    fetched, pr_url,
+                    analysis=_build_logs_analysis(pr_url, is_draft, captured.get("statuses", [])),
+                )
         return None
 
     # Check once flag: prevent duplicate recording within the same iteration
@@ -289,6 +288,12 @@ def record_reaction_snapshot(
         if captured_status["statuses"]:
             latest_llm_statuses = captured_status["statuses"]
             pr["llm_statuses"] = latest_llm_statuses
+        if pr_url:
+            _is_draft = pr.get("isDraft", False)
+            save_html_to_logs(
+                html_content, pr_url,
+                analysis=_build_logs_analysis(pr_url, _is_draft, captured_status.get("statuses", [])),
+            )
 
     if fetched_html is None and pr_url and should_fetch_html:
         # Fetch HTML when needed for deduplication or status capture
@@ -301,12 +306,11 @@ def record_reaction_snapshot(
             if captured_status["statuses"]:
                 latest_llm_statuses = captured_status["statuses"]
                 pr["llm_statuses"] = latest_llm_statuses
-            if enable_snapshots:
-                _is_draft = pr.get("isDraft", False)
-                save_html_to_logs(
-                    fetched_html, pr_url,
-                    analysis=_build_logs_analysis(pr_url, _is_draft, captured_status.get("statuses", [])),
-                )
+            _is_draft = pr.get("isDraft", False)
+            save_html_to_logs(
+                fetched_html, pr_url,
+                analysis=_build_logs_analysis(pr_url, _is_draft, captured_status.get("statuses", [])),
+            )
 
     # Check if content has changed (compare markdown instead of raw HTML)
     html_changed = current_html_md != previous_html_md
@@ -367,6 +371,11 @@ def record_reaction_snapshot(
             if captured_status["statuses"]:
                 latest_llm_statuses = captured_status["statuses"]
                 pr["llm_statuses"] = latest_llm_statuses
+            _is_draft = pr.get("isDraft", False)
+            save_html_to_logs(
+                saved_html, pr_url,
+                analysis=_build_logs_analysis(pr_url, _is_draft, captured_status.get("statuses", [])),
+            )
 
     # Update reaction resolution cache based on HTML snapshot content
     if current_html_md:

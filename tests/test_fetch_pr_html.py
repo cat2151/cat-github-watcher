@@ -164,6 +164,25 @@ class TestSaveHtmlToLogs:
         assert result is not None
         assert nested.exists()
 
+    def test_prints_saved_when_new_file(self, tmp_path, capsys):
+        html = "<html><body>new PR</body></html>"
+        url = "https://github.com/cat2151/my-repo/pull/9"
+        save_html_to_logs(html, url, output_dir=tmp_path)
+        captured = capsys.readouterr()
+        assert captured.out.count("保存") == 2  # once for HTML, once for JSON
+        assert "スキップ" not in captured.out
+
+    def test_prints_skipped_when_content_unchanged(self, tmp_path, capsys):
+        html = "<html><body>unchanged</body></html>"
+        url = "https://github.com/cat2151/my-repo/pull/10"
+        analysis = {"pr_url": url, "is_draft": False, "llm_statuses": [], "status": "PHASE1C_REVIEW_IN_PROGRESS"}
+        save_html_to_logs(html, url, analysis=analysis, output_dir=tmp_path)
+        capsys.readouterr()  # discard first-write output
+        # Second call with identical content should print skip messages for both HTML and JSON
+        save_html_to_logs(html, url, analysis=analysis, output_dir=tmp_path)
+        captured = capsys.readouterr()
+        assert captured.out.count("スキップ") == 2  # once for HTML, once for JSON
+
 
 class TestMainFetchPrHtmlOption:
     """Tests for --fetch-pr-html option in main.py"""

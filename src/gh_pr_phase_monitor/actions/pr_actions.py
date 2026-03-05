@@ -31,6 +31,11 @@ from ..phase.phase_detector import (
     determine_phase,
     get_llm_working_progress_label,
 )
+from ..phase.pr_html_analyzer import (
+    PHASE1B_DRAFT_LLM_FINISHED_WORK,
+    PHASE2A_REVIEW_COMPLETED,
+    PHASE3A_LLM_FEEDBACK_FINISHED_WORK,
+)
 
 # Track which PRs have had their browser opened: set of (url, phase) tuples
 _browser_opened: Set[Tuple[str, str]] = set()
@@ -143,25 +148,33 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
     if phase is None:
         phase = determine_phase(pr)
 
-    # Display phase with colors
+    # html_status (1A~3A) が設定されている場合はそれを優先して表示・分岐に使用する
+    html_status = pr.get("html_status")
+
+    # Display phase/status with colors
     llm_statuses = pr.get("llm_statuses") or []
-    progress_label = get_llm_working_progress_label(pr) if phase == PHASE_LLM_WORKING else None
-    phase_display = colorize_phase(phase, progress_label)
-    latest_llm_status = ""
-    if phase == PHASE_LLM_WORKING:
-        if llm_statuses:
-            latest_llm_status = f" (Latest LLM status: {llm_statuses[-1]})"
+    if html_status:
+        # 1A~3Aのstatusを直接表示する（HTMLによるstatus判定機能モード）
+        phase_display = colorize_phase(html_status)
+        latest_llm_status = f" (Latest LLM status: {llm_statuses[-1]})" if llm_statuses else ""
+    else:
+        # フォールバック: 従来のphaseベースの表示
+        progress_label = get_llm_working_progress_label(pr) if phase == PHASE_LLM_WORKING else None
+        phase_display = colorize_phase(phase, progress_label)
+        latest_llm_status = f" (Latest LLM status: {llm_statuses[-1]})" if phase == PHASE_LLM_WORKING and llm_statuses else ""
     print(f"  [{repo_name}] {phase_display}{latest_llm_status} {title}")
     print(f"    URL: {colorize_url(url)}")
     if display_pr_author:
         print(f"    Author: {author_login}")
-    if display_llm_status_timeline and phase == PHASE_LLM_WORKING and "completed" in progress_label.lower():
-        print("    LLM status timeline (latest last):")
-        if llm_statuses:
-            for idx, status in enumerate(llm_statuses, start=1):
-                print(f"      {idx}. {status}")
-        else:
-            print("      (no captured LLM statuses)")
+    if not html_status and display_llm_status_timeline and phase == PHASE_LLM_WORKING:
+        progress_label = get_llm_working_progress_label(pr)
+        if progress_label and "completed" in progress_label.lower():
+            print("    LLM status timeline (latest last):")
+            if llm_statuses:
+                for idx, status in enumerate(llm_statuses, start=1):
+                    print(f"      {idx}. {status}")
+            else:
+                print("      (no captured LLM statuses)")
 
     # Resolve execution config for this repository
     if config:
@@ -195,8 +208,19 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         else:
             print("    [DRY-RUN] Would post PR title fix comment (enable_execution_pr_title_fix_comment=false)")
 
-    # Mark PR as ready for review when in phase 1
-    if phase == PHASE_1:
+    # 1A~3Aのstatusを直接利用した分岐（HTMLによるstatus判定機能モード）
+    # フォールバック: 従来のphaseベースの分岐
+    if html_status:
+        do_phase1_action = html_status == PHASE1B_DRAFT_LLM_FINISHED_WORK
+        do_phase2_action = html_status == PHASE2A_REVIEW_COMPLETED
+        do_phase3_action = html_status == PHASE3A_LLM_FEEDBACK_FINISHED_WORK
+    else:
+        do_phase1_action = phase == PHASE_1
+        do_phase2_action = phase == PHASE_2
+        do_phase3_action = phase == PHASE_3
+
+    # Mark PR as ready for review when in phase 1 / PHASE1B
+    if do_phase1_action:
         # Check if execution is enabled
         execution_enabled = exec_config["enable_execution_phase1_to_phase2"]
         if execution_enabled:
@@ -208,8 +232,8 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         else:
             print("    [DRY-RUN] Would mark PR as ready for review (enable_execution_phase1_to_phase2=false)")
 
-    # Post comment when in phase 2
-    if phase == PHASE_2:
+    # Post comment when in phase 2 / PHASE2A
+    if do_phase2_action:
         # Check if execution is enabled
         execution_enabled = exec_config["enable_execution_phase2_to_phase3"]
         if execution_enabled:
@@ -224,10 +248,12 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
         else:
             print("    [DRY-RUN] Would post comment for phase2 (enable_execution_phase2_to_phase3=false)")
 
-    # Open browser and send notification when in phase 3
-    if phase == PHASE_3:
+    # Open browser and send notification when in phase 3 / PHASE3A
+    if do_phase3_action:
         # Check if browser was already opened for this PR in this phase
-        browser_key = (url, phase)
+        # html_status mode: use html_status as key to be consistent with display
+        phase_key = html_status if html_status else phase
+        browser_key = (url, phase_key)
         if browser_key not in _browser_opened:
             print("    Opening browser...")
             if open_browser(url, config):
@@ -237,11 +263,11 @@ def process_pr(pr: Dict[str, Any], config: Dict[str, Any] = None, phase: str = N
             print("    Browser already opened for this PR, skipping")
 
         # Send notification if configured and not already attempted
-        # Note: Notifications are tracked per (url, phase) tuple, meaning if a PR
+        # Note: Notifications are tracked per (url, phase_key) tuple, meaning if a PR
         # transitions from phase3 to another phase and back to phase3, a new
         # notification will NOT be sent. This prevents duplicate notifications for
         # the same phase of the same PR across monitoring iterations.
-        notification_key = (url, phase)
+        notification_key = (url, phase_key)
 
         # Check if ntfy execution is enabled
         execution_enabled = exec_config["enable_execution_phase3_send_ntfy"]

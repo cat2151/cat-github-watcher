@@ -95,19 +95,19 @@ def colorize_phase(phase: str, llm_progress: str | None = None) -> str:
     """Add color to phase string
 
     Args:
-        phase: Phase string (phase1, phase2, phase3, or LLM working)
+        phase: Phase string (phase1, phase2, phase3, LLM working, or 1A~3A html_status)
         llm_progress: Progress label to prepend for LLM working (optional)
 
     Returns:
         Colorized phase string with ANSI codes
     """
-    if phase == "phase1":
+    if phase in ("phase1", "PHASE1B_DRAFT_LLM_FINISHED_WORK"):
         return f"{Colors.BOLD}{Colors.YELLOW}[{phase}]{Colors.RESET}"
-    elif phase == "phase2":
+    elif phase in ("phase2", "PHASE2A_REVIEW_COMPLETED"):
         return f"{Colors.BOLD}{Colors.CYAN}[{phase}]{Colors.RESET}"
-    elif phase == "phase3":
+    elif phase in ("phase3", "PHASE3A_LLM_FEEDBACK_FINISHED_WORK"):
         return f"{Colors.BOLD}{Colors.GREEN}[{phase}]{Colors.RESET}"
-    else:  # LLM working
+    else:  # LLM working, PHASE1A, PHASE1C, PHASE2B, and other status strings
         label = phase
         if llm_progress:
             label = f"{llm_progress}, {phase}"

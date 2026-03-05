@@ -18,7 +18,6 @@ from .monitor.auto_updater import (
 )
 from .core.config import (
     DEFAULT_ENABLE_AUTO_UPDATE,
-    DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
     DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND,
     get_config_mtime,
@@ -40,7 +39,7 @@ from .monitor.monitor import check_no_state_change_timeout
 from .monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
 from .phase.phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase, set_use_graphql_phase_detection
 from .actions.pr_actions import process_pr
-from .phase.pr_data_recorder import record_reaction_snapshot, reset_snapshot_cache
+from .phase.html_status_processor import fetch_and_analyze_pr_html
 from .github.rate_limit_handler import (
     _check_rate_limit_throttle,
     _display_rate_limit_usage,
@@ -158,9 +157,6 @@ def main():
             log_error_to_file("Failed to fetch pre-iteration rate limit info", rate_limit_error)
             before_rate_limit = None
 
-        # Reset snapshot cache to allow recording new snapshots in this iteration
-        reset_snapshot_cache()
-
         # Initialize variables to track status for summary
         all_prs = []
         pr_phases = []
@@ -203,21 +199,21 @@ def main():
                     print("Processing PRs:")
                     print(f"{'=' * 50}")
 
-                    snapshots_enabled = config.get("enable_pr_phase_snapshots", DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS)
                     # Track phases to detect if all PRs are in "LLM working"
                     for pr in all_prs:
                         try:
-                            phase = determine_phase(pr)
-
+                            # HTMLを取得・解析・保存（メインフロー: phaseに関わらず全PRに対して実行）
                             try:
-                                record_reaction_snapshot(pr, phase, enable_snapshots=snapshots_enabled)
-                                phase = determine_phase(pr)
-                            except Exception as snapshot_error:
-                                print(f"    Failed to capture PR reaction/LLM status data: {snapshot_error}")
+                                fetch_and_analyze_pr_html(pr)
+                            except Exception as html_error:
+                                print(f"    Failed to fetch/analyze HTML for PR: {html_error}")
                                 log_error_to_file(
-                                    f"Failed to capture PR reaction/LLM status data for {pr.get('url', 'unknown')}",
-                                    snapshot_error,
+                                    f"Failed to fetch/analyze HTML for {pr.get('url', 'unknown')}",
+                                    html_error,
                                 )
+
+                            # pr["llm_statuses"] が更新された後にphaseを判定する
+                            phase = determine_phase(pr)
 
                             pr_phases.append(phase)
                             process_pr(pr, config, phase)

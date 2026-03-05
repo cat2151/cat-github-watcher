@@ -383,7 +383,7 @@ def test_display_issues_when_phase3_and_llm_working_mix(
 @patch("src.gh_pr_phase_monitor.main.display_status_summary")
 @patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
 @patch("src.gh_pr_phase_monitor.main.process_pr")
-@patch("src.gh_pr_phase_monitor.main.record_reaction_snapshot")
+@patch("src.gh_pr_phase_monitor.main.fetch_and_analyze_pr_html")
 @patch("src.gh_pr_phase_monitor.main.determine_phase")
 @patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
 @patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
@@ -393,7 +393,7 @@ def test_display_issues_when_llm_working_below_cap_even_with_three_active_prs(
     mock_get_repos,
     mock_get_prs,
     mock_determine_phase,
-    mock_record_snapshot,
+    mock_fetch_html,
     mock_process_pr,
     mock_display_issues,
     mock_display_summary,
@@ -432,7 +432,7 @@ def test_display_issues_when_llm_working_below_cap_even_with_three_active_prs(
 
     mock_get_prs.return_value = prs
     mock_determine_phase.side_effect = lambda pr: pr["phase"]
-    mock_record_snapshot.return_value = None
+    mock_fetch_html.return_value = None
     mock_wait.side_effect = KeyboardInterrupt("Exit test")
 
     from src.gh_pr_phase_monitor.main import main

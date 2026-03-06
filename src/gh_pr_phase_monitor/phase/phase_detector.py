@@ -15,22 +15,6 @@ PHASE_3 = "phase3"
 # Tracks comment reaction signatures that were confirmed as "finished" via HTML snapshot analysis.
 _finished_reaction_signatures: Dict[str, str] = {}
 
-# Feature B (GraphQL-based phase detection) flag.
-# When False (default), only HTML/llm_statuses-based detection (Feature A) is used.
-# Set to True via use_graphql_phase_detection = true in config.toml.
-_use_graphql_phase_detection: bool = False
-
-
-def set_use_graphql_phase_detection(enabled: bool) -> None:
-    """Enable or disable GraphQL-based phase detection (Feature B).
-
-    When disabled (default), phase is determined solely from llm_statuses extracted from HTML.
-    When enabled, falls back to GraphQL reviews/reviewThreads data when llm_statuses lack a
-    reviewing event.
-    """
-    global _use_graphql_phase_detection
-    _use_graphql_phase_detection = enabled
-
 
 def _build_pr_key(pr: Dict[str, Any]) -> str:
     """Build a stable key for tracking reaction resolution state."""
@@ -290,22 +274,13 @@ def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
             return PHASE_LLM_WORKING
         return PHASE_1
 
-    # 非draftPR: llm_statusesを優先シグナルとして使用。
-    # reviewingイベントがある場合、HTMLから抽出したllm_statusesはGraphQLデータより
-    # 正確にフィードバック対応状況を反映する（GraphQLのスレッドは明示的にresolveされない
-    # 限りisResolved: Falseのまま残るため）。
-    # reviewingイベントがない場合（Noneを返す）はFeature B（GraphQL）にフォールバック（要設定）。
+    # 非draftPR: HTMLから抽出したllm_statusesでphase2/3を判定する。
+    # reviewingイベントがある場合のみphase2/3を返す。
     status_phase = _phase_from_llm_statuses(llm_statuses)
     if status_phase is not None:
         return status_phase
 
-    # llm_statusesにreviewingイベントがない場合: Feature B（GraphQL）を使用するか確認
-    if _use_graphql_phase_detection:
-        from .legacy.phase_detector_graphql import _determine_phase_from_graphql_data
-
-        return _determine_phase_from_graphql_data(pr)
-
-    # Feature B無効時（デフォルト）: reviewingイベントなし = LLM working
+    # reviewingイベントなし = LLM working
     return PHASE_LLM_WORKING
 
 

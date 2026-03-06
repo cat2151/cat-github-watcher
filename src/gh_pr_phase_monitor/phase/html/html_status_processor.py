@@ -3,9 +3,6 @@ HTMLによるstatus判定機能モード・メイン処理。
 
 全openなPRに対してHTMLを取得し、1A～3Aのstatusに分類し、
 HTML+JSONをlogs/prに保存する。
-
-GraphQLベースのstatus判定（record_reaction_snapshot / pr_data_recorder）は廃止予定であり、
-このモジュールがその代替となるメイン処理を担う。
 """
 
 from typing import Any, Dict, Optional

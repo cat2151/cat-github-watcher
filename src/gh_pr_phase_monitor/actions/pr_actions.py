@@ -357,6 +357,12 @@ def process_repository(repo_dir: Path, config: Dict[str, Any] = None) -> None:
             # Add repository info to PR for compatibility with process_pr
             # Legacy get_pr_data doesn't include repository info
             pr["repository"] = {"name": str(repo_dir.name), "owner": "Unknown"}
+            # Fetch and analyze HTML to populate llm_statuses before phase detection
+            try:
+                from ..phase.html.html_status_processor import fetch_and_analyze_pr_html
+                fetch_and_analyze_pr_html(pr)
+            except Exception as html_error:
+                print(f"    Failed to fetch/analyze HTML for PR: {html_error}")
             # Delegate per-PR processing to the shared helper to avoid duplication
             process_pr(pr, config)
 

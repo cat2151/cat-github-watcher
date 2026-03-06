@@ -41,7 +41,7 @@ It efficiently monitors PRs in user-owned repositories of authenticated GitHub u
   - Notifies when individual PRs enter phase3.
   - Also notifies when all PRs enter phase3 (message configurable in TOML).
 - **Issue List Display**: If all PRs are "LLM working", displays the top N issues (default: 10, changeable with `issue_display_limit`) for repositories without open PRs.
-- **Self-Update**: If `enable_auto_update = true` is set, it detects GitHub repository updates every minute and automatically pulls and restarts if the working tree is clean and fast-forwardable (disabled by default).
+- **Self-Update**: Always checks for updates at startup and automatically pulls and restarts if an update is available. Setting `enable_auto_update = true` additionally runs update checks every minute during the monitoring loop (disabled by default).
 - **Local Repository Pull Detection**: By default, displays the pullable status of your repositories in the parent directory (Dry-run). Setting `auto_git_pull = true` enables automatic pulling (refer to [cat-repo-auditor](https://github.com/cat2151/cat-repo-auditor) for reference implementation).
 - **Power-Saving Mode**: If no state changes occur, the monitoring interval is automatically extended to reduce API usage (configurable with `no_change_timeout` and `reduced_frequency_interval`).
 - **Verbose Mode**: Displays detailed configuration information during startup and execution to assist in detecting configuration errors (enabled with `verbose`).

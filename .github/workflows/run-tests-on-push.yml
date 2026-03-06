@@ -1,7 +1,9 @@
-name: Run Tests on Pull Request
+name: Run Tests on Push
 
 on:
-  pull_request:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -27,15 +29,16 @@ jobs:
         continue-on-error: true
 
       - name: Create or update issue on test failure
-        if: steps.run-tests.outcome == 'failure' && github.event.pull_request.head.repo.full_name == github.repository
+        if: steps.run-tests.outcome == 'failure'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-          ISSUE_TITLE: "Test failed on PR #${{ github.event.pull_request.number }}"
+          ISSUE_TITLE: "Test failed on push to main"
           ISSUE_BODY: |
-            Tests failed on PR #${{ github.event.pull_request.number }}
+            Tests failed on push to main.
 
-            - PR: ${{ github.event.pull_request.html_url }}
+            - Commit: ${{ github.sha }}
+            - Pusher: ${{ github.actor }}
             - Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           existing_issue_number="$(gh issue list \

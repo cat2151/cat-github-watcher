@@ -20,7 +20,6 @@ def print_config(config: Dict[str, Any]) -> None:
         DEFAULT_ENABLE_AUTO_UPDATE,
         DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS,
         DEFAULT_MAX_LLM_WORKING_PARALLEL,
-        DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND,
     )
 
     print("\n" + "=" * 50)
@@ -45,9 +44,6 @@ def print_config(config: Dict[str, Any]) -> None:
     )
     print(f"  enable_pr_phase_snapshots: {config.get('enable_pr_phase_snapshots', DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS)}")
     print(f"  enable_auto_update: {config.get('enable_auto_update', DEFAULT_ENABLE_AUTO_UPDATE)}")
-    print(
-        f"  startup_auto_update_foreground: {config.get('startup_auto_update_foreground', DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND)}"
-    )
 
     coding_agent = config.get("coding_agent")
     if coding_agent and isinstance(coding_agent, dict):

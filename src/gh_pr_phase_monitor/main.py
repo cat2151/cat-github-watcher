@@ -11,15 +11,12 @@ from pathlib import Path
 
 from .monitor.auto_updater import (
     UPDATE_CHECK_INTERVAL_SECONDS,
-    apply_startup_restart_if_needed,
     maybe_self_update,
     run_startup_self_update_foreground,
-    start_startup_self_update_check,
 )
 from .core.config import (
     DEFAULT_ENABLE_AUTO_UPDATE,
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
-    DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND,
     get_config_mtime,
     load_config,
     parse_interval,
@@ -122,12 +119,8 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    # 起動直後に自己リポジトリのアップデートチェックを実行
-    if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE):
-        if config.get("startup_auto_update_foreground", DEFAULT_STARTUP_AUTO_UPDATE_FOREGROUND):
-            run_startup_self_update_foreground()
-        else:
-            start_startup_self_update_check()
+    # 起動直後に自己リポジトリのアップデートチェックを実行（常に実行）
+    run_startup_self_update_foreground()
 
     # Infinite monitoring loop
     iteration = 0
@@ -137,7 +130,6 @@ def main():
 
         if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE):
             try:
-                apply_startup_restart_if_needed()
                 maybe_self_update()
             except Exception as update_error:
                 log_error_to_file("Auto-update check failed", update_error)

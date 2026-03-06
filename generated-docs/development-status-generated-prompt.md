@@ -1,4 +1,4 @@
-Last updated: 2026-03-06
+Last updated: 2026-03-07
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -210,7 +210,7 @@ Last updated: 2026-03-06
 - .github/workflows/call-daily-project-summary.yml
 - .github/workflows/call-issue-note.yml
 - .github/workflows/call-translate-readme.yml
-- .github/workflows/run-tests-on-pr.yml
+- .github/workflows/run-tests-on-push.yml
 - .gitignore
 - .vscode/settings.json
 - LICENSE
@@ -268,13 +268,13 @@ Last updated: 2026-03-06
 - src/gh_pr_phase_monitor/monitor/snapshot_path_utils.py
 - src/gh_pr_phase_monitor/monitor/state_tracker.py
 - src/gh_pr_phase_monitor/phase/__init__.py
-- src/gh_pr_phase_monitor/phase/llm_status_extractor.py
+- src/gh_pr_phase_monitor/phase/html/__init__.py
+- src/gh_pr_phase_monitor/phase/html/html_status_processor.py
+- src/gh_pr_phase_monitor/phase/html/llm_status_extractor.py
+- src/gh_pr_phase_monitor/phase/html/pr_html_analyzer.py
+- src/gh_pr_phase_monitor/phase/html/pr_html_fetcher.py
+- src/gh_pr_phase_monitor/phase/html/pr_html_saver.py
 - src/gh_pr_phase_monitor/phase/phase_detector.py
-- src/gh_pr_phase_monitor/phase/phase_detector_graphql.py
-- src/gh_pr_phase_monitor/phase/pr_data_recorder.py
-- src/gh_pr_phase_monitor/phase/pr_html_analyzer.py
-- src/gh_pr_phase_monitor/phase/pr_html_fetcher.py
-- src/gh_pr_phase_monitor/phase/pr_html_saver.py
 - src/gh_pr_phase_monitor/ui/__init__.py
 - src/gh_pr_phase_monitor/ui/display.py
 - src/gh_pr_phase_monitor/ui/notification_window.py
@@ -300,6 +300,7 @@ Last updated: 2026-03-06
 - tests/test_has_comments_with_reactions.py
 - tests/test_has_unresolved_review_threads.py
 - tests/test_hot_reload.py
+- tests/test_html_status_processor.py
 - tests/test_html_to_markdown.py
 - tests/test_integration_issue_fetching.py
 - tests/test_interval_contamination_bug.py
@@ -324,9 +325,6 @@ Last updated: 2026-03-06
 - tests/test_pr_actions_dry_run.py
 - tests/test_pr_actions_rulesets_features.py
 - tests/test_pr_actions_with_rulesets.py
-- tests/test_pr_data_recorder.py
-- tests/test_pr_data_recorder_html.py
-- tests/test_pr_data_recorder_json.py
 - tests/test_pr_html_analyzer.py
 - tests/test_pr_title_fix.py
 - tests/test_rate_limit_reset_display.py
@@ -340,32 +338,39 @@ Last updated: 2026-03-06
 - tests/test_wait_handler_callback.py
 
 ## 現在のオープンIssues
-## [Issue #346](../issue-notes/346.md): Fix: Save all open PRs to logs/pr — HTML-based status detection refactoring with clean directory structure
-`logs/pr` was only receiving HTML from PRs in `PHASE_LLM_WORKING`. All other open PRs were silently skipped because HTML fetch was gated on the deprecated `record_reaction_snapshot()` flow which filtered by phase.
+## [Issue #360](../issue-notes/360.md): Fix phase detection bug: "started reviewing" without "finished reviewing" incorrectly triggers phase2 action
+When `llm_statuses` contained `"Copilot started reviewing"` but no `"Copilot finished reviewing"`, `html_status` was set to `PHASE2A_REVIEW_COMPLETED`, causing a "please address review comments" comment to be posted on a PR that hadn't been reviewed yet.
 
-## Root cause
-
-`record_reaction_snapshot()` in `pr_data_recorder.py` returned early f...
+**Root cause**: `_phase_from_llm_statuses` m...
 ラベル: 
---- issue-notes/346.md の内容 ---
+--- issue-notes/360.md の内容 ---
 
 ```markdown
 
 ```
 
-## [Issue #345](../issue-notes/345.md): logs/pr に保存されるPRがごく限られたものだけになってしまっている
+## [Issue #354](../issue-notes/354.md): ムダに複雑な実装と密結合があるか？を調査する
 
 ラベル: 
---- issue-notes/345.md の内容 ---
+--- issue-notes/354.md の内容 ---
 
 ```markdown
 
 ```
 
-## [Issue #335](../issue-notes/335.md): status PHASE1～3 の扱いを変更する
+## [Issue #350](../issue-notes/350.md): phase判定バグ。レビューされていないのに、レビュー指摘対応せよというコメントが投稿されてしまった
 
 ラベル: 
---- issue-notes/335.md の内容 ---
+--- issue-notes/350.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #349](../issue-notes/349.md): phase3などでブラウザを開くとき、たまたまuserがwindow close操作をしようとすると「もしや、せっかく開かれたものを閉じてしまったか？」と混乱する
+
+ラベル: 
+--- issue-notes/349.md の内容 ---
 
 ```markdown
 
@@ -471,27 +476,148 @@ Last updated: 2026-03-06
 {% endraw %}
 ```
 
-### .github/actions-tmp/issue-notes/35.md
+### .github/actions-tmp/issue-notes/4.md
 ```md
 {% raw %}
-# issue issue-notes作成時に、既存のnotesを調査して不要note削除を行うようにする。clean up #35
-[issues #35](https://github.com/cat2151/github-actions/issues/35)
+# issue GitHub Actions「project概要生成」を共通ワークフロー化する #4
+[issues #4](https://github.com/cat2151/github-actions/issues/4)
 
-# 定義：
-- 紐付くissueがある
-    - issueがopen中である → 必要note。PRを進めるために必要。
-    - issueがcloseされた
-        - noteの中身が、先頭2行だけで、あとは空である → 不要note。closeされたが、空っぽのnoteである。
-        - noteの中身が、上記以外である → 必要note。closeされて、issueの履歴としてナレッジとなるnoteである。
-- 紐付くissueがない
-    - noteの中身が、先頭2行だけで、あとは空である → 不要note。issueが削除されたし、空っぽのnoteである。
-    - noteの中身が、上記以外である → 必要note。issueが削除されたが、issueの履歴としてナレッジとなるnoteである。
+# prompt
+```
+あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
+このymlファイルを、以下の2つのファイルに分割してください。
+1. 共通ワークフロー       cat2151/github-actions/.github/workflows/daily-project-summary.yml
+2. 呼び出し元ワークフロー cat2151/github-actions/.github/workflows/call-daily-project-summary.yml
+まずplanしてください
+```
 
-# なぜこのワークフローymlで実施するの？
-- 利用者の利用コストを下げるため。
-- もし別ワークフローymlだと、全てのリポジトリに新たにワークフローymlが追加となり、導入初期コストが高い。
-- 別ワークフローにするメリットが小さい
-- 位置づけとしては、issue-noteのメンテは、このワークフローで行う、として許容範囲内である、と考える
+# 結果、あちこちハルシネーションのあるymlが生成された
+- agentの挙動があからさまにハルシネーション
+    - インデントが修正できない、「失敗した」という
+    - 構文誤りを認識できない
+- 人力で修正した
+
+# このagentによるセルフレビューが信頼できないため、別のLLMによるセカンドオピニオンを試す
+```
+あなたはGitHub Actionsと共通ワークフローのスペシャリストです。
+以下の2つのファイルをレビューしてください。最優先で、エラーが発生するかどうかだけレビューてください。エラー以外の改善事項のチェックをするかわりに、エラー発生有無チェックに最大限注力してください。
+
+--- 呼び出し元
+
+name: Call Daily Project Summary
+
+on:
+  schedule:
+    # 日本時間 07:00 (UTC 22:00 前日)
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+
+jobs:
+  call-daily-project-summary:
+    uses: cat2151/github-actions/.github/workflows/daily-project-summary.yml
+    secrets:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+--- 共通ワークフロー
+name: Daily Project Summary
+on:
+  workflow_call:
+
+jobs:
+  generate-summary:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      issues: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # 履歴を取得するため
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          # 一時的なディレクトリで依存関係をインストール
+          mkdir -p /tmp/summary-deps
+          cd /tmp/summary-deps
+          npm init -y
+          npm install @google/generative-ai @octokit/rest
+          # generated-docsディレクトリを作成
+          mkdir -p $GITHUB_WORKSPACE/generated-docs
+
+      - name: Generate project summary
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          NODE_PATH: /tmp/summary-deps/node_modules
+        run: |
+          node .github/scripts/generate-project-summary.cjs
+
+      - name: Check for generated summaries
+        id: check_summaries
+        run: |
+          if [ -f "generated-docs/project-overview.md" ] && [ -f "generated-docs/development-status.md" ]; then
+            echo "summaries_generated=true" >> $GITHUB_OUTPUT
+          else
+            echo "summaries_generated=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push summaries
+        if: steps.check_summaries.outputs.summaries_generated == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          # package.jsonの変更のみリセット（generated-docsは保持）
+          git restore package.json 2>/dev/null || true
+          # サマリーファイルのみを追加
+          git add generated-docs/project-overview.md
+          git add generated-docs/development-status.md
+          git commit -m "Update project summaries (overview & development status)"
+          git push
+
+      - name: Summary generation result
+        run: |
+          if [ "${{ steps.check_summaries.outputs.summaries_generated }}" == "true" ]; then
+            echo "✅ Project summaries updated successfully"
+            echo "📊 Generated: project-overview.md & development-status.md"
+          else
+            echo "ℹ️ No summaries generated (likely no user commits in the last 24 hours)"
+          fi
+```
+
+# 上記promptで、2つのLLMにレビューさせ、合格した
+
+# 細部を、先行する2つのymlを参照に手直しした
+
+# ローカルtestをしてからcommitできるとよい。方法を検討する
+- ローカルtestのメリット
+    - 素早く修正のサイクルをまわせる
+    - ムダにgit historyを汚さない
+        - これまでの事例：「実装したつもり」「エラー。修正したつもり」「エラー。修正したつもり」...（以降エラー多数）
+- 方法
+    - ※検討、WSL + act を環境構築済みである。test可能であると判断する
+    - 呼び出し元のURLをコメントアウトし、相対パス記述にする
+    - ※備考、テスト成功すると結果がcommit pushされる。それでよしとする
+- 結果
+    - OK
+    - secretsを簡略化できるか試した、できなかった、現状のsecrets記述が今わかっている範囲でベストと判断する
+    - OK
+
+# test green
+
+# commit用に、yml 呼び出し元 uses をlocal用から本番用に書き換える
+
+# closeとする
 
 {% endraw %}
 ```
@@ -526,550 +652,55 @@ Last updated: 2026-03-06
 {% endraw %}
 ```
 
-### src/gh_pr_phase_monitor/phase/pr_data_recorder.py
-```py
-{% raw %}
-"""
-Utilities for capturing PR snapshots to aid debugging of phase detection.
-"""
-
-import json
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
-
-from .llm_status_extractor import _extract_llm_statuses
-from .phase_detector import (
-    PHASE_LLM_WORKING,
-    has_comments_with_reactions,
-    llm_working_from_statuses,
-    update_comment_reaction_resolution,
-)
-from .pr_html_fetcher import _fetch_pr_html, _html_to_simple_markdown
-from .pr_html_analyzer import _determine_html_status
-from .pr_html_saver import save_html_to_logs
-from ..monitor.snapshot_markdown import _build_markdown, _prepare_markdown_raw, _summarize_reactions
-from ..monitor.snapshot_path_utils import _build_snapshot_dir_name, _format_timestamp
-
-# Snapshots are stored alongside screenshots (not inside) for easy discovery
-DEFAULT_SNAPSHOT_BASE_DIR = Path("pr_phase_snapshots")
-
-# Once flag to prevent duplicate snapshots within the same iteration
-_recorded_in_current_iteration: Set[str] = set()
-
-# Store previous iteration's content for comparison (PR key -> {json, html_md, llm_statuses})
-_previous_pr_content: Dict[str, Dict[str, Any]] = {}
-
-
-def _build_logs_analysis(pr_url: str, is_draft: bool, statuses: list) -> dict:
-    """logs/pr/ 保存用の解析結果辞書を構築する。"""
-    return {
-        "pr_url": pr_url,
-        "is_draft": is_draft,
-        "llm_statuses": statuses,
-        "status": _determine_html_status(statuses, is_draft),
-    }
-
-
-def _write_if_changed(path: Path, content: str) -> None:
-    """Write content to a file only when it changed."""
-    if path.exists():
-        try:
-            if path.read_text(encoding="utf-8") == content:
-                return
-        except OSError:
-            # If reading fails (permissions/I/O), overwrite with new content below
-            pass
-    path.write_text(content, encoding="utf-8")
-
-
-def _capture_llm_statuses(
-    html: Optional[str],
-    html_markdown: str,
-    llm_status_path: Optional[Path] = None,
-    result_dict: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
-    """Extract LLM statuses, persist to JSON if path provided, and return metadata."""
-    statuses = _extract_llm_statuses(html, html_markdown)
-    augmented_markdown = html_markdown
-
-    if statuses:
-        status_line = f"LLM status: {', '.join(statuses)}"
-        augmented_markdown = f"{html_markdown}\n\n{status_line}" if html_markdown else status_line
-
-        if llm_status_path:
-            status_payload = json.dumps({"llm_statuses": statuses}, ensure_ascii=False, indent=2)
-            _write_if_changed(llm_status_path, status_payload)
-            if result_dict is not None:
-                result_dict["llm_status_path"] = llm_status_path
-                result_dict["llm_statuses"] = statuses
-    else:
-        if llm_status_path:
-            status_payload = json.dumps({"llm_statuses": []}, ensure_ascii=False, indent=2)
-            _write_if_changed(llm_status_path, status_payload)
-            if result_dict is not None:
-                result_dict["llm_status_path"] = llm_status_path
-                result_dict["llm_statuses"] = []
-
-    return {
-        "statuses": statuses,
-        "html_markdown_with_status": augmented_markdown,
-    }
-
-
-def save_pr_snapshot(
-    pr: Dict[str, Any],
-    reason: str,
-    base_dir: Optional[Path] = None,
-    current_time: Optional[datetime] = None,
-    fetch_html: bool = True,
-    html_content: Optional[str] = None,
-) -> Dict[str, Any]:
-    """Save raw PR data, HTML, and markdown summary to disk.
-
-    Args:
-        pr: PR data dictionary.
-        reason: Reason for capturing the snapshot.
-        base_dir: Optional base directory for storing snapshots.
-        current_time: Optional timestamp for deterministic testing.
-        fetch_html: Whether to fetch HTML page (default: True). Set to False to avoid blocking network calls.
-        html_content: Optional pre-fetched HTML content. If provided, this HTML is used instead of fetching.
-
-    Returns:
-        Dictionary containing:
-        - snapshot_dir, raw_path, markdown_path (Path objects)
-        - html_path, html_md_path, llm_status_path (Path objects, if HTML was fetched)
-        - saved_json, saved_html (str, the actual content that was saved)
-        - llm_statuses (list[str], extracted LLM statuses when HTML is available)
-    """
-    effective_time = current_time if current_time is not None else datetime.now()
-
-    base_path = Path(base_dir) if base_dir is not None else DEFAULT_SNAPSHOT_BASE_DIR
-    base_path = base_path.expanduser().resolve()
-
-    # Directory name without timestamp (e.g., owner_repo_PR123)
-    snapshot_dir_name = _build_snapshot_dir_name(pr)
-    snapshot_dir = base_path / snapshot_dir_name
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
-
-    # File prefix with timestamp (e.g., 20260102_030405)
-    timestamp_str = _format_timestamp(effective_time)
-    file_prefix = timestamp_str
-
-    raw_path = snapshot_dir / f"{file_prefix}_raw.json"
-    markdown_path = snapshot_dir / f"{file_prefix}_summary.md"
-    html_path = snapshot_dir / f"{file_prefix}_page.html"
-    html_md_path = snapshot_dir / f"{file_prefix}_page.md"
-    llm_status_path = snapshot_dir / f"{file_prefix}_llm_statuses.json"
-
-    reactions_summary = _summarize_reactions(pr.get("commentNodes", pr.get("comments", [])))
-    markdown_raw_snapshot = _prepare_markdown_raw(pr)
-
-    # Save raw JSON
-    raw_json = json.dumps(pr, ensure_ascii=False, indent=2)
-    _write_if_changed(raw_path, raw_json)
-
-    # Save markdown summary
-    markdown_content = _build_markdown(
-        pr,
-        reason,
-        timestamp_str,
-        reactions_summary,
-        snapshot_dir_name,
-        markdown_raw_snapshot,
-    )
-    _write_if_changed(markdown_path, markdown_content)
-
-    # Fetch and save HTML page
-    pr_url = pr.get("url", "")
-    result_dict = {
-        "snapshot_dir": snapshot_dir,
-        "raw_path": raw_path,
-        "markdown_path": markdown_path,
-        "saved_json": raw_json,
-        "saved_html": "",
-    }
-
-    # Use pre-fetched HTML if provided, otherwise fetch if requested
-    if html_content:
-        # Use provided HTML content
-        _write_if_changed(html_path, html_content)
-        result_dict["html_path"] = html_path
-        result_dict["saved_html"] = html_content
-
-        # Convert HTML to markdown for better readability
-        html_as_markdown = _html_to_simple_markdown(html_content)
-        captured = _capture_llm_statuses(html_content, html_as_markdown, llm_status_path, result_dict)
-        if captured["html_markdown_with_status"]:
-            _write_if_changed(html_md_path, captured["html_markdown_with_status"])
-            result_dict["html_md_path"] = html_md_path
-    elif fetch_html and pr_url:
-        # Fetch HTML if not provided
-        fetched_html = _fetch_pr_html(pr_url)
-        if fetched_html:
-            _write_if_changed(html_path, fetched_html)
-            result_dict["html_path"] = html_path
-            result_dict["saved_html"] = fetched_html
-
-            # Convert HTML to markdown for better readability
-            html_as_markdown = _html_to_simple_markdown(fetched_html)
-            captured = _capture_llm_statuses(fetched_html, html_as_markdown, llm_status_path, result_dict)
-            if captured["html_markdown_with_status"]:
-                _write_if_changed(html_md_path, captured["html_markdown_with_status"])
-                result_dict["html_md_path"] = html_md_path
-
-    return result_dict
-
-
-def record_reaction_snapshot(
-    pr: Dict[str, Any],
-    phase: str,
-    base_dir: Optional[Path] = None,
-    current_time: Optional[datetime] = None,
-    html_content: Optional[str] = None,
-    enable_snapshots: bool = True,
-) -> Optional[Dict[str, Any]]:
-    """Record a snapshot when comment reactions force LLM working detection.
-
-    Uses content-based deduplication: only saves a new timestamped snapshot when
-    the PR JSON or HTML content (converted to markdown) has changed since the previous iteration.
-    HTML is converted to markdown before comparison to avoid false changes from HTML tag variations.
-
-    Optimization: When snapshots are enabled, HTML is only fetched when JSON hasn't changed to
-    avoid unnecessary network calls. When snapshots are disabled, HTML may still be fetched to
-    capture LLM statuses and reaction resolution even if JSON changed.
-
-    Args:
-        pr: PR data dictionary.
-        phase: Detected phase for the PR.
-        base_dir: Optional base directory for storing snapshots.
-        current_time: Optional timestamp for deterministic testing.
-        html_content: Optional pre-fetched HTML content to avoid network calls.
-        enable_snapshots: When False, only fetches data needed for LLM working detection
-            without writing files to pr_phase_snapshots/.
-
-    Returns:
-        Paths for created snapshot files, or None when no snapshot is recorded.
-    """
-    if phase != PHASE_LLM_WORKING:
-        return None
-
-    comment_nodes = pr.get("commentNodes", pr.get("comments", []))
-    pr_key = pr.get("url") or _build_snapshot_dir_name(pr)
-    if not has_comments_with_reactions(comment_nodes):
-        # Fetch HTML for Draft PRs without review requests to detect Copilot timeline
-        # events (#266). Previously, when there were no reactions we skipped fetching HTML,
-        # so llm_statuses were never populated even though both "started work" and
-        # "finished work" events are present on the PR page. This special-case fetch ensures
-        # we still capture those statuses for LLM working detection when reactions are absent.
-        is_draft = pr.get("isDraft", False)
-        review_requests = pr.get("reviewRequests", [])
-        if is_draft and not review_requests:
-            # Always fetch fresh HTML every iteration so we never miss a newly-posted
-            # "finished work" event.  Cross-iteration caching here was the root cause of
-            # #266 re-occurring: a "started work"-only cached value would suppress all
-            # future re-fetches, preventing "finished work" from ever being detected.
-            pr_url = pr.get("url", "")
-            if html_content:
-                fetched = html_content
-            elif pr_url:
-                fetched = _fetch_pr_html(pr_url)
-            else:
-                fetched = None
-            if fetched:
-                html_md = _html_to_simple_markdown(fetched)
-                captured = _capture_llm_statuses(fetched, html_md)
-                if captured.get("statuses"):
-                    pr["llm_statuses"] = captured["statuses"]
-                save_html_to_logs(
-                    fetched, pr_url,
-                    analysis=_build_logs_analysis(pr_url, is_draft, captured.get("statuses", [])),
-                )
-        return None
-
-    # Check once flag: prevent duplicate recording within the same iteration
-    if pr_key in _recorded_in_current_iteration:
-        return None
-
-    # Prepare content for comparison (must match the format saved in save_pr_snapshot)
-    current_json = json.dumps(pr, ensure_ascii=False, indent=2)
-
-    # Check content-based deduplication: compare with previous iteration
-    previous_content = _previous_pr_content.get(pr_key, {})
-    previous_json = previous_content.get("json", "")
-    previous_html_md = previous_content.get("html_md", "")
-    latest_llm_statuses: List[str] = previous_content.get("llm_statuses", []) or []
-
-    # Short-circuit: if JSON changed, we know content changed (no need to fetch HTML for comparison)
-    json_changed = current_json != previous_json
-
-    # Only fetch HTML if JSON hasn't changed (to check if HTML changed)
-    # This avoids unnecessary network calls when JSON already indicates a change
-    current_html_md = ""
-    fetched_html = html_content
-    pr_url = pr.get("url", "")
-
-    captured_status = {"html_markdown_with_status": "", "statuses": []}
-    should_fetch_html = not json_changed or not enable_snapshots
-
-    if html_content:
-        current_html_md = _html_to_simple_markdown(html_content)
-        captured_status = _capture_llm_statuses(html_content, current_html_md)
-        current_html_md = captured_status["html_markdown_with_status"]
-        if captured_status["statuses"]:
-            latest_llm_statuses = captured_status["statuses"]
-            pr["llm_statuses"] = latest_llm_statuses
-        if pr_url:
-            _is_draft = pr.get("isDraft", False)
-            save_html_to_logs(
-                html_content, pr_url,
-                analysis=_build_logs_analysis(pr_url, _is_draft, captured_status.get("statuses", [])),
-            )
-
-    if fetched_html is None and pr_url and should_fetch_html:
-        # Fetch HTML when needed for deduplication or status capture
-        fetched_html = _fetch_pr_html(pr_url)
-        if fetched_html:
-            # Convert HTML to markdown for comparison to avoid HTML tag noise
-            current_html_md = _html_to_simple_markdown(fetched_html)
-            captured_status = _capture_llm_statuses(fetched_html, current_html_md)
-            current_html_md = captured_status["html_markdown_with_status"]
-            if captured_status["statuses"]:
-                latest_llm_statuses = captured_status["statuses"]
-                pr["llm_statuses"] = latest_llm_statuses
-            _is_draft = pr.get("isDraft", False)
-            save_html_to_logs(
-                fetched_html, pr_url,
-                analysis=_build_logs_analysis(pr_url, _is_draft, captured_status.get("statuses", [])),
-            )
-
-    # Check if content has changed (compare markdown instead of raw HTML)
-    html_changed = current_html_md != previous_html_md
-    content_changed = json_changed or html_changed
-
-    if not content_changed and previous_json:
-        # Content unchanged, mark as recorded and skip saving
-        if latest_llm_statuses:
-            pr["llm_statuses"] = latest_llm_statuses
-            if pr_key in _previous_pr_content:
-                _previous_pr_content[pr_key]["llm_statuses"] = latest_llm_statuses
-        _recorded_in_current_iteration.add(pr_key)
-        return None
-
-    # When snapshot saving is disabled, still fetch and store metadata for LLM working detection
-    if not enable_snapshots:
-        if captured_status.get("statuses"):
-            latest_llm_statuses = captured_status["statuses"]
-            pr["llm_statuses"] = latest_llm_statuses
-
-        if current_html_md:
-            llm_working = llm_working_from_statuses(captured_status.get("statuses", []))
-            reactions_finished = llm_working is False
-            update_comment_reaction_resolution(pr, comment_nodes, reactions_finished)
-
-        _previous_pr_content[pr_key] = {
-            "json": current_json,
-            "html_md": current_html_md,
-            "llm_statuses": latest_llm_statuses,
-        }
-        _recorded_in_current_iteration.add(pr_key)
-        return None
-
-    # Content changed or first time: save snapshot with timestamp
-    # Pass pre-fetched HTML to avoid double-fetch
-    snapshot_paths = save_pr_snapshot(
-        pr,
-        reason="comment_reactions_detected",
-        base_dir=base_dir,
-        current_time=current_time,
-        html_content=fetched_html,  # Pass pre-fetched HTML if available
-    )
-
-    snapshot_llm_statuses = snapshot_paths.get("llm_statuses")
-    if snapshot_llm_statuses:
-        latest_llm_statuses = snapshot_llm_statuses
-        pr["llm_statuses"] = latest_llm_statuses
-
-    # If HTML wasn't fetched during comparison (because JSON changed), fetch it now for caching
-    # This ensures we have HTML for the next iteration's comparison
-    if fetched_html is None and pr_url:
-        # HTML was saved by save_pr_snapshot, retrieve it from the result
-        saved_html = snapshot_paths.get("saved_html", "")
-        if saved_html:
-            current_html_md = _html_to_simple_markdown(saved_html)
-            captured_status = _capture_llm_statuses(saved_html, current_html_md)
-            current_html_md = captured_status["html_markdown_with_status"]
-            if captured_status["statuses"]:
-                latest_llm_statuses = captured_status["statuses"]
-                pr["llm_statuses"] = latest_llm_statuses
-            _is_draft = pr.get("isDraft", False)
-            save_html_to_logs(
-                saved_html, pr_url,
-                analysis=_build_logs_analysis(pr_url, _is_draft, captured_status.get("statuses", [])),
-            )
-
-    # Update reaction resolution cache based on HTML snapshot content
-    if current_html_md:
-        llm_working = llm_working_from_statuses(captured_status.get("statuses", []))
-        reactions_finished = llm_working is False
-        update_comment_reaction_resolution(pr, comment_nodes, reactions_finished)
-
-    # Update previous content cache for next iteration
-    # Store markdown version of HTML to avoid false changes from HTML tag variations
-    _previous_pr_content[pr_key] = {
-        "json": snapshot_paths.get("saved_json", current_json),
-        "html_md": current_html_md,
-        "llm_statuses": latest_llm_statuses,
-    }
-
-    # Mark as recorded in current iteration
-    _recorded_in_current_iteration.add(pr_key)
-
-    return snapshot_paths
-
-
-def reset_snapshot_cache(clear_content_cache: bool = False) -> None:
-    """Clear the once flag for the current iteration.
-
-    This should be called at the start of each monitoring iteration to allow
-    recording snapshots again. The previous content cache is preserved for
-    content-based deduplication across iterations unless explicitly cleared.
-
-    Args:
-        clear_content_cache: If True, also clear the previous content cache.
-            This should be set to True for tests to ensure clean state.
-    """
-    _recorded_in_current_iteration.clear()
-    if clear_content_cache:
-        _previous_pr_content.clear()
-
-{% endraw %}
-```
-
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-3884b9d Merge pull request #344 from cat2151/copilot/remove-deprecated-documents
-4329de4 Delete obsolete documents (STRUCTURE.md, PHASE3_MERGE_IMPLEMENTATION.md, MERGE_CONFIGURATION_EXAMPLES.md, generated-docs/)
-64a435f Initial plan
-b33821a Merge pull request #343 from cat2151/copilot/fix-file-saving-feature
-5c50f96 Add save_html_to_logs call in html_content pre-provided path of record_reaction_snapshot
-dbdd149 Fix PR 338: always save HTML/JSON to logs/pr/ when fetched, with print for both save/skip cases
-67ad9ce Initial plan
-343dd3c Merge pull request #340 from cat2151/copilot/add-auto-update-logging-mode
-122ed5a fix: address review feedback on foreground auto-update (flush, message, config validation)
-8c6e9e1 feat: add foreground startup auto-update mode with explicit prints
+2171014 Merge pull request #359 from cat2151/copilot/add-auto-restart-after-pull
+3f21433 Remove unused `from pathlib import Path` import in test_repo_root_points_to_actual_repo_root
+3c2c998 Auto-translate README.ja.md to README.md [auto]
+87fb13b Fix REPO_ROOT having too few parent levels, causing auto-restart to never trigger after local repo pull
+8c2a6d6 Initial plan
+287a9ee Merge pull request #357 from cat2151/copilot/implement-auto-update-check
+741ce0a docs: update README to reflect unconditional startup update check
+dcd7c6c Always run startup auto-update check unconditionally at startup
+5097cc2 Initial plan
+08ae669 Merge pull request #355 from cat2151/copilot/update-ci-test-workflow
 
 ### 変更されたファイル:
-.github/copilot-instructions.md
-MERGE_CONFIGURATION_EXAMPLES.md
-PHASE3_MERGE_IMPLEMENTATION.md
-STRUCTURE.md
+.github/workflows/run-tests-on-push.yml
+README.ja.md
+README.md
 generated-docs/development-status-generated-prompt.md
 generated-docs/development-status.md
 generated-docs/project-overview-generated-prompt.md
 generated-docs/project-overview.md
-pyproject.toml
-src/gh_pr_phase_monitor/__init__.py
-src/gh_pr_phase_monitor/actions/__init__.py
 src/gh_pr_phase_monitor/actions/pr_actions.py
-src/gh_pr_phase_monitor/browser/__init__.py
-src/gh_pr_phase_monitor/browser/browser_automation.py
-src/gh_pr_phase_monitor/browser/browser_cooldown.py
-src/gh_pr_phase_monitor/browser/button_clicker.py
-src/gh_pr_phase_monitor/browser/click_config_validator.py
-src/gh_pr_phase_monitor/browser/window_manager.py
-src/gh_pr_phase_monitor/core/__init__.py
 src/gh_pr_phase_monitor/core/colors.py
 src/gh_pr_phase_monitor/core/config.py
 src/gh_pr_phase_monitor/core/config_printer.py
-src/gh_pr_phase_monitor/core/interval_parser.py
-src/gh_pr_phase_monitor/core/process_utils.py
-src/gh_pr_phase_monitor/core/time_utils.py
-src/gh_pr_phase_monitor/github/__init__.py
-src/gh_pr_phase_monitor/github/comment_fetcher.py
-src/gh_pr_phase_monitor/github/comment_manager.py
-src/gh_pr_phase_monitor/github/github_auth.py
-src/gh_pr_phase_monitor/github/github_client.py
-src/gh_pr_phase_monitor/github/graphql_client.py
-src/gh_pr_phase_monitor/github/issue_fetcher.py
-src/gh_pr_phase_monitor/github/pr_fetcher.py
-src/gh_pr_phase_monitor/github/rate_limit_handler.py
-src/gh_pr_phase_monitor/github/repository_fetcher.py
 src/gh_pr_phase_monitor/main.py
-src/gh_pr_phase_monitor/monitor/__init__.py
 src/gh_pr_phase_monitor/monitor/auto_updater.py
-src/gh_pr_phase_monitor/monitor/local_repo_watcher.py
-src/gh_pr_phase_monitor/monitor/monitor.py
-src/gh_pr_phase_monitor/monitor/pages_watcher.py
-src/gh_pr_phase_monitor/monitor/snapshot_markdown.py
-src/gh_pr_phase_monitor/monitor/snapshot_path_utils.py
-src/gh_pr_phase_monitor/monitor/state_tracker.py
-src/gh_pr_phase_monitor/phase/__init__.py
-src/gh_pr_phase_monitor/phase/llm_status_extractor.py
+src/gh_pr_phase_monitor/phase/html/__init__.py
+src/gh_pr_phase_monitor/phase/html/html_status_processor.py
+src/gh_pr_phase_monitor/phase/html/llm_status_extractor.py
+src/gh_pr_phase_monitor/phase/html/pr_html_analyzer.py
+src/gh_pr_phase_monitor/phase/html/pr_html_fetcher.py
+src/gh_pr_phase_monitor/phase/html/pr_html_saver.py
 src/gh_pr_phase_monitor/phase/phase_detector.py
 src/gh_pr_phase_monitor/phase/phase_detector_graphql.py
 src/gh_pr_phase_monitor/phase/pr_data_recorder.py
-src/gh_pr_phase_monitor/phase/pr_html_analyzer.py
-src/gh_pr_phase_monitor/phase/pr_html_fetcher.py
-src/gh_pr_phase_monitor/phase/pr_html_saver.py
-src/gh_pr_phase_monitor/ui/__init__.py
 src/gh_pr_phase_monitor/ui/display.py
-src/gh_pr_phase_monitor/ui/notification_window.py
-src/gh_pr_phase_monitor/ui/notifier.py
-src/gh_pr_phase_monitor/ui/wait_handler.py
-tests/test_assign_issue_to_copilot.py
 tests/test_auto_update_config.py
 tests/test_auto_updater.py
-tests/test_batteries_included_defaults.py
-tests/test_browser_automation.py
-tests/test_browser_automation_click.py
-tests/test_browser_automation_ocr.py
-tests/test_browser_automation_window.py
-tests/test_check_process_before_autoraise.py
-tests/test_color_scheme_config.py
-tests/test_config_rulesets.py
-tests/test_config_rulesets_features.py
-tests/test_elapsed_time_display.py
 tests/test_fetch_pr_html.py
-tests/test_graphql_client_rate_limit.py
-tests/test_graphql_query_intent_display.py
-tests/test_hot_reload.py
+tests/test_html_status_processor.py
 tests/test_html_to_markdown.py
-tests/test_integration_issue_fetching.py
-tests/test_interval_contamination_bug.py
-tests/test_issue_assignment_priority.py
-tests/test_issue_fetching.py
-tests/test_local_repo_watcher.py
-tests/test_local_repo_watcher_background.py
-tests/test_max_llm_working_parallel.py
-tests/test_no_change_timeout.py
-tests/test_no_open_prs_issue_display.py
-tests/test_notification.py
-tests/test_open_browser_cooldown.py
-tests/test_pages_watcher.py
-tests/test_phase3_merge.py
-tests/test_phase_detection.py
 tests/test_phase_detection_llm_status.py
-tests/test_phase_detection_real_prs.py
-tests/test_post_comment.py
-tests/test_post_phase3_comment.py
-tests/test_pr_actions.py
-tests/test_pr_actions_dry_run.py
-tests/test_pr_actions_rulesets_features.py
-tests/test_pr_actions_with_rulesets.py
 tests/test_pr_data_recorder.py
 tests/test_pr_data_recorder_html.py
 tests/test_pr_data_recorder_json.py
 tests/test_pr_html_analyzer.py
-tests/test_pr_title_fix.py
-tests/test_rate_limit_usage_display.py
-tests/test_repos_with_prs_structure.py
 tests/test_show_issues_when_pr_count_less_than_3.py
-tests/test_status_summary.py
-tests/test_validate_phase3_merge_config.py
-tests/test_verbose_config.py
-tests/test_wait_handler_callback.py
 
 
 ---
-Generated at: 2026-03-06 07:03:53 JST
+Generated at: 2026-03-07 07:02:56 JST

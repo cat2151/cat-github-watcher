@@ -1,60 +1,58 @@
-Last updated: 2026-03-06
+Last updated: 2026-03-07
 
 # Development Status
 
 ## 現在のIssues
-- [Issue #346](../issue-notes/346.md) と [Issue #345](../issue-notes/345.md) は、HTMLベースのステータス検出リファクタリングにおいて、`logs/pr` ディレクトリにPRのHTMLが限定的にしか保存されない問題を指摘しています。特に `PHASE_LLM_WORKING` 以外のPRのHTMLがスキップされてしまうことが課題です。
-- [Issue #335](../issue-notes/335.md) では、PRのPHASE1～3の扱いと検出ロジックの見直しが求められており、これによりシステム全体のPRフェーズ管理の精度向上が期待されます。
-- [Issue #319](../issue-notes/319.md) は、GitHub GraphQL APIのクエリが過剰に消費されている現状を改善し、効率的なAPI利用とレート制限への対応を最適化する必要があることを示唆しています。
+- [Issue #360](../issue-notes/360.md), [Issue #350](../issue-notes/350.md): レビュー未完了にも関わらず完了と誤判定し、不適切なコメントを投稿するフェーズ判定バグが存在します。
+- [Issue #354](../issue-notes/354.md): 現在のコードベースに不必要な複雑性や密結合がないか、全体的な構造を調査する必要があります。
+- [Issue #319](../issue-notes/319.md): GraphQLクエリが過剰に消費されており、コストとパフォーマンスの最適化が必要です。
 
 ## 次の一手候補
-1.  [Issue #346](../issue-notes/346.md) と [Issue #345](../issue-notes/345.md): 全てのオープンPRのHTMLを `logs/pr` に確実に保存する
-    -   最初の小さな一歩: `src/gh_pr_phase_monitor/monitor/monitor.py` 内のPR処理ループを分析し、各PRが処理される際に、そのHTMLコンテンツが`PHASE_LLM_WORKING`に依存せず、常に`src/gh_pr_phase_monitor/phase/pr_html_saver.py`の`save_html_to_logs`関数を使って`logs/pr`に保存されるように修正点を検討する。
-    -   Agent実行プロンプト:
-        ```
-        対象ファイル: src/gh_pr_phase_monitor/monitor/monitor.py, src/gh_pr_phase_monitor/phase/pr_html_fetcher.py, src/gh_pr_phase_monitor/phase/pr_html_saver.py
+1. フェーズ判定バグの明確化と再現テストの追加 ([Issue #360](../issue-notes/360.md), [Issue #350](../issue-notes/350.md))
+   - 最初の小さな一歩: `tests/test_phase_detection_llm_status.py` に、"Copilot started reviewing" はあるが "Copilot finished reviewing" がない場合に `PHASE2A_REVIEW_COMPLETED` を返さないことを期待するテストケースを追加し、現在のフェーズ判定ロジックのバグを明確にする。
+   - Agent実行プロンプ:
+     ```
+     対象ファイル: `src/gh_pr_phase_monitor/phase/html/llm_status_extractor.py`, `src/gh_pr_phase_monitor/phase/phase_detector.py`, `tests/test_phase_detection_llm_status.py`
 
-        実行内容: `src/gh_pr_phase_monitor/monitor/monitor.py` のPRループ内で、全てのオープンPRについて、そのHTMLコンテンツを`src/gh_pr_phase_monitor/phase/pr_html_fetcher.py`の`_fetch_pr_html`で取得し、その後`src/gh_pr_phase_monitor/phase/pr_html_saver.py`の`save_html_to_logs`を呼び出して`logs/pr`ディレクトリに保存するロジックを追加・修正してください。この保存は、PRの現在のフェーズや`record_reaction_snapshot`の呼び出し条件に依存しない独立した処理として実装されるべきです。
+     実行内容:
+     1. `tests/test_phase_detection_llm_status.py` に、`llm_statuses` に `"Copilot started reviewing"` は含まれるが `"Copilot finished reviewing"` は含まれない状況で `PHASE2A_REVIEW_COMPLETED` を返さないことを期待するテストケースを追加してください。
+     2. このテストが失敗することを確認し、フェーズ判定ロジックの現状のバグを明確にしてください。
 
-        確認事項:
-        1. HTMLフェッチと保存が、全体のパフォーマンスやAPIレート制限に過度な影響を与えないこと。
-        2. `save_html_to_logs`に渡される`analysis`データが、PRの状態（`is_draft`、`llm_statuses`）を正確に反映していること。
-        3. 既存のPR処理フロー（特にフェーズ検出やスナップショット記録）の意図しない変更がないこと。
-        4. 同じHTMLコンテンツが不必要に何度も再保存されないような軽微な最適化を検討すること。
+     確認事項: 既存のテストケースやフェーズ判定ロジックの意図を壊さないように注意してください。特に、`llm_status_extractor.py` がLLMからの応答をどのように解釈しているかを確認してください。
 
-        期待する出力: `monitor.py` への追加または修正されるコードの差分（diff）形式、および変更の理由、新しいHTML保存フローの説明をMarkdown形式で出力してください。
-        ```
+     期待する出力: 追加されたテストケースを含む `tests/test_phase_detection_llm_status.py` の更新内容と、そのテストが失敗することを示す説明をmarkdown形式で出力してください。
+     ```
 
-2.  [Issue #335](../issue-notes/335.md): PRのPHASE1～3の検出ロジックを改善する
-    -   最初の小さな一歩: 現在の `src/gh_pr_phase_monitor/phase/pr_html_analyzer.py` 内の `_determine_html_status` 関数と関連するフェーズ検出ロジックを分析し、PHASE1-3の定義と現在の実装における状態遷移のギャップを特定する。
-    -   Agent実行プロンプト:
-        ```
-        対象ファイル: src/gh_pr_phase_monitor/phase/phase_detector.py, src/gh_pr_phase_monitor/phase/pr_html_analyzer.py, src/gh_pr_phase_monitor/phase/llm_status_extractor.py
+2. コードベースの密結合・複雑性に関する初期調査 ([Issue #354](../issue-notes/354.md))
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/main.py` から呼び出される主要なモジュールを特定し、それぞれの役割と依存関係の概要を把握する。
+   - Agent実行プロンプ:
+     ```
+     対象ファイル: `src/gh_pr_phase_monitor/main.py` およびそこから直接・間接的に呼び出される主要なモジュール（例: `monitor/monitor.py`, `phase/phase_detector.py`, `github/github_client.py` など）
 
-        実行内容: PRのPHASE1～3の検出ロジック（`phase_detector.py` と `pr_html_analyzer.py` 内の `_determine_html_status`）が現状どうなっているかを分析し、現在の定義（例：PRの状態、コメント、レビュー状況、LLMステータスなど）と期待されるPHASE1-3の挙動との間にどのようなギャップがあるか、markdown形式で出力してください。特に、`llm_status_extractor.py` からのLLMステータスがどのようにフェーズ検出に利用されているかを詳しく調べてください。
+     実行内容:
+     1. `src/gh_pr_phase_monitor/main.py` を出発点として、アプリケーションの主要な処理フローと、そこで利用されている主要モジュール間の依存関係を調査してください。
+     2. 各主要モジュールの高レベルな役割を記述し、特に密結合の兆候（循環参照、過剰なパラメータ渡し、単一責任原則からの逸脱など）がないか初期的なレビューを行ってください。
 
-        確認事項:
-        1. 既存の `PHASE_LLM_WORKING` 検出ロジックに影響を与えないこと。
-        2. `is_draft` などのPRメタデータがフェーズ検出に適切に考慮されているか。
-        3. 各フェーズへの遷移条件が明確に定義されているか。
+     確認事項: この調査はコードベース全体の構造を把握するための予備的なステップであることを認識し、詳細なリファクタリング提案は行わないでください。現在のファイル一覧と`main.py`からの呼び出しを基に調査を進めてください。
 
-        期待する出力: 現在のフェーズ検出ロジックの詳細な分析と、PHASE1-3の扱いにおける具体的な改善点をMarkdown形式で提案してください。
-        ```
+     期待する出力: markdown形式で、`main.py`を中心とした主要モジュール間の処理フローと依存関係の概要、および潜在的な密結合の兆候に関する簡単な分析結果を出力してください。
+     ```
 
-3.  [Issue #319](../issue-notes/319.md): GraphQLクエリの過剰消費を最適化する
-    -   最初の小さな一歩: `src/gh_pr_phase_monitor/github/graphql_client.py` と `src/gh_pr_phase_monitor/github/pr_fetcher.py` を分析し、どのGraphQLクエリが頻繁に実行されているか、また、不要なデータフェッチが行われている箇所がないか特定する。
-    -   Agent実行プロンプト:
-        ```
-        対象ファイル: src/gh_pr_phase_monitor/github/graphql_client.py, src/gh_pr_phase_monitor/github/pr_fetcher.py, src/gh_pr_phase_monitor/github/rate_limit_handler.py
+3. GraphQLクエリ消費の現状把握 ([Issue #319](../issue-notes/319.md))
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/github/graphql_client.py` を調査し、どのAPIコールでどのようなGraphQLクエリが発行されているかを特定する。
+   - Agent実行プロンプ:
+     ```
+     対象ファイル: `src/gh_pr_phase_monitor/github/graphql_client.py`, `src/gh_pr_phase_monitor/github/pr_fetcher.py`, `src/gh_pr_phase_monitor/github/issue_fetcher.py`, `src/gh_pr_phase_monitor/github/repository_fetcher.py`
 
-        実行内容: GitHub APIのGraphQLクエリ消費量を削減するための改善策を提案してください。具体的には、`pr_fetcher.py` や `graphql_client.py` で実行されているクエリの中から、不要なフィールドの取得や、キャッシュ可能な情報の再取得が行われている箇所がないか分析し、効率的なクエリ設計やデータ取得戦略の変更点をMarkdown形式で提案してください。`rate_limit_handler.py` がどのようにクエリ消費を管理しているかも考慮に入れてください。
+     実行内容:
+     1. `src/gh_pr_phase_monitor/github/graphql_client.py` 内で定義されているGraphQLクエリを抽出し、その内容と目的を記述してください。
+     2. これらのクエリが `pr_fetcher.py`, `issue_fetcher.py`, `repository_fetcher.py` など、他のGitHub関連モジュールでどのように利用されているかを調査し、どのデータが取得されているかをリストアップしてください。
+     3. 特に、冗長なデータ取得や、複数のクエリで同じ情報を何度も取得している可能性がないか、初期的なレビューを行ってください。
 
-        確認事項:
-        1. 必要なPR情報が失われないこと。
-        2. 既存の機能（例: フェーズ検出、コメント処理）の動作に悪影響を与えないこと。
-        3. APIレート制限の管理が引き続き適切に行われること。
+     確認事項: 既存のGraphQLクエリの構造を正確に理解し、データ取得の意図を誤解しないように注意してください。具体的な最適化案は求めず、現状のクエリと利用状況の把握に注力してください。
 
-        期待する出力: GraphQLクエリの最適化に関する具体的なコード修正案（擬似コードまたは差分形式）と、それによって期待されるクエリ消費削減効果をMarkdown形式で記述してください。
+     期待する出力: markdown形式で、現在のGraphQLクエリの定義、それがどのモジュールでどのように使用され、どのようなデータを取得しているかのリスト、および冗長性の初期レビュー結果を出力してください。
+     ```
 
 ---
-Generated at: 2026-03-06 07:04:20 JST
+Generated at: 2026-03-07 07:03:16 JST

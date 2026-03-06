@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 UPDATE_CHECK_INTERVAL_SECONDS = 60
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 _last_check_time: float = 0.0
 _update_lock = threading.Lock()

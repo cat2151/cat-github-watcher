@@ -84,11 +84,6 @@ DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS = False
 # Default setting for local repo auto-pull (disabled by default; display only by default)
 DEFAULT_AUTO_GIT_PULL = False
 
-# Default setting for GraphQL-based phase detection (Feature B).
-# When False (default), only HTML/llm_statuses-based detection is used.
-# Set to True in config.toml to enable the legacy GraphQL fallback.
-DEFAULT_USE_GRAPHQL_PHASE_DETECTION = False
-
 
 def _validate_boolean_flag(value: Any, flag_name: str) -> bool:
     """Validate that a configuration flag is a boolean value
@@ -335,16 +330,6 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
             config["auto_git_pull"] = DEFAULT_AUTO_GIT_PULL
     else:
         config["auto_git_pull"] = DEFAULT_AUTO_GIT_PULL
-    if "use_graphql_phase_detection" in config:
-        try:
-            config["use_graphql_phase_detection"] = _validate_boolean_flag(
-                config["use_graphql_phase_detection"], "use_graphql_phase_detection"
-            )
-        except ValueError as e:
-            print(f"Warning: {e}. Using default value: {DEFAULT_USE_GRAPHQL_PHASE_DETECTION}")
-            config["use_graphql_phase_detection"] = DEFAULT_USE_GRAPHQL_PHASE_DETECTION
-    else:
-        config["use_graphql_phase_detection"] = DEFAULT_USE_GRAPHQL_PHASE_DETECTION
     if "color_scheme" in config:
         try:
             config["color_scheme"] = _validate_color_scheme(config["color_scheme"])

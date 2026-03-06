@@ -34,8 +34,6 @@ def reset_module_state():
 
 def test_repo_root_points_to_actual_repo_root():
     """REPO_ROOT must point to the repository root (containing cat-github-watcher.py), not src/."""
-    from pathlib import Path
-
     assert (auto_updater.REPO_ROOT / "cat-github-watcher.py").exists(), (
         f"REPO_ROOT ({auto_updater.REPO_ROOT}) does not contain cat-github-watcher.py. "
         "Check the number of .parent levels in the REPO_ROOT definition."

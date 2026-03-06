@@ -183,6 +183,11 @@ class TestIsReviewStillInProgress:
         """Plain 'reviewing' (no started/finished prefix) is treated as completed."""
         assert _is_review_still_in_progress(["reviewing something"]) is False
 
+    def test_returns_false_when_plain_reviewing_follows_started_reviewing(self):
+        """started reviewing → plain reviewing → treat as completed (not still in progress)."""
+        statuses = ["Copilot started reviewing", "reviewing something"]
+        assert _is_review_still_in_progress(statuses) is False
+
     def test_returns_true_when_new_started_reviewing_after_finished(self):
         """New 'started reviewing' after a previous 'finished reviewing' → still in progress."""
         statuses = [

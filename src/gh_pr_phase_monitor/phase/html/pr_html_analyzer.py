@@ -46,7 +46,8 @@ def _is_review_still_in_progress(llm_statuses: list[str]) -> bool:
     """Return True when the last reviewing event is 'started reviewing' without a subsequent 'finished reviewing'.
 
     This distinguishes between a review that is currently underway ("started reviewing" only)
-    and one that has completed ("finished reviewing" present, or a plain "reviewing" event).
+    and one that has completed ("finished reviewing" or a plain "reviewing" event is present
+    after the last "started reviewing", or no "started reviewing" was seen at all).
     """
     last_started_review_idx: Optional[int] = None
     last_finished_review_idx: Optional[int] = None
@@ -60,8 +61,9 @@ def _is_review_still_in_progress(llm_statuses: list[str]) -> bool:
                 last_finished_review_idx = None
             elif "finished" in lowered:
                 last_finished_review_idx = idx
-            # plain "reviewing" (no started/finished prefix) → treat as completed (old behaviour);
-            # neither index is updated so the previous state is preserved.
+            else:
+                # plain "reviewing" (no started/finished prefix) → treat as completed.
+                last_finished_review_idx = idx
 
     return last_started_review_idx is not None and last_finished_review_idx is None
 

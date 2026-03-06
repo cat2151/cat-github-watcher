@@ -17,10 +17,11 @@ from .llm_status_extractor import _extract_llm_statuses
 from ..phase_detector import PHASE_3, _phase_from_llm_statuses, llm_working_from_statuses
 from .pr_html_fetcher import _html_to_simple_markdown
 
-# 6種のステータス定数
+# 7種のステータス定数
 PHASE1A_DRAFT_LLM_WORKING = "PHASE1A_DRAFT_LLM_WORKING"
 PHASE1B_DRAFT_LLM_FINISHED_WORK = "PHASE1B_DRAFT_LLM_FINISHED_WORK"
 PHASE1C_REVIEW_IN_PROGRESS = "PHASE1C_REVIEW_IN_PROGRESS"
+PHASE1D_LLM_REVIEWING = "PHASE1D_LLM_REVIEWING"
 PHASE2A_REVIEW_COMPLETED = "PHASE2A_REVIEW_COMPLETED"
 PHASE2B_LLM_ADDRESSING_FEEDBACK = "PHASE2B_LLM_ADDRESSING_FEEDBACK"
 PHASE3A_LLM_FEEDBACK_FINISHED_WORK = "PHASE3A_LLM_FEEDBACK_FINISHED_WORK"
@@ -41,8 +42,32 @@ def _is_draft_from_html(html: str) -> bool:
     return False
 
 
+def _is_review_still_in_progress(llm_statuses: list[str]) -> bool:
+    """Return True when the last reviewing event is 'started reviewing' without a subsequent 'finished reviewing'.
+
+    This distinguishes between a review that is currently underway ("started reviewing" only)
+    and one that has completed ("finished reviewing" present, or a plain "reviewing" event).
+    """
+    last_started_review_idx: Optional[int] = None
+    last_finished_review_idx: Optional[int] = None
+
+    for idx, status in enumerate(llm_statuses):
+        lowered = status.lower()
+        if "reviewing" in lowered:
+            if "started" in lowered:
+                last_started_review_idx = idx
+                # A new review cycle begins; previous completion status is no longer relevant.
+                last_finished_review_idx = None
+            elif "finished" in lowered:
+                last_finished_review_idx = idx
+            # plain "reviewing" (no started/finished prefix) → treat as completed (old behaviour);
+            # neither index is updated so the previous state is preserved.
+
+    return last_started_review_idx is not None and last_finished_review_idx is None
+
+
 def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
-    """llm_statusesとdraft状態から6種のステータスを決定する。
+    """llm_statusesとdraft状態から7種のステータスを決定する。
 
     コアのphase2/3検出はphase_detectorの_phase_from_llm_statusesに委譲する。
     llm_statusesは時系列順（古い順）で渡すこと。
@@ -62,7 +87,12 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
     if phase == PHASE_3:
         return PHASE3A_LLM_FEEDBACK_FINISHED_WORK
 
-    # phase == PHASE_2: PHASE2A（未着手）とPHASE2B（対応中）を区別する
+    # phase == PHASE_2: まずレビューがまだ進行中かどうかを確認する。
+    # "started reviewing" のみで "finished reviewing" がない場合はまだレビュー中。
+    if _is_review_still_in_progress(llm_statuses):
+        return PHASE1D_LLM_REVIEWING
+
+    # PHASE2A（未着手）とPHASE2B（対応中）を区別する
     # 最後のreviewingイベント以降にstarted workがあるかで判断する
     last_review_idx: Optional[int] = None
     started_after_review = False

@@ -3,7 +3,6 @@ Tests for issue fetching functionality
 """
 
 import json
-from unittest.mock import MagicMock, patch
 
 from src.gh_pr_phase_monitor.github.github_client import (
     get_all_repositories,
@@ -15,9 +14,9 @@ from src.gh_pr_phase_monitor.github.github_client import (
 class TestGetAllRepositories:
     """Tests for get_all_repositories function"""
 
-    @patch("src.gh_pr_phase_monitor.github.repository_fetcher.get_current_user")
-    @patch("subprocess.run")
-    def test_get_all_repositories_success(self, mock_run, mock_get_user):
+    def test_get_all_repositories_success(self, mocker):
+        mock_run = mocker.patch("subprocess.run")
+        mock_get_user = mocker.patch("src.gh_pr_phase_monitor.github.repository_fetcher.get_current_user")
         """Test successful retrieval of all repositories"""
         mock_get_user.return_value = "testuser"
 
@@ -46,7 +45,7 @@ class TestGetAllRepositories:
             }
         }
 
-        mock_result = MagicMock()
+        mock_result = mocker.MagicMock()
         mock_result.stdout = json.dumps(mock_response)
         mock_run.return_value = mock_result
 
@@ -60,9 +59,9 @@ class TestGetAllRepositories:
         assert repos[1]["openPRCount"] == 0
         assert repos[1]["openIssueCount"] == 3
 
-    @patch("src.gh_pr_phase_monitor.github.repository_fetcher.get_current_user")
-    @patch("subprocess.run")
-    def test_get_all_repositories_empty(self, mock_run, mock_get_user):
+    def test_get_all_repositories_empty(self, mocker):
+        mock_run = mocker.patch("subprocess.run")
+        mock_get_user = mocker.patch("src.gh_pr_phase_monitor.github.repository_fetcher.get_current_user")
         """Test retrieval when no repositories exist"""
         mock_get_user.return_value = "testuser"
 
@@ -77,7 +76,7 @@ class TestGetAllRepositories:
             }
         }
 
-        mock_result = MagicMock()
+        mock_result = mocker.MagicMock()
         mock_result.stdout = json.dumps(mock_response)
         mock_run.return_value = mock_result
 
@@ -89,8 +88,8 @@ class TestGetAllRepositories:
 class TestGetRepositoriesWithNoPrsAndOpenIssues:
     """Tests for get_repositories_with_no_prs_and_open_issues function"""
 
-    @patch("src.gh_pr_phase_monitor.github.repository_fetcher.get_all_repositories")
-    def test_filter_repos_with_no_prs_and_issues(self, mock_get_all):
+    def test_filter_repos_with_no_prs_and_issues(self, mocker):
+        mock_get_all = mocker.patch("src.gh_pr_phase_monitor.github.repository_fetcher.get_all_repositories")
         """Test filtering repositories with no PRs but with issues"""
         mock_get_all.return_value = [
             {"name": "repo1", "owner": "user", "openPRCount": 2, "openIssueCount": 5},
@@ -106,8 +105,8 @@ class TestGetRepositoriesWithNoPrsAndOpenIssues:
         assert filtered[0]["openPRCount"] == 0
         assert filtered[0]["openIssueCount"] == 3
 
-    @patch("src.gh_pr_phase_monitor.github.repository_fetcher.get_all_repositories")
-    def test_filter_repos_empty_result(self, mock_get_all):
+    def test_filter_repos_empty_result(self, mocker):
+        mock_get_all = mocker.patch("src.gh_pr_phase_monitor.github.repository_fetcher.get_all_repositories")
         """Test filtering when no repositories match criteria"""
         mock_get_all.return_value = [
             {"name": "repo1", "owner": "user", "openPRCount": 2, "openIssueCount": 5},
@@ -122,8 +121,8 @@ class TestGetRepositoriesWithNoPrsAndOpenIssues:
 class TestGetIssuesFromRepositories:
     """Tests for get_issues_from_repositories function"""
 
-    @patch("subprocess.run")
-    def test_get_issues_success(self, mock_run):
+    def test_get_issues_success(self, mocker):
+        mock_run = mocker.patch("subprocess.run")
         """Test successful retrieval of issues from repositories"""
         repos = [
             {"name": "repo1", "owner": "user1"},
@@ -178,7 +177,7 @@ class TestGetIssuesFromRepositories:
             }
         }
 
-        mock_result = MagicMock()
+        mock_result = mocker.MagicMock()
         mock_result.stdout = json.dumps(mock_response)
         mock_run.return_value = mock_result
 
@@ -193,8 +192,8 @@ class TestGetIssuesFromRepositories:
         assert issues[2]["title"] == "Issue 2"
         assert issues[2]["updatedAt"] == "2024-01-02T00:00:00Z"
 
-    @patch("subprocess.run")
-    def test_get_issues_with_limit(self, mock_run):
+    def test_get_issues_with_limit(self, mocker):
+        mock_run = mocker.patch("subprocess.run")
         """Test that limit is respected when fetching issues"""
         repos = [{"name": "repo1", "owner": "user1"}]
 
@@ -222,7 +221,7 @@ class TestGetIssuesFromRepositories:
             }
         }
 
-        mock_result = MagicMock()
+        mock_result = mocker.MagicMock()
         mock_result.stdout = json.dumps(mock_response)
         mock_run.return_value = mock_result
 
@@ -235,8 +234,8 @@ class TestGetIssuesFromRepositories:
         issues = get_issues_from_repositories([], limit=10)
         assert len(issues) == 0
 
-    @patch("subprocess.run")
-    def test_get_issues_with_deleted_author(self, mock_run):
+    def test_get_issues_with_deleted_author(self, mocker):
+        mock_run = mocker.patch("subprocess.run")
         """Test handling of issues with deleted author"""
         repos = [{"name": "repo1", "owner": "user1"}]
 
@@ -262,7 +261,7 @@ class TestGetIssuesFromRepositories:
             }
         }
 
-        mock_result = MagicMock()
+        mock_result = mocker.MagicMock()
         mock_result.stdout = json.dumps(mock_response)
         mock_run.return_value = mock_result
 
@@ -271,8 +270,8 @@ class TestGetIssuesFromRepositories:
         assert len(issues) == 1
         assert issues[0]["author"]["login"] == "[deleted]"
 
-    @patch("subprocess.run")
-    def test_get_issues_with_labels_filter(self, mock_run):
+    def test_get_issues_with_labels_filter(self, mocker):
+        mock_run = mocker.patch("subprocess.run")
         """Test filtering issues by labels"""
         repos = [{"name": "repo1", "owner": "user1"}]
 
@@ -298,7 +297,7 @@ class TestGetIssuesFromRepositories:
             }
         }
 
-        mock_result = MagicMock()
+        mock_result = mocker.MagicMock()
         mock_result.stdout = json.dumps(mock_response)
         mock_run.return_value = mock_result
 
@@ -308,8 +307,8 @@ class TestGetIssuesFromRepositories:
         assert issues[0]["title"] == "Good First Issue"
         assert "good first issue" in issues[0]["labels"]
 
-    @patch("subprocess.run")
-    def test_get_issues_sorted_by_number(self, mock_run):
+    def test_get_issues_sorted_by_number(self, mocker):
+        mock_run = mocker.patch("subprocess.run")
         """Test sorting issues by issue number in ascending order"""
         repos = [{"name": "repo1", "owner": "user1"}]
 
@@ -353,7 +352,7 @@ class TestGetIssuesFromRepositories:
             }
         }
 
-        mock_result = MagicMock()
+        mock_result = mocker.MagicMock()
         mock_result.stdout = json.dumps(mock_response)
         mock_run.return_value = mock_result
 
@@ -369,8 +368,8 @@ class TestGetIssuesFromRepositories:
         assert issues[2]["number"] == 20
         assert issues[2]["title"] == "Issue 20"
 
-    @patch("subprocess.run")
-    def test_get_issues_default_sorting_by_updated_at(self, mock_run):
+    def test_get_issues_default_sorting_by_updated_at(self, mocker):
+        mock_run = mocker.patch("subprocess.run")
         """Test default sorting by updatedAt in descending order"""
         repos = [{"name": "repo1", "owner": "user1"}]
 
@@ -414,7 +413,7 @@ class TestGetIssuesFromRepositories:
             }
         }
 
-        mock_result = MagicMock()
+        mock_result = mocker.MagicMock()
         mock_result.stdout = json.dumps(mock_response)
         mock_run.return_value = mock_result
 

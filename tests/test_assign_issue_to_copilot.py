@@ -2,7 +2,6 @@
 Tests for assign_issue_to_copilot function
 """
 
-from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.github.github_client import (
     assign_issue_to_copilot,
@@ -12,7 +11,7 @@ from src.gh_pr_phase_monitor.github.github_client import (
 class TestAssignIssueToCopilot:
     """Tests for assign_issue_to_copilot function"""
 
-    def test_missing_url_field(self):
+    def test_missing_url_field(self, mocker):
         """Test validation of missing URL field"""
         # Missing 'url' field
         issue = {
@@ -21,9 +20,9 @@ class TestAssignIssueToCopilot:
         }
         assert assign_issue_to_copilot(issue) is False
 
-    @patch("src.gh_pr_phase_monitor.github.issue_fetcher.assign_issue_to_copilot_automated")
-    @patch("src.gh_pr_phase_monitor.github.issue_fetcher.is_pyautogui_available")
-    def test_automated_mode_when_pyautogui_available(self, mock_pyautogui_available, mock_automated_func):
+    def test_automated_mode_when_pyautogui_available(self, mocker):
+        mock_pyautogui_available = mocker.patch("src.gh_pr_phase_monitor.github.issue_fetcher.is_pyautogui_available")
+        mock_automated_func = mocker.patch("src.gh_pr_phase_monitor.github.issue_fetcher.assign_issue_to_copilot_automated")
         """Test automated mode when PyAutoGUI is available"""
         mock_pyautogui_available.return_value = True
         mock_automated_func.return_value = True
@@ -40,8 +39,8 @@ class TestAssignIssueToCopilot:
         assert result is True
         mock_automated_func.assert_called_once_with("https://github.com/test-owner/test-repo/issues/123", config)
 
-    @patch("src.gh_pr_phase_monitor.github.issue_fetcher.is_pyautogui_available")
-    def test_fails_when_pyautogui_not_available(self, mock_pyautogui_available):
+    def test_fails_when_pyautogui_not_available(self, mocker):
+        mock_pyautogui_available = mocker.patch("src.gh_pr_phase_monitor.github.issue_fetcher.is_pyautogui_available")
         """Test failure when PyAutoGUI is not available"""
         mock_pyautogui_available.return_value = False
 
@@ -56,9 +55,9 @@ class TestAssignIssueToCopilot:
 
         assert result is False
 
-    @patch("src.gh_pr_phase_monitor.github.issue_fetcher.assign_issue_to_copilot_automated")
-    @patch("src.gh_pr_phase_monitor.github.issue_fetcher.is_pyautogui_available")
-    def test_uses_pyautogui_when_available(self, mock_pyautogui_available, mock_automated_func):
+    def test_uses_pyautogui_when_available(self, mocker):
+        mock_pyautogui_available = mocker.patch("src.gh_pr_phase_monitor.github.issue_fetcher.is_pyautogui_available")
+        mock_automated_func = mocker.patch("src.gh_pr_phase_monitor.github.issue_fetcher.assign_issue_to_copilot_automated")
         """Test uses PyAutoGUI when available"""
         mock_pyautogui_available.return_value = True
         mock_automated_func.return_value = True
@@ -74,9 +73,9 @@ class TestAssignIssueToCopilot:
         assert result is True
         mock_automated_func.assert_called_once_with("https://github.com/test-owner/test-repo/issues/123", None)
 
-    @patch("src.gh_pr_phase_monitor.github.issue_fetcher.assign_issue_to_copilot_automated")
-    @patch("src.gh_pr_phase_monitor.github.issue_fetcher.is_pyautogui_available")
-    def test_works_with_config(self, mock_pyautogui_available, mock_automated_func):
+    def test_works_with_config(self, mocker):
+        mock_pyautogui_available = mocker.patch("src.gh_pr_phase_monitor.github.issue_fetcher.is_pyautogui_available")
+        mock_automated_func = mocker.patch("src.gh_pr_phase_monitor.github.issue_fetcher.assign_issue_to_copilot_automated")
         """Test automation works with config"""
         mock_pyautogui_available.return_value = True
         mock_automated_func.return_value = True

@@ -2,7 +2,6 @@
 Tests for open_browser cooldown functionality in pr_actions
 """
 
-from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.actions import pr_actions
 from src.gh_pr_phase_monitor.actions.pr_actions import process_pr
@@ -18,9 +17,9 @@ class TestOpenBrowserCooldown:
         bc._last_browser_open_time = None
         pr_actions._browser_opened.clear()
 
-    @patch("src.gh_pr_phase_monitor.actions.pr_actions.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
-    def test_open_browser_returns_true_on_success(self, mock_time, mock_webbrowser):
+    def test_open_browser_returns_true_on_success(self, mocker):
+        mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.webbrowser")
         """Test that open_browser returns True when browser is opened"""
         from src.gh_pr_phase_monitor.actions.pr_actions import open_browser
 
@@ -31,9 +30,9 @@ class TestOpenBrowserCooldown:
         assert result is True
         mock_webbrowser.open.assert_called_once()
 
-    @patch("src.gh_pr_phase_monitor.actions.pr_actions.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
-    def test_open_browser_respects_cooldown(self, mock_time, mock_webbrowser):
+    def test_open_browser_respects_cooldown(self, mocker):
+        mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.webbrowser")
         """Test that open_browser respects the 60-second cooldown"""
         from src.gh_pr_phase_monitor.actions.pr_actions import open_browser
 
@@ -55,9 +54,9 @@ class TestOpenBrowserCooldown:
         # Verify browser was only opened twice
         assert mock_webbrowser.open.call_count == 2
 
-    @patch("src.gh_pr_phase_monitor.actions.pr_actions.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
-    def test_process_pr_phase3_respects_cooldown(self, mock_time, mock_webbrowser):
+    def test_process_pr_phase3_respects_cooldown(self, mocker):
+        mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.webbrowser")
         """Test that process_pr respects cooldown when opening browser for phase3"""
         pr_actions._browser_opened.clear()
 

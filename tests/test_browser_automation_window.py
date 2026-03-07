@@ -1,6 +1,5 @@
 """Tests for browser cooldown, window activation, and window-activation integration"""
 
-from unittest.mock import MagicMock, patch
 
 from src.gh_pr_phase_monitor.browser.browser_automation import (
     assign_issue_to_copilot_automated,
@@ -19,12 +18,12 @@ class TestBrowserCooldown:
         bc._last_browser_open_time = None
         ba._issue_assign_attempted.clear()
 
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
-    @patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
-    def test_assign_respects_cooldown(self, mock_time, mock_sleep, mock_click, mock_webbrowser):
+    def test_assign_respects_cooldown(self, mocker):
+        mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
+        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
         """Test that assign_issue_to_copilot_automated respects cooldown"""
         # Mock click function to succeed
         mock_click.return_value = True
@@ -49,12 +48,12 @@ class TestBrowserCooldown:
         # Verify browser was only opened twice (first and third calls)
         assert mock_webbrowser.open.call_count == 2
 
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
-    @patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
-    def test_merge_respects_cooldown(self, mock_time, mock_sleep, mock_click, mock_webbrowser):
+    def test_merge_respects_cooldown(self, mocker):
+        mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
+        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
         """Test that merge_pr_automated respects cooldown"""
         # Mock click function to succeed
         mock_click.return_value = True
@@ -79,12 +78,12 @@ class TestBrowserCooldown:
         # Verify browser was only opened twice (first and third calls)
         assert mock_webbrowser.open.call_count == 2
 
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
-    @patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
-    def test_cooldown_applies_across_assign_and_merge(self, mock_time, mock_sleep, mock_click, mock_webbrowser):
+    def test_cooldown_applies_across_assign_and_merge(self, mocker):
+        mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
+        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
         """Test that cooldown is shared between assign and merge operations"""
         # Mock click function to succeed
         mock_click.return_value = True
@@ -109,16 +108,16 @@ class TestBrowserCooldown:
         # Verify browser was only opened twice
         assert mock_webbrowser.open.call_count == 2
 
-    @patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
-    def test_can_open_browser_when_no_previous_open(self, mock_time):
+    def test_can_open_browser_when_no_previous_open(self, mocker):
+        mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
         """Test that _can_open_browser returns True when no previous browser was opened"""
         from src.gh_pr_phase_monitor.browser.browser_automation import _can_open_browser
 
         result = _can_open_browser()
         assert result is True
 
-    @patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
-    def test_can_open_browser_respects_cooldown(self, mock_time):
+    def test_can_open_browser_respects_cooldown(self, mocker):
+        mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
         """Test that _can_open_browser respects the 60-second cooldown"""
         from src.gh_pr_phase_monitor.browser.browser_automation import _can_open_browser, _record_browser_open
 
@@ -142,8 +141,8 @@ class TestBrowserCooldown:
         mock_time.return_value = 61.0
         assert _can_open_browser() is True
 
-    @patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
-    def test_get_remaining_cooldown(self, mock_time):
+    def test_get_remaining_cooldown(self, mocker):
+        mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
         """Test that _get_remaining_cooldown returns correct remaining time"""
         from src.gh_pr_phase_monitor.browser.browser_automation import _get_remaining_cooldown, _record_browser_open
 
@@ -169,8 +168,8 @@ class TestBrowserCooldown:
 class TestActivateWindowByTitle:
     """Tests for _activate_window_by_title function"""
 
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", False)
-    def test_exits_when_pygetwindow_unavailable_and_window_title_configured(self):
+    def test_exits_when_pygetwindow_unavailable_and_window_title_configured(self, mocker):
+        mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", False)
         """Test that function exits with error when PyGetWindow is not available but window_title is configured"""
         import pytest
 
@@ -181,36 +180,36 @@ class TestActivateWindowByTitle:
 
         assert exc_info.value.code == 1
 
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
-    def test_returns_false_when_window_title_is_none(self, mock_gw):
+    def test_returns_false_when_window_title_is_none(self, mocker):
+        mock_gw = mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
+        mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
         """Test that function returns False when window_title is None"""
         from src.gh_pr_phase_monitor.browser.browser_automation import _activate_window_by_title
 
         result = _activate_window_by_title(None, {})
         assert result is False
 
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
-    def test_returns_false_when_window_title_is_empty(self, mock_gw):
+    def test_returns_false_when_window_title_is_empty(self, mocker):
+        mock_gw = mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
+        mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
         """Test that function returns False when window_title is empty string"""
         from src.gh_pr_phase_monitor.browser.browser_automation import _activate_window_by_title
 
         result = _activate_window_by_title("", {})
         assert result is False
 
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
-    def test_activates_matching_window(self, mock_gw):
+    def test_activates_matching_window(self, mocker):
+        mock_gw = mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
+        mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
         """Test that function activates a window matching the title"""
         from src.gh_pr_phase_monitor.browser.browser_automation import _activate_window_by_title
 
         # Create mock windows
-        mock_window_1 = MagicMock()
+        mock_window_1 = mocker.MagicMock()
         mock_window_1.title = "GitHub - Issues"
         mock_window_1.isMinimized = False
 
-        mock_window_2 = MagicMock()
+        mock_window_2 = mocker.MagicMock()
         mock_window_2.title = "Google Chrome"
         mock_window_2.isMinimized = False
 
@@ -222,14 +221,14 @@ class TestActivateWindowByTitle:
         mock_window_1.activate.assert_called_once()
         mock_window_2.activate.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
-    def test_restores_minimized_window_before_activating(self, mock_gw):
+    def test_restores_minimized_window_before_activating(self, mocker):
+        mock_gw = mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
+        mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
         """Test that function restores a minimized window before activating"""
         from src.gh_pr_phase_monitor.browser.browser_automation import _activate_window_by_title
 
         # Create mock minimized window
-        mock_window = MagicMock()
+        mock_window = mocker.MagicMock()
         mock_window.title = "GitHub - Pull Request"
         mock_window.isMinimized = True
 
@@ -241,14 +240,14 @@ class TestActivateWindowByTitle:
         mock_window.restore.assert_called_once()
         mock_window.activate.assert_called_once()
 
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
-    def test_returns_false_when_no_matching_window_found(self, mock_gw):
+    def test_returns_false_when_no_matching_window_found(self, mocker):
+        mock_gw = mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
+        mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
         """Test that function returns False when no window matches the title"""
         from src.gh_pr_phase_monitor.browser.browser_automation import _activate_window_by_title
 
         # Create mock windows with different titles
-        mock_window = MagicMock()
+        mock_window = mocker.MagicMock()
         mock_window.title = "Google Chrome"
 
         mock_gw.getAllWindows.return_value = [mock_window]
@@ -258,9 +257,9 @@ class TestActivateWindowByTitle:
         assert result is False
         mock_window.activate.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
-    def test_handles_exception_gracefully(self, mock_gw):
+    def test_handles_exception_gracefully(self, mocker):
+        mock_gw = mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
+        mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
         """Test that function handles exceptions gracefully"""
         from src.gh_pr_phase_monitor.browser.browser_automation import _activate_window_by_title
 
@@ -271,14 +270,14 @@ class TestActivateWindowByTitle:
 
         assert result is False
 
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
-    def test_case_insensitive_matching(self, mock_gw):
+    def test_case_insensitive_matching(self, mocker):
+        mock_gw = mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
+        mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
         """Test that window title matching is case-insensitive"""
         from src.gh_pr_phase_monitor.browser.browser_automation import _activate_window_by_title
 
         # Create mock window with different case
-        mock_window = MagicMock()
+        mock_window = mocker.MagicMock()
         mock_window.title = "GITHUB - Issues"
         mock_window.isMinimized = False
 
@@ -289,13 +288,13 @@ class TestActivateWindowByTitle:
         assert result is True
         mock_window.activate.assert_called_once()
 
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
-    def test_skips_search_when_active_window_matches(self, mock_gw):
+    def test_skips_search_when_active_window_matches(self, mocker):
+        mock_gw = mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.gw")
+        mocker.patch("src.gh_pr_phase_monitor.browser.window_manager.PYGETWINDOW_AVAILABLE", True)
         """Return early when the active window already matches the title."""
         from src.gh_pr_phase_monitor.browser.browser_automation import _activate_window_by_title
 
-        active_window = MagicMock()
+        active_window = mocker.MagicMock()
         active_window.title = "GitHub - notifications"
         mock_gw.getActiveWindow.return_value = active_window
 
@@ -316,14 +315,12 @@ class TestAssignWithWindowActivation:
         bc._last_browser_open_time = None
         ba._issue_assign_attempted.clear()
 
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation._activate_window_by_title")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
-    def test_calls_window_activation_when_window_title_configured(
-        self, mock_sleep, mock_activate, mock_click, mock_webbrowser
-    ):
+    def test_calls_window_activation_when_window_title_configured(self, mocker):
+        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
+        mock_activate = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._activate_window_by_title")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
         """Test that window activation is called when window_title is configured"""
         mock_click.return_value = True
         mock_activate.return_value = True
@@ -339,14 +336,12 @@ class TestAssignWithWindowActivation:
         assert activate_args[0] == "GitHub"
         assert activate_args[1]["window_title"] == "GitHub"
 
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation._activate_window_by_title")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
-    def test_skips_window_activation_when_window_title_not_configured(
-        self, mock_sleep, mock_activate, mock_click, mock_webbrowser
-    ):
+    def test_skips_window_activation_when_window_title_not_configured(self, mocker):
+        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
+        mock_activate = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._activate_window_by_title")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
         """Test that window activation is skipped when window_title is not configured"""
         mock_click.return_value = True
         mock_webbrowser.open.return_value = True
@@ -368,14 +363,12 @@ class TestMergeWithWindowActivation:
 
         bc._last_browser_open_time = None
 
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation._activate_window_by_title")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
-    def test_calls_window_activation_when_window_title_configured(
-        self, mock_sleep, mock_activate, mock_click, mock_webbrowser
-    ):
+    def test_calls_window_activation_when_window_title_configured(self, mocker):
+        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
+        mock_activate = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._activate_window_by_title")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
         """Test that window activation is called when window_title is configured"""
         mock_click.return_value = True
         mock_activate.return_value = True
@@ -391,14 +384,12 @@ class TestMergeWithWindowActivation:
         assert activate_args[0] == "GitHub"
         assert activate_args[1]["window_title"] == "GitHub"
 
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation._activate_window_by_title")
-    @patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
-    def test_skips_window_activation_when_window_title_not_configured(
-        self, mock_sleep, mock_activate, mock_click, mock_webbrowser
-    ):
+    def test_skips_window_activation_when_window_title_not_configured(self, mocker):
+        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
+        mock_activate = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._activate_window_by_title")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
         """Test that window activation is skipped when window_title is not configured"""
         mock_click.return_value = True
         mock_webbrowser.open.return_value = True

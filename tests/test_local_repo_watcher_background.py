@@ -9,7 +9,6 @@ import sys
 import tempfile
 import threading
 import types
-import unittest.mock as _mock
 
 import pytest
 
@@ -88,18 +87,18 @@ class TestBackgroundMonitoring:
         # After the call, state should be DONE (not stuck in NEEDS_CHECK)
         assert local_repo_watcher._repo_states.get("no-such-repo") == local_repo_watcher.REPO_STATE_DONE
 
-    def test_notify_phase3_detected_skips_if_already_checking(self):
+    def test_notify_phase3_detected_skips_if_already_checking(self, mocker):
         """notify_phase3_detected is a no-op for repos already in a checking state."""
         started = []
 
         with local_repo_watcher._state_lock:
             local_repo_watcher._repo_states["myrepo"] = local_repo_watcher.REPO_STATE_STARTUP_CHECKING
 
-        with _mock.patch.object(threading.Thread, "start", lambda self: started.append(True)):
-            with tempfile.TemporaryDirectory() as tmpdir:
-                (pathlib.Path(tmpdir) / "myrepo").mkdir()
-                config = {"local_repo_watcher_base_dir": tmpdir}
-                local_repo_watcher.notify_phase3_detected("myrepo", config, "myuser")
+        mocker.patch.object(threading.Thread, "start", lambda self: started.append(True))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (pathlib.Path(tmpdir) / "myrepo").mkdir()
+            config = {"local_repo_watcher_base_dir": tmpdir}
+            local_repo_watcher.notify_phase3_detected("myrepo", config, "myuser")
 
         assert len(started) == 0
 
@@ -161,17 +160,17 @@ class TestBackgroundMonitoring:
             lines = list(local_repo_watcher._pending_lines)
         assert lines == []
 
-    def test_notify_phase3_detected_skips_if_already_done(self):
+    def test_notify_phase3_detected_skips_if_already_done(self, mocker):
         """notify_phase3_detected is a no-op for repos already in DONE state (no re-trigger)."""
         with local_repo_watcher._state_lock:
             local_repo_watcher._repo_states["myrepo"] = local_repo_watcher.REPO_STATE_DONE
 
         started = []
-        with _mock.patch.object(threading.Thread, "start", lambda self: started.append(True)):
-            with tempfile.TemporaryDirectory() as tmpdir:
-                (pathlib.Path(tmpdir) / "myrepo").mkdir()
-                config = {"local_repo_watcher_base_dir": tmpdir}
-                local_repo_watcher.notify_phase3_detected("myrepo", config, "myuser")
+        mocker.patch.object(threading.Thread, "start", lambda self: started.append(True))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (pathlib.Path(tmpdir) / "myrepo").mkdir()
+            config = {"local_repo_watcher_base_dir": tmpdir}
+            local_repo_watcher.notify_phase3_detected("myrepo", config, "myuser")
 
         assert len(started) == 0
 

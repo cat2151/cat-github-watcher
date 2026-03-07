@@ -2,7 +2,6 @@
 Tests for Phase3 merge functionality
 """
 
-from unittest.mock import MagicMock, patch
 
 from src.gh_pr_phase_monitor.actions import pr_actions
 from src.gh_pr_phase_monitor.core.config import DEFAULT_PHASE3_MERGE_CONFIG
@@ -18,7 +17,7 @@ class TestPhase3Merge:
         pr_actions._notifications_sent.clear()
         pr_actions._merged_prs.clear()
 
-    def test_merge_not_attempted_when_disabled(self):
+    def test_merge_not_attempted_when_disabled(self, mocker):
         """Merge should not be attempted when disabled via enable_execution_phase3_to_merge=false"""
         pr = {
             "isDraft": False,
@@ -41,17 +40,15 @@ class TestPhase3Merge:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            process_pr(pr, config)
-            # Merge should not be attempted
-            mock_merge.assert_not_called()
-            mock_comment.assert_not_called()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        process_pr(pr, config)
+        # Merge should not be attempted
+        mock_merge.assert_not_called()
+        mock_comment.assert_not_called()
 
-    def test_merge_attempted_when_enabled_with_gh_cli(self):
+    def test_merge_attempted_when_enabled_with_gh_cli(self, mocker):
         """Merge should be attempted using gh CLI when enabled and automated=false"""
         pr = {
             "isDraft": False,
@@ -78,20 +75,18 @@ class TestPhase3Merge:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_merge.return_value = True
-            mock_comment.return_value = True
-            process_pr(pr, config)
-            # Comment should be posted before merge
-            mock_comment.assert_called_once_with(pr, "Test merge comment", None)
-            # Merge should be attempted via gh CLI
-            mock_merge.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1", None)
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_merge.return_value = True
+        mock_comment.return_value = True
+        process_pr(pr, config)
+        # Comment should be posted before merge
+        mock_comment.assert_called_once_with(pr, "Test merge comment", None)
+        # Merge should be attempted via gh CLI
+        mock_merge.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1", None)
 
-    def test_merge_attempted_when_enabled_with_automation(self):
+    def test_merge_attempted_when_enabled_with_automation(self, mocker):
         """Merge should be attempted using browser automation when enabled and automated=true"""
         pr = {
             "isDraft": False,
@@ -118,23 +113,21 @@ class TestPhase3Merge:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr_automated") as mock_merge_auto,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_merge_auto.return_value = True
-            mock_comment.return_value = True
-            process_pr(pr, config)
-            # Comment should be posted before merge
-            mock_comment.assert_called_once_with(pr, "Auto merge comment", None)
-            # Merge should be attempted via browser automation with phase3_merge config merged with defaults
-            expected_phase3_merge = DEFAULT_PHASE3_MERGE_CONFIG.copy()
-            expected_phase3_merge.update({"comment": "Auto merge comment", "automated": True})
-            expected_config = {"phase3_merge": expected_phase3_merge}
-            mock_merge_auto.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1", expected_config)
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge_auto = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr_automated")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_merge_auto.return_value = True
+        mock_comment.return_value = True
+        process_pr(pr, config)
+        # Comment should be posted before merge
+        mock_comment.assert_called_once_with(pr, "Auto merge comment", None)
+        # Merge should be attempted via browser automation with phase3_merge config merged with defaults
+        expected_phase3_merge = DEFAULT_PHASE3_MERGE_CONFIG.copy()
+        expected_phase3_merge.update({"comment": "Auto merge comment", "automated": True})
+        expected_config = {"phase3_merge": expected_phase3_merge}
+        mock_merge_auto.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1", expected_config)
 
-    def test_merge_only_once_per_pr(self):
+    def test_merge_only_once_per_pr(self, mocker):
         """Merge should only be attempted once per PR"""
         pr = {
             "isDraft": False,
@@ -161,25 +154,23 @@ class TestPhase3Merge:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_merge.return_value = True
-            mock_comment.return_value = True
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_merge.return_value = True
+        mock_comment.return_value = True
 
-            # First call should merge
-            process_pr(pr, config)
-            assert mock_merge.call_count == 1
-            assert mock_comment.call_count == 1
+        # First call should merge
+        process_pr(pr, config)
+        assert mock_merge.call_count == 1
+        assert mock_comment.call_count == 1
 
-            # Second call should not merge again
-            process_pr(pr, config)
-            assert mock_merge.call_count == 1
-            assert mock_comment.call_count == 1
+        # Second call should not merge again
+        process_pr(pr, config)
+        assert mock_merge.call_count == 1
+        assert mock_comment.call_count == 1
 
-    def test_merge_not_attempted_for_phase1(self):
+    def test_merge_not_attempted_for_phase1(self, mocker):
         """Merge should not be attempted for phase1"""
         pr = {
             "isDraft": True,
@@ -204,19 +195,17 @@ class TestPhase3Merge:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready,
-        ):
-            mock_ready.return_value = True
-            process_pr(pr, config)
-            # Merge should not be attempted for phase1
-            mock_merge.assert_not_called()
-            mock_comment.assert_not_called()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_ready = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready")
+        mock_ready.return_value = True
+        process_pr(pr, config)
+        # Merge should not be attempted for phase1
+        mock_merge.assert_not_called()
+        mock_comment.assert_not_called()
 
-    def test_merge_not_attempted_for_phase2(self):
+    def test_merge_not_attempted_for_phase2(self, mocker):
         """Merge should not be attempted for phase2"""
         pr = {
             "isDraft": False,
@@ -246,19 +235,17 @@ class TestPhase3Merge:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment") as mock_phase2_comment,
-        ):
-            mock_phase2_comment.return_value = True
-            process_pr(pr, config)
-            # Merge should not be attempted for phase2
-            mock_merge.assert_not_called()
-            mock_comment.assert_not_called()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_phase2_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment")
+        mock_phase2_comment.return_value = True
+        process_pr(pr, config)
+        # Merge should not be attempted for phase2
+        mock_merge.assert_not_called()
+        mock_comment.assert_not_called()
 
-    def test_merge_dry_run_mode(self):
+    def test_merge_dry_run_mode(self, mocker):
         """Merge should show dry-run message when execution flag is false"""
         pr = {
             "isDraft": False,
@@ -283,17 +270,15 @@ class TestPhase3Merge:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            process_pr(pr, config)
-            # Merge should not be attempted in dry-run mode
-            mock_merge.assert_not_called()
-            mock_comment.assert_not_called()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        process_pr(pr, config)
+        # Merge should not be attempted in dry-run mode
+        mock_merge.assert_not_called()
+        mock_comment.assert_not_called()
 
-    def test_merge_skipped_when_comment_fails(self):
+    def test_merge_skipped_when_comment_fails(self, mocker):
         """Merge should be skipped when comment posting fails"""
         pr = {
             "isDraft": False,
@@ -320,21 +305,19 @@ class TestPhase3Merge:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_comment.return_value = False  # Comment posting fails
-            process_pr(pr, config)
-            # Comment should be attempted
-            mock_comment.assert_called_once()
-            # Merge should NOT be attempted when comment fails
-            mock_merge.assert_not_called()
-            # PR should NOT be added to merged_prs set (allowing retry)
-            assert "https://github.com/test-owner/test-repo/pull/1" not in pr_actions._merged_prs
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_comment.return_value = False  # Comment posting fails
+        process_pr(pr, config)
+        # Comment should be attempted
+        mock_comment.assert_called_once()
+        # Merge should NOT be attempted when comment fails
+        mock_merge.assert_not_called()
+        # PR should NOT be added to merged_prs set (allowing retry)
+        assert "https://github.com/test-owner/test-repo/pull/1" not in pr_actions._merged_prs
 
-    def test_merge_failure_allows_retry_cli(self):
+    def test_merge_failure_allows_retry_cli(self, mocker):
         """When CLI merge fails, PR should not be marked as merged (allows retry)"""
         pr = {
             "isDraft": False,
@@ -361,21 +344,19 @@ class TestPhase3Merge:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_comment.return_value = True
-            mock_merge.return_value = False  # Merge fails
-            process_pr(pr, config)
-            # Comment and merge should be attempted
-            mock_comment.assert_called_once()
-            mock_merge.assert_called_once()
-            # PR should NOT be in merged_prs set (allows retry)
-            assert "https://github.com/test-owner/test-repo/pull/1" not in pr_actions._merged_prs
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_comment.return_value = True
+        mock_merge.return_value = False  # Merge fails
+        process_pr(pr, config)
+        # Comment and merge should be attempted
+        mock_comment.assert_called_once()
+        mock_merge.assert_called_once()
+        # PR should NOT be in merged_prs set (allows retry)
+        assert "https://github.com/test-owner/test-repo/pull/1" not in pr_actions._merged_prs
 
-    def test_merge_failure_allows_retry_automation(self):
+    def test_merge_failure_allows_retry_automation(self, mocker):
         """When browser automation merge fails, PR should not be marked as merged (allows retry)"""
         pr = {
             "isDraft": False,
@@ -402,21 +383,19 @@ class TestPhase3Merge:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr_automated") as mock_merge_auto,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_comment.return_value = True
-            mock_merge_auto.return_value = False  # Merge fails
-            process_pr(pr, config)
-            # Comment and merge should be attempted
-            mock_comment.assert_called_once()
-            mock_merge_auto.assert_called_once()
-            # PR should NOT be in merged_prs set (allows retry)
-            assert "https://github.com/test-owner/test-repo/pull/1" not in pr_actions._merged_prs
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge_auto = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr_automated")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_comment.return_value = True
+        mock_merge_auto.return_value = False  # Merge fails
+        process_pr(pr, config)
+        # Comment and merge should be attempted
+        mock_comment.assert_called_once()
+        mock_merge_auto.assert_called_once()
+        # PR should NOT be in merged_prs set (allows retry)
+        assert "https://github.com/test-owner/test-repo/pull/1" not in pr_actions._merged_prs
 
-    def test_successful_merge_marks_pr_as_merged(self):
+    def test_successful_merge_marks_pr_as_merged(self, mocker):
         """When merge succeeds, PR should be marked as merged (prevents duplicates)"""
         pr = {
             "isDraft": False,
@@ -443,40 +422,38 @@ class TestPhase3Merge:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_comment.return_value = True
-            mock_merge.return_value = True  # Merge succeeds
-            process_pr(pr, config)
-            # Comment and merge should be attempted
-            mock_comment.assert_called_once()
-            mock_merge.assert_called_once()
-            # PR SHOULD be in merged_prs set (prevents duplicate merges)
-            assert "https://github.com/test-owner/test-repo/pull/1" in pr_actions._merged_prs
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_comment.return_value = True
+        mock_merge.return_value = True  # Merge succeeds
+        process_pr(pr, config)
+        # Comment and merge should be attempted
+        mock_comment.assert_called_once()
+        mock_merge.assert_called_once()
+        # PR SHOULD be in merged_prs set (prevents duplicate merges)
+        assert "https://github.com/test-owner/test-repo/pull/1" in pr_actions._merged_prs
 
-    def test_merge_includes_delete_branch_flag(self):
+    def test_merge_includes_delete_branch_flag(self, mocker):
         """Merge command should include --delete-branch flag"""
         pr_url = "https://github.com/test-owner/test-repo/pull/123"
 
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0)
-            result = merge_pr(pr_url)
+        mock_run = mocker.patch("subprocess.run")
+        mock_run.return_value = mocker.MagicMock(returncode=0)
+        result = merge_pr(pr_url)
 
-            # Verify the command was called
-            assert result is True
-            mock_run.assert_called_once()
+        # Verify the command was called
+        assert result is True
+        mock_run.assert_called_once()
 
-            # Get the actual command that was called
-            call_args = mock_run.call_args
-            cmd = call_args[0][0]
+        # Get the actual command that was called
+        call_args = mock_run.call_args
+        cmd = call_args[0][0]
 
-            # Verify the command includes --delete-branch flag
-            assert "gh" in cmd
-            assert "pr" in cmd
-            assert "merge" in cmd
-            assert pr_url in cmd
-            assert "--squash" in cmd
-            assert "--delete-branch" in cmd
+        # Verify the command includes --delete-branch flag
+        assert "gh" in cmd
+        assert "pr" in cmd
+        assert "merge" in cmd
+        assert pr_url in cmd
+        assert "--squash" in cmd
+        assert "--delete-branch" in cmd

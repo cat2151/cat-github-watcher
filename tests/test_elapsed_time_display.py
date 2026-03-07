@@ -8,7 +8,6 @@ to show something like '現在、検知してから3分20秒経過' (Currently, 
 
 import time
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.ui.display import display_status_summary
 from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_1, PHASE_LLM_WORKING
@@ -37,7 +36,7 @@ class TestElapsedTimeDisplay:
         assert format_elapsed_time(200) == "3分20秒"
         assert format_elapsed_time(3661) == "61分1秒"
 
-    def test_elapsed_time_not_shown_for_new_prs(self):
+    def test_elapsed_time_not_shown_for_new_prs(self, mocker):
         """Test that elapsed time is not shown for PRs detected for less than 60 seconds"""
         # Create mock PR data
         all_prs = [
@@ -50,18 +49,18 @@ class TestElapsedTimeDisplay:
         pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            # Extract all printed messages
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        # Extract all printed messages
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            # Verify that elapsed time is NOT displayed (PR is new)
-            assert "経過" not in output
-            assert "New PR" in output
+        # Verify that elapsed time is NOT displayed (PR is new)
+        assert "経過" not in output
+        assert "New PR" in output
 
-    def test_elapsed_time_shown_after_60_seconds(self):
+    def test_elapsed_time_shown_after_60_seconds(self, mocker):
         """Test that elapsed time is shown for PRs in same state for more than 60 seconds"""
         # Create mock PR data
         all_prs = [
@@ -75,27 +74,27 @@ class TestElapsedTimeDisplay:
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         # First call to set the initial detection time
-        with patch("builtins.print"):
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
         # Manually adjust the detection time to simulate 200 seconds elapsed
         state_key = ("https://github.com/owner/repo1/pulls/1", PHASE_LLM_WORKING)
         _pr_state_times[state_key] = time.time() - 200
 
         # Second call should show elapsed time
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            # Extract all printed messages
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        # Extract all printed messages
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            # Verify that elapsed time IS displayed
-            assert "現在、検知してから" in output
-            assert "経過" in output
-            assert "3分" in output  # Should be around 3 minutes
+        # Verify that elapsed time IS displayed
+        assert "現在、検知してから" in output
+        assert "経過" in output
+        assert "3分" in output  # Should be around 3 minutes
 
-    def test_elapsed_time_resets_when_phase_changes(self):
+    def test_elapsed_time_resets_when_phase_changes(self, mocker):
         """Test that elapsed time tracking resets when PR phase changes"""
         # Create mock PR data
         all_prs = [
@@ -110,8 +109,8 @@ class TestElapsedTimeDisplay:
         pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
-        with patch("builtins.print"):
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
         # Verify that state was tracked
         state_key_1 = ("https://github.com/owner/repo1/pulls/1", PHASE_LLM_WORKING)
@@ -119,15 +118,15 @@ class TestElapsedTimeDisplay:
 
         # Simulate phase change by calling with a different phase
         pr_phases = [PHASE_1]
-        with patch("builtins.print"):
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
         # Verify that old state was cleaned up and new state was tracked
         state_key_2 = ("https://github.com/owner/repo1/pulls/1", PHASE_1)
         assert state_key_1 not in _pr_state_times
         assert state_key_2 in _pr_state_times
 
-    def test_cleanup_removes_old_pr_states(self):
+    def test_cleanup_removes_old_pr_states(self, mocker):
         """Test that cleanup removes states for PRs that no longer exist"""
         # Create mock PR data
         all_prs = [
@@ -146,8 +145,8 @@ class TestElapsedTimeDisplay:
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 2}]
 
         # First call to track both PRs
-        with patch("builtins.print"):
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
         # Verify both PRs are tracked
         assert len(_pr_state_times) == 2
@@ -162,14 +161,14 @@ class TestElapsedTimeDisplay:
         ]
         pr_phases = [PHASE_LLM_WORKING]
 
-        with patch("builtins.print"):
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
         # Verify only one PR is now tracked (cleanup removed the other)
         assert len(_pr_state_times) == 1
         assert ("https://github.com/owner/repo1/pulls/1", PHASE_LLM_WORKING) in _pr_state_times
 
-    def test_elapsed_time_shown_at_exactly_60_seconds(self):
+    def test_elapsed_time_shown_at_exactly_60_seconds(self, mocker):
         """Test that elapsed time is shown when exactly 60 seconds have elapsed (boundary condition)"""
         # Create mock PR data
         all_prs = [
@@ -183,25 +182,25 @@ class TestElapsedTimeDisplay:
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         # First call to set the initial detection time
-        with patch("builtins.print"):
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
         # Manually adjust the detection time to simulate exactly 60 seconds elapsed
         state_key = ("https://github.com/owner/repo1/pulls/1", PHASE_LLM_WORKING)
         _pr_state_times[state_key] = time.time() - 60
 
         # Second call should show elapsed time since it's >= 60
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            # Extract all printed messages
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        # Extract all printed messages
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            # Verify that elapsed time IS displayed at the boundary
-            assert "現在、検知してから" in output
-            assert "経過" in output
-            assert "1分0秒" in output  # Should be exactly 1 minute
+        # Verify that elapsed time IS displayed at the boundary
+        assert "現在、検知してから" in output
+        assert "経過" in output
+        assert "1分0秒" in output  # Should be exactly 1 minute
 
 
 class TestLLMWorkingCreatedAtWarning:
@@ -216,7 +215,7 @@ class TestLLMWorkingCreatedAtWarning:
         dt = datetime.now(timezone.utc) - timedelta(seconds=seconds_ago)
         return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    def test_warning_shown_for_llm_working_pr_older_than_30_minutes(self):
+    def test_warning_shown_for_llm_working_pr_older_than_30_minutes(self, mocker):
         """Warning should be shown for LLM working PRs created more than 30 minutes ago"""
         all_prs = [
             {
@@ -229,16 +228,16 @@ class TestLLMWorkingCreatedAtWarning:
         pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            assert "バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります" in output
-            assert "PRを人力で開いてチェックしてください" in output
+        assert "バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります" in output
+        assert "PRを人力で開いてチェックしてください" in output
 
-    def test_warning_not_shown_for_llm_working_pr_younger_than_30_minutes(self):
+    def test_warning_not_shown_for_llm_working_pr_younger_than_30_minutes(self, mocker):
         """Warning should NOT be shown for LLM working PRs created less than 30 minutes ago"""
         all_prs = [
             {
@@ -251,16 +250,16 @@ class TestLLMWorkingCreatedAtWarning:
         pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            assert "バグって" not in output
-            assert "PRを人力で開いてチェックしてください" not in output
+        assert "バグって" not in output
+        assert "PRを人力で開いてチェックしてください" not in output
 
-    def test_warning_not_shown_for_non_llm_working_phase(self):
+    def test_warning_not_shown_for_non_llm_working_phase(self, mocker):
         """Warning should NOT be shown for PRs not in LLM working phase, even if old"""
         all_prs = [
             {
@@ -273,16 +272,16 @@ class TestLLMWorkingCreatedAtWarning:
         pr_phases = [PHASE_1]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            assert "バグって" not in output
-            assert "PRを人力で開いてチェックしてください" not in output
+        assert "バグって" not in output
+        assert "PRを人力で開いてチェックしてください" not in output
 
-    def test_warning_not_shown_when_created_at_missing(self):
+    def test_warning_not_shown_when_created_at_missing(self, mocker):
         """Warning should NOT be shown when createdAt field is absent"""
         all_prs = [
             {
@@ -295,15 +294,15 @@ class TestLLMWorkingCreatedAtWarning:
         pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            assert "バグって" not in output
+        assert "バグって" not in output
 
-    def test_warning_shown_at_exactly_30_minutes(self):
+    def test_warning_shown_at_exactly_30_minutes(self, mocker):
         """Warning should be shown at exactly 30 minutes (boundary condition)"""
         all_prs = [
             {
@@ -316,87 +315,95 @@ class TestLLMWorkingCreatedAtWarning:
         pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            assert "バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります" in output
+        assert "バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります" in output
 
 
 class TestWaitWithCountdown:
     """Test the wait_with_countdown functionality"""
 
-    def test_countdown_displays_remaining_time(self):
+    def test_countdown_displays_remaining_time(self, mocker):
         """Test that countdown displays remaining time correctly (counting down from initial value to 0)"""
-        with patch("builtins.print") as mock_print, patch("time.sleep") as mock_sleep, patch("time.time") as mock_time:
-            # Mock time.time to simulate passage of time
-            mock_time.side_effect = [0, 0, 1, 2, 3, 3]  # start, loop checks
-            wait_with_countdown(3, "3s")
+        mock_print = mocker.patch("builtins.print")
+        mock_sleep = mocker.patch("time.sleep")
+        mock_time = mocker.patch("time.time")
+        # Mock time.time to simulate passage of time
+        mock_time.side_effect = [0, 0, 1, 2, 3, 3]  # start, loop checks
+        wait_with_countdown(3, "3s")
 
-            # Verify print was called with header
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
-            assert "Waiting 3s until next check" in output
+        # Verify print was called with header
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
+        assert "Waiting 3s until next check" in output
 
-            # Verify countdown messages were printed (remaining time, counting down)
-            assert "Waiting 3秒" in output
-            assert "Waiting 2秒" in output
-            assert "Waiting 1秒" in output
-            assert "Waiting 0秒" in output
+        # Verify countdown messages were printed (remaining time, counting down)
+        assert "Waiting 3秒" in output
+        assert "Waiting 2秒" in output
+        assert "Waiting 1秒" in output
+        assert "Waiting 0秒" in output
 
-            # Verify sleep was called correct number of times
-            assert mock_sleep.call_count == 3
+        # Verify sleep was called correct number of times
+        assert mock_sleep.call_count == 3
 
-    def test_countdown_uses_carriage_return_for_updates(self):
+    def test_countdown_uses_carriage_return_for_updates(self, mocker):
         """Test that countdown uses ANSI escape sequences (carriage return) for in-place updates"""
-        with patch("builtins.print") as mock_print, patch("time.sleep"), patch("time.time") as mock_time:
-            # Mock time.time to simulate passage of time
-            mock_time.side_effect = [0, 0, 1, 2, 2]
-            wait_with_countdown(2, "2s")
+        mock_print = mocker.patch("builtins.print")
+        mocker.patch("time.sleep")
+        mock_time = mocker.patch("time.time")
+        # Mock time.time to simulate passage of time
+        mock_time.side_effect = [0, 0, 1, 2, 2]
+        wait_with_countdown(2, "2s")
 
-            # Check that carriage return is used in countdown lines
-            countdown_calls = [
-                call
-                for call in mock_print.call_args_list
-                if "Waiting" in str(call) and "until next check" not in str(call)
-            ]
+        # Check that carriage return is used in countdown lines
+        countdown_calls = [
+            call
+            for call in mock_print.call_args_list
+            if "Waiting" in str(call) and "until next check" not in str(call)
+        ]
 
-            # Verify carriage return usage
-            for call in countdown_calls[:-1]:  # All except the last one
-                call_str = str(call)
-                assert "\\r" in call_str or call_str.startswith("call('\\r")
+        # Verify carriage return usage
+        for call in countdown_calls[:-1]:  # All except the last one
+            call_str = str(call)
+            assert "\\r" in call_str or call_str.startswith("call('\\r")
 
-    def test_countdown_handles_different_intervals(self):
+    def test_countdown_handles_different_intervals(self, mocker):
         """Test that countdown properly handles different time intervals"""
-        with patch("builtins.print") as mock_print, patch("time.sleep") as mock_sleep, patch("time.time") as mock_time:
-            # Mock time.time to simulate passage of time
-            mock_time.side_effect = [0, 0, 1, 2, 3, 4, 5, 5]
-            wait_with_countdown(5, "5s")
+        mock_print = mocker.patch("builtins.print")
+        mock_sleep = mocker.patch("time.sleep")
+        mock_time = mocker.patch("time.time")
+        # Mock time.time to simulate passage of time
+        mock_time.side_effect = [0, 0, 1, 2, 3, 4, 5, 5]
+        wait_with_countdown(5, "5s")
 
-            # Verify sleep was called 5 times (once per second)
-            assert mock_sleep.call_count == 5
+        # Verify sleep was called 5 times (once per second)
+        assert mock_sleep.call_count == 5
 
-            # Verify final countdown display (should show 0 remaining)
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
-            assert "Waiting 0秒" in output
+        # Verify final countdown display (should show 0 remaining)
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
+        assert "Waiting 0秒" in output
 
-    def test_countdown_formats_time_correctly(self):
+    def test_countdown_formats_time_correctly(self, mocker):
         """Test that countdown formats time with minutes and seconds"""
-        with patch("builtins.print") as mock_print, patch("time.sleep"), patch("time.time") as mock_time:
-            # Mock time.time to simulate 90 seconds of elapsed time
-            # We need enough values for 90 iterations + extra for checks
-            times = [0] + [i for i in range(91) for _ in range(2)]  # start + pairs for each iteration
-            mock_time.side_effect = times
-            wait_with_countdown(90, "90s")
+        mock_print = mocker.patch("builtins.print")
+        mocker.patch("time.sleep")
+        mock_time = mocker.patch("time.time")
+        # Mock time.time to simulate 90 seconds of elapsed time
+        # We need enough values for 90 iterations + extra for checks
+        times = [0] + [i for i in range(91) for _ in range(2)]  # start + pairs for each iteration
+        mock_time.side_effect = times
+        wait_with_countdown(90, "90s")
 
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            # Verify that minutes are displayed correctly (countdown from 90 seconds)
-            # At 89 seconds remaining: "Waiting 1分29秒"
-            # At 60 seconds remaining: "Waiting 1分0秒"
-            assert "Waiting 1分29秒" in output
-            assert "Waiting 1分0秒" in output
+        # Verify that minutes are displayed correctly (countdown from 90 seconds)
+        # At 89 seconds remaining: "Waiting 1分29秒"
+        # At 60 seconds remaining: "Waiting 1分0秒"
+        assert "Waiting 1分29秒" in output
+        assert "Waiting 1分0秒" in output

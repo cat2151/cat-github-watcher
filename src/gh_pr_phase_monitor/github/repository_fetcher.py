@@ -111,6 +111,16 @@ def get_repos_changed_since_last_check() -> Optional[Set[str]]:
     return changed
 
 
+def reset_repos_updated_at_baseline() -> None:
+    """Clear the stored updatedAt baseline so the next call to get_repos_changed_since_last_check()
+    treats it as a first call (returns None and stores a fresh baseline, triggering a full check).
+
+    Use this when the monitoring state is inconsistent (e.g., no PR snapshot but updatedAt says
+    nothing changed) to ensure the next iteration performs a complete Phase 1/2 check.
+    """
+    _last_repo_updated_at.clear()
+
+
 def get_repositories_with_open_prs() -> List[Dict[str, Any]]:
     """Get all repositories with open PR counts using GraphQL (Phase 1)
 

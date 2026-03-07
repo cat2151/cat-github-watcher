@@ -2,7 +2,6 @@
 Tests for PR actions with ruleset-based phase3_merge on/off flags
 """
 
-from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.actions import pr_actions
 from src.gh_pr_phase_monitor.actions.pr_actions import process_pr
@@ -17,7 +16,7 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
         pr_actions._notifications_sent.clear()
         pr_actions._merged_prs.clear()
 
-    def test_ruleset_enables_phase3_merge_for_specific_repo(self):
+    def test_ruleset_enables_phase3_merge_for_specific_repo(self, mocker):
         """Ruleset should enable phase3_merge using global settings for specific repository"""
         pr = {
             "isDraft": False,
@@ -43,21 +42,19 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_merge.return_value = True
-            mock_comment.return_value = True
-            process_pr(pr, config)
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_merge.return_value = True
+        mock_comment.return_value = True
+        process_pr(pr, config)
 
-            # Comment should use global comment
-            mock_comment.assert_called_once_with(pr, "Global merge comment", None)
-            # Merge should be attempted
-            mock_merge.assert_called_once()
+        # Comment should use global comment
+        mock_comment.assert_called_once_with(pr, "Global merge comment", None)
+        # Merge should be attempted
+        mock_merge.assert_called_once()
 
-    def test_different_repos_different_merge_enabled(self):
+    def test_different_repos_different_merge_enabled(self, mocker):
         """Different repositories should have different enable states"""
         pr1 = {
             "isDraft": False,
@@ -94,29 +91,27 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_merge.return_value = True
-            mock_comment.return_value = True
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_merge.return_value = True
+        mock_comment.return_value = True
 
-            # Process PR 1 - should merge
-            process_pr(pr1, config)
-            assert mock_comment.call_count == 1
-            assert mock_merge.call_count == 1
+        # Process PR 1 - should merge
+        process_pr(pr1, config)
+        assert mock_comment.call_count == 1
+        assert mock_merge.call_count == 1
 
-            # Reset mocks
-            mock_comment.reset_mock()
-            mock_merge.reset_mock()
+        # Reset mocks
+        mock_comment.reset_mock()
+        mock_merge.reset_mock()
 
-            # Process PR 2 - should not merge (enable_execution_phase3_to_merge is False for repo2)
-            process_pr(pr2, config)
-            assert mock_comment.call_count == 0
-            assert mock_merge.call_count == 0
+        # Process PR 2 - should not merge (enable_execution_phase3_to_merge is False for repo2)
+        process_pr(pr2, config)
+        assert mock_comment.call_count == 0
+        assert mock_merge.call_count == 0
 
-    def test_automated_merge_uses_global_settings(self):
+    def test_automated_merge_uses_global_settings(self, mocker):
         """Automated merge should use global automated settings"""
         pr = {
             "isDraft": False,
@@ -141,19 +136,17 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr_automated") as mock_merge_auto,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_merge_auto.return_value = True
-            mock_comment.return_value = True
-            process_pr(pr, config)
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge_auto = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr_automated")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_merge_auto.return_value = True
+        mock_comment.return_value = True
+        process_pr(pr, config)
 
-            # Should use automated merge based on global setting
-            mock_merge_auto.assert_called_once()
+        # Should use automated merge based on global setting
+        mock_merge_auto.assert_called_once()
 
-    def test_no_merge_when_execution_disabled(self):
+    def test_no_merge_when_execution_disabled(self, mocker):
         """Merge should not happen when enable_execution_phase3_to_merge is false in ruleset"""
         pr = {
             "isDraft": False,
@@ -177,17 +170,15 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            process_pr(pr, config)
-            # Merge should not be attempted
-            mock_merge.assert_not_called()
-            mock_comment.assert_not_called()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        process_pr(pr, config)
+        # Merge should not be attempted
+        mock_merge.assert_not_called()
+        mock_comment.assert_not_called()
 
-    def test_merge_happens_when_enabled_via_ruleset(self):
+    def test_merge_happens_when_enabled_via_ruleset(self, mocker):
         """Merge should happen when enabled via ruleset and phase3_merge config exists"""
         pr = {
             "isDraft": False,
@@ -211,19 +202,17 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_merge.return_value = True
-            mock_comment.return_value = True
-            process_pr(pr, config)
-            # Merge SHOULD be attempted now (global enabled flag removed)
-            mock_merge.assert_called_once()
-            mock_comment.assert_called_once()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_merge.return_value = True
+        mock_comment.return_value = True
+        process_pr(pr, config)
+        # Merge SHOULD be attempted now (global enabled flag removed)
+        mock_merge.assert_called_once()
+        mock_comment.assert_called_once()
 
-    def test_merge_uses_defaults_when_phase3_merge_config_missing(self):
+    def test_merge_uses_defaults_when_phase3_merge_config_missing(self, mocker):
         """Merge should use default configuration when phase3_merge config section doesn't exist"""
         pr = {
             "isDraft": False,
@@ -245,25 +234,23 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_merge.return_value = True
-            mock_comment.return_value = True
-            process_pr(pr, config)
-            # Merge SHOULD be attempted with default comment
-            mock_comment.assert_called_once()
-            # Check that default comment is used
-            call_args = mock_comment.call_args
-            assert (
-                call_args[0][1]
-                == "agentによって、レビュー指摘対応が完了したと判断します。userの責任のもと、userレビューは省略します。PRをMergeします。"
-            )  # Default comment
-            mock_merge.assert_called_once()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_merge.return_value = True
+        mock_comment.return_value = True
+        process_pr(pr, config)
+        # Merge SHOULD be attempted with default comment
+        mock_comment.assert_called_once()
+        # Check that default comment is used
+        call_args = mock_comment.call_args
+        assert (
+            call_args[0][1]
+            == "agentによって、レビュー指摘対応が完了したと判断します。userの責任のもと、userレビューは省略します。PRをMergeします。"
+        )  # Default comment
+        mock_merge.assert_called_once()
 
-    def test_merge_with_explicit_config(self):
+    def test_merge_with_explicit_config(self, mocker):
         """Merge should use explicit configuration when provided"""
         pr = {
             "isDraft": False,
@@ -287,16 +274,14 @@ class TestProcessPRWithRulesetPhase3MergeFlag:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr") as mock_merge,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment") as mock_comment,
-        ):
-            mock_merge.return_value = True
-            mock_comment.return_value = True
-            process_pr(pr, config)
-            # Merge SHOULD be attempted with custom comment
-            mock_comment.assert_called_once()
-            call_args = mock_comment.call_args
-            assert call_args[0][1] == "Custom merge comment"
-            mock_merge.assert_called_once()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_merge = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.merge_pr")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase3_comment")
+        mock_merge.return_value = True
+        mock_comment.return_value = True
+        process_pr(pr, config)
+        # Merge SHOULD be attempted with custom comment
+        mock_comment.assert_called_once()
+        call_args = mock_comment.call_args
+        assert call_args[0][1] == "Custom merge comment"
+        mock_merge.assert_called_once()

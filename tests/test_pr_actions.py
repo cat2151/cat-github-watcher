@@ -2,7 +2,6 @@
 Tests for PR actions including browser opening behavior
 """
 
-from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.actions import pr_actions
 from src.gh_pr_phase_monitor.core.colors import colorize_url
@@ -18,7 +17,7 @@ class TestProcessPR:
         pr_actions._browser_opened.clear()
         pr_actions._notifications_sent.clear()
 
-    def test_browser_not_opened_for_phase1(self):
+    def test_browser_not_opened_for_phase1(self, mocker):
         """Browser should not open for phase1"""
         pr = {
             "isDraft": True,
@@ -31,16 +30,14 @@ class TestProcessPR:
         }
         config = {"enable_execution_phase1_to_phase2": True}
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready,
-        ):
-            mock_ready.return_value = True
-            process_pr(pr, config)
-            # Browser should not be called for phase1
-            mock_browser.assert_not_called()
+        mock_browser = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_ready = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready")
+        mock_ready.return_value = True
+        process_pr(pr, config)
+        # Browser should not be called for phase1
+        mock_browser.assert_not_called()
 
-    def test_browser_not_opened_for_phase2(self):
+    def test_browser_not_opened_for_phase2(self, mocker):
         """Browser should not open for phase2"""
         pr = {
             "isDraft": False,
@@ -58,16 +55,14 @@ class TestProcessPR:
         }
         config = {"enable_execution_phase2_to_phase3": True}
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment") as mock_comment,
-        ):
-            mock_comment.return_value = True
-            process_pr(pr, config)
-            # Browser should not be called for phase2
-            mock_browser.assert_not_called()
+        mock_browser = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment")
+        mock_comment.return_value = True
+        process_pr(pr, config)
+        # Browser should not be called for phase2
+        mock_browser.assert_not_called()
 
-    def test_browser_opened_for_phase3(self):
+    def test_browser_opened_for_phase3(self, mocker):
         """Browser should open for phase3"""
         pr = {
             "isDraft": False,
@@ -81,13 +76,13 @@ class TestProcessPR:
             "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser:
-            config = {}
-            process_pr(pr, config)
-            # Browser should be called for phase3 with URL and config
-            mock_browser.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1", config)
+        mock_browser = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        config = {}
+        process_pr(pr, config)
+        # Browser should be called for phase3 with URL and config
+        mock_browser.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1", config)
 
-    def test_browser_not_opened_for_llm_working(self):
+    def test_browser_not_opened_for_llm_working(self, mocker):
         """Browser should not open for 'LLM working' phase"""
         pr = {
             "isDraft": False,
@@ -98,10 +93,10 @@ class TestProcessPR:
             "url": "https://github.com/test-owner/test-repo/pull/1",
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser:
-            process_pr(pr, {})
-            # Browser should not be called for LLM working
-            mock_browser.assert_not_called()
+        mock_browser = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        process_pr(pr, {})
+        # Browser should not be called for LLM working
+        mock_browser.assert_not_called()
 
     def test_author_hidden_by_default(self, capsys):
         """Author login should be hidden when display_pr_author is not enabled"""
@@ -129,7 +124,7 @@ class TestProcessPR:
         output = capsys.readouterr().out
         assert "Author: phase2-author" in output
 
-    def test_author_displayed_for_phase3(self, capsys):
+    def test_author_displayed_for_phase3(self, mocker, capsys):
         """Author login should be printed for phase3 when enabled"""
         pr = {
             "author": {"login": "phase3-author"},
@@ -138,9 +133,9 @@ class TestProcessPR:
             "url": "https://github.com/test-owner/test-repo/pull/3",
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser:
-            mock_browser.return_value = True
-            process_pr(pr, {"display_pr_author": True}, phase=PHASE_3)
+        mock_browser = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_browser.return_value = True
+        process_pr(pr, {"display_pr_author": True}, phase=PHASE_3)
 
         output = capsys.readouterr().out
         assert "Author: phase3-author" in output
@@ -270,7 +265,7 @@ class TestProcessPR:
         output = capsys.readouterr().out
         assert "LLM status timeline" not in output
 
-    def test_browser_opened_only_once_for_phase3(self):
+    def test_browser_opened_only_once_for_phase3(self, mocker):
         """Browser should open only once for phase3, even if called multiple times"""
         pr = {
             "isDraft": False,
@@ -284,18 +279,18 @@ class TestProcessPR:
             "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser") as mock_browser:
-            # First call should open browser
-            process_pr(pr, {})
-            assert mock_browser.call_count == 1
+        mock_browser = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        # First call should open browser
+        process_pr(pr, {})
+        assert mock_browser.call_count == 1
 
-            # Second call should not open browser again
-            process_pr(pr, {})
-            assert mock_browser.call_count == 1
+        # Second call should not open browser again
+        process_pr(pr, {})
+        assert mock_browser.call_count == 1
 
-            # Third call should still not open browser
-            process_pr(pr, {})
-            assert mock_browser.call_count == 1
+        # Third call should still not open browser
+        process_pr(pr, {})
+        assert mock_browser.call_count == 1
 
 
 class TestPhase3Notifications:
@@ -306,7 +301,7 @@ class TestPhase3Notifications:
         pr_actions._browser_opened.clear()
         pr_actions._notifications_sent.clear()
 
-    def test_notification_sent_when_enabled(self):
+    def test_notification_sent_when_enabled(self, mocker):
         """Notification should be sent when enabled in config"""
         pr = {
             "isDraft": False,
@@ -329,16 +324,14 @@ class TestPhase3Notifications:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
-        ):
-            mock_notify.return_value = True
-            process_pr(pr, config)
-            # Notification should be sent
-            mock_notify.assert_called_once_with(config, "https://github.com/test-owner/test-repo/pull/1", "Test PR")
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_notify = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification")
+        mock_notify.return_value = True
+        process_pr(pr, config)
+        # Notification should be sent
+        mock_notify.assert_called_once_with(config, "https://github.com/test-owner/test-repo/pull/1", "Test PR")
 
-    def test_notification_not_sent_when_disabled(self):
+    def test_notification_not_sent_when_disabled(self, mocker):
         """Notification should not be sent when disabled in config"""
         pr = {
             "isDraft": False,
@@ -353,15 +346,13 @@ class TestPhase3Notifications:
         }
         config = {"ntfy": {"enabled": False, "topic": "test-topic"}}
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
-        ):
-            process_pr(pr, config)
-            # Notification should not be sent
-            mock_notify.assert_not_called()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_notify = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification")
+        process_pr(pr, config)
+        # Notification should not be sent
+        mock_notify.assert_not_called()
 
-    def test_notification_not_sent_when_no_config(self):
+    def test_notification_not_sent_when_no_config(self, mocker):
         """Notification should not be sent when ntfy not in config"""
         pr = {
             "isDraft": False,
@@ -376,15 +367,13 @@ class TestPhase3Notifications:
         }
         config = {}
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
-        ):
-            process_pr(pr, config)
-            # Notification should not be sent
-            mock_notify.assert_not_called()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_notify = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification")
+        process_pr(pr, config)
+        # Notification should not be sent
+        mock_notify.assert_not_called()
 
-    def test_notification_sent_only_once(self):
+    def test_notification_sent_only_once(self, mocker):
         """Notification should be sent only once per PR"""
         pr = {
             "isDraft": False,
@@ -407,24 +396,22 @@ class TestPhase3Notifications:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
-        ):
-            mock_notify.return_value = True
-            # First call should send notification
-            process_pr(pr, config)
-            assert mock_notify.call_count == 1
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_notify = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification")
+        mock_notify.return_value = True
+        # First call should send notification
+        process_pr(pr, config)
+        assert mock_notify.call_count == 1
 
-            # Second call should not send notification again
-            process_pr(pr, config)
-            assert mock_notify.call_count == 1
+        # Second call should not send notification again
+        process_pr(pr, config)
+        assert mock_notify.call_count == 1
 
-            # Third call should still not send notification
-            process_pr(pr, config)
-            assert mock_notify.call_count == 1
+        # Third call should still not send notification
+        process_pr(pr, config)
+        assert mock_notify.call_count == 1
 
-    def test_notification_not_sent_for_phase1(self):
+    def test_notification_not_sent_for_phase1(self, mocker):
         """Notification should not be sent for phase1"""
         pr = {
             "isDraft": True,
@@ -440,17 +427,15 @@ class TestPhase3Notifications:
             "enable_execution_phase1_to_phase2": True,
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready,
-        ):
-            mock_ready.return_value = True
-            process_pr(pr, config)
-            # Notification should not be sent for phase1
-            mock_notify.assert_not_called()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_notify = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification")
+        mock_ready = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready")
+        mock_ready.return_value = True
+        process_pr(pr, config)
+        # Notification should not be sent for phase1
+        mock_notify.assert_not_called()
 
-    def test_notification_not_sent_for_phase2(self):
+    def test_notification_not_sent_for_phase2(self, mocker):
         """Notification should not be sent for phase2"""
         pr = {
             "isDraft": False,
@@ -471,12 +456,10 @@ class TestPhase3Notifications:
             "enable_execution_phase2_to_phase3": True,
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment") as mock_comment,
-        ):
-            mock_comment.return_value = True
-            process_pr(pr, config)
-            # Notification should not be sent for phase2
-            mock_notify.assert_not_called()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_notify = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification")
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment")
+        mock_comment.return_value = True
+        process_pr(pr, config)
+        # Notification should not be sent for phase2
+        mock_notify.assert_not_called()

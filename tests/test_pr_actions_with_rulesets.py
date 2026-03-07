@@ -2,7 +2,6 @@
 Tests for PR actions with ruleset-based configuration
 """
 
-from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.actions import pr_actions
 from src.gh_pr_phase_monitor.actions.pr_actions import process_pr
@@ -16,7 +15,7 @@ class TestProcessPRWithRulesets:
         pr_actions._browser_opened.clear()
         pr_actions._notifications_sent.clear()
 
-    def test_ruleset_enables_phase1_for_specific_repo(self):
+    def test_ruleset_enables_phase1_for_specific_repo(self, mocker):
         """Ruleset should enable phase1 execution for specific repository"""
         pr = {
             "isDraft": True,
@@ -38,13 +37,13 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
-            mock_ready.return_value = True
-            process_pr(pr, config)
-            # Should be called because ruleset enables it for this repo
-            mock_ready.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1", None)
+        mock_ready = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready")
+        mock_ready.return_value = True
+        process_pr(pr, config)
+        # Should be called because ruleset enables it for this repo
+        mock_ready.assert_called_once_with("https://github.com/test-owner/test-repo/pull/1", None)
 
-    def test_ruleset_disables_phase1_for_specific_repo(self):
+    def test_ruleset_disables_phase1_for_specific_repo(self, mocker):
         """Ruleset should disable phase1 execution for specific repository"""
         pr = {
             "isDraft": True,
@@ -71,12 +70,12 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
-            process_pr(pr, config)
-            # Should not be called because ruleset disables it for this repo
-            mock_ready.assert_not_called()
+        mock_ready = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready")
+        process_pr(pr, config)
+        # Should not be called because ruleset disables it for this repo
+        mock_ready.assert_not_called()
 
-    def test_all_ruleset_applies_to_all_repositories(self):
+    def test_all_ruleset_applies_to_all_repositories(self, mocker):
         """Ruleset with 'all' should apply to any repository"""
         pr1 = {
             "isDraft": True,
@@ -106,16 +105,16 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
-            mock_ready.return_value = True
+        mock_ready = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready")
+        mock_ready.return_value = True
 
-            process_pr(pr1, config)
-            assert mock_ready.call_count == 1
+        process_pr(pr1, config)
+        assert mock_ready.call_count == 1
 
-            process_pr(pr2, config)
-            assert mock_ready.call_count == 2
+        process_pr(pr2, config)
+        assert mock_ready.call_count == 2
 
-    def test_repository_name_only_matching(self):
+    def test_repository_name_only_matching(self, mocker):
         """Ruleset should match by repository name only"""
         pr = {
             "isDraft": True,
@@ -136,12 +135,12 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
-            mock_ready.return_value = True
-            process_pr(pr, config)
-            mock_ready.assert_called_once()
+        mock_ready = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready")
+        mock_ready.return_value = True
+        process_pr(pr, config)
+        mock_ready.assert_called_once()
 
-    def test_ruleset_applies_to_phase2(self):
+    def test_ruleset_applies_to_phase2(self, mocker):
         """Ruleset should control phase2 execution"""
         pr = {
             "isDraft": False,
@@ -168,12 +167,12 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment") as mock_comment:
-            mock_comment.return_value = True
-            process_pr(pr, config)
-            mock_comment.assert_called_once()
+        mock_comment = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.post_phase2_comment")
+        mock_comment.return_value = True
+        process_pr(pr, config)
+        mock_comment.assert_called_once()
 
-    def test_ruleset_applies_to_phase3(self):
+    def test_ruleset_applies_to_phase3(self, mocker):
         """Ruleset should control phase3 notification execution"""
         pr = {
             "isDraft": False,
@@ -197,15 +196,13 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with (
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser"),
-            patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification") as mock_notify,
-        ):
-            mock_notify.return_value = True
-            process_pr(pr, config)
-            mock_notify.assert_called_once()
+        mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.open_browser")
+        mock_notify = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.send_phase3_notification")
+        mock_notify.return_value = True
+        process_pr(pr, config)
+        mock_notify.assert_called_once()
 
-    def test_multiple_rulesets_with_override(self):
+    def test_multiple_rulesets_with_override(self, mocker):
         """Later rulesets should override earlier ones"""
         pr = {
             "isDraft": True,
@@ -232,12 +229,12 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
-            process_pr(pr, config)
-            # Should not be called because second ruleset overrides first
-            mock_ready.assert_not_called()
+        mock_ready = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready")
+        process_pr(pr, config)
+        # Should not be called because second ruleset overrides first
+        mock_ready.assert_not_called()
 
-    def test_different_repos_get_different_config(self):
+    def test_different_repos_get_different_config(self, mocker):
         """Different repositories should get different configurations from rulesets"""
         pr_enabled = {
             "isDraft": True,
@@ -268,18 +265,18 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
-            mock_ready.return_value = True
+        mock_ready = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready")
+        mock_ready.return_value = True
 
-            # enabled-repo should execute
-            process_pr(pr_enabled, config)
-            assert mock_ready.call_count == 1
+        # enabled-repo should execute
+        process_pr(pr_enabled, config)
+        assert mock_ready.call_count == 1
 
-            # disabled-repo should not execute
-            process_pr(pr_disabled, config)
-            assert mock_ready.call_count == 1  # Still 1, not incremented
+        # disabled-repo should not execute
+        process_pr(pr_disabled, config)
+        assert mock_ready.call_count == 1  # Still 1, not incremented
 
-    def test_partial_config_in_ruleset(self):
+    def test_partial_config_in_ruleset(self, mocker):
         """Ruleset can specify only some execution flags"""
         pr = {
             "isDraft": True,
@@ -302,7 +299,7 @@ class TestProcessPRWithRulesets:
             ],
         }
 
-        with patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready") as mock_ready:
-            process_pr(pr, config)
-            # phase1 should be disabled by ruleset
-            mock_ready.assert_not_called()
+        mock_ready = mocker.patch("src.gh_pr_phase_monitor.actions.pr_actions.mark_pr_ready")
+        process_pr(pr, config)
+        # phase1 should be disabled by ruleset
+        mock_ready.assert_not_called()

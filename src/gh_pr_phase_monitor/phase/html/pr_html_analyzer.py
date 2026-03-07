@@ -37,6 +37,9 @@ _DRAFT_PATTERNS = [
     re.compile(r'aria-label="[^"]*Draft[^"]*"', re.IGNORECASE),
     re.compile(r'class="[^"]*State--draft[^"]*"', re.IGNORECASE),
     re.compile(r'data-state="draft"', re.IGNORECASE),
+    re.compile(r'data-status="draft"', re.IGNORECASE),
+    re.compile(r'"state"\s*:\s*"DRAFT"'),
+    re.compile(r"octicon-git-pull-request-draft", re.IGNORECASE),
 ]
 
 

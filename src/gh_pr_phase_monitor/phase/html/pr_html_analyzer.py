@@ -41,8 +41,34 @@ def _is_draft_from_html(html: str) -> bool:
     return False
 
 
+def _is_review_still_in_progress(llm_statuses: list[str]) -> bool:
+    """Return True when the last reviewing event is 'started reviewing' without a subsequent 'finished reviewing'.
+
+    This distinguishes between a review that is currently underway ("started reviewing" only)
+    and one that has completed ("finished reviewing" or a plain "reviewing" event is present
+    after the last "started reviewing", or no "started reviewing" was seen at all).
+    """
+    last_started_review_idx: Optional[int] = None
+    last_finished_review_idx: Optional[int] = None
+
+    for idx, status in enumerate(llm_statuses):
+        lowered = status.lower()
+        if "reviewing" in lowered:
+            if "started" in lowered:
+                last_started_review_idx = idx
+                # A new review cycle begins; previous completion status is no longer relevant.
+                last_finished_review_idx = None
+            elif "finished" in lowered:
+                last_finished_review_idx = idx
+            else:
+                # plain "reviewing" (no started/finished prefix) → treat as completed.
+                last_finished_review_idx = idx
+
+    return last_started_review_idx is not None and last_finished_review_idx is None
+
+
 def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
-    """llm_statusesとdraft状態から6種のステータスを決定する。
+    """llm_statusesとdraft状態から7種のステータスを決定する。
 
     コアのphase2/3検出はphase_detectorの_phase_from_llm_statusesに委譲する。
     llm_statusesは時系列順（古い順）で渡すこと。
@@ -62,7 +88,12 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
     if phase == PHASE_3:
         return PHASE3A_LLM_FEEDBACK_FINISHED_WORK
 
-    # phase == PHASE_2: PHASE2A（未着手）とPHASE2B（対応中）を区別する
+    # phase == PHASE_2: まずレビューがまだ進行中かどうかを確認する。
+    # "started reviewing" のみで "finished reviewing" がない場合はまだレビュー中。
+    if _is_review_still_in_progress(llm_statuses):
+        return PHASE1C_REVIEW_IN_PROGRESS
+
+    # PHASE2A（未着手）とPHASE2B（対応中）を区別する
     # 最後のreviewingイベント以降にstarted workがあるかで判断する
     last_review_idx: Optional[int] = None
     started_after_review = False

@@ -13,6 +13,7 @@ from src.gh_pr_phase_monitor.phase.html.pr_html_analyzer import (
     PHASE3A_LLM_FEEDBACK_FINISHED_WORK,
     _determine_html_status,
     _is_draft_from_html,
+    _is_review_still_in_progress,
     analyze_pr_html,
     save_analysis_json,
 )
@@ -158,6 +159,81 @@ class TestDetermineHtmlStatus:
             PHASE3A_LLM_FEEDBACK_FINISHED_WORK,
         }
         assert result["status"] in valid_phases
+
+
+class TestIsReviewStillInProgress:
+    def test_returns_false_for_empty_statuses(self):
+        assert _is_review_still_in_progress([]) is False
+
+    def test_returns_false_for_no_reviewing_event(self):
+        assert _is_review_still_in_progress(["started work", "finished work"]) is False
+
+    def test_returns_true_for_started_reviewing_only(self):
+        """Bug case: 'started reviewing' without 'finished reviewing' → review in progress."""
+        statuses = ["Copilot started reviewing on behalf of cat2151 March 5, 2026 23:29"]
+        assert _is_review_still_in_progress(statuses) is True
+
+    def test_returns_false_for_finished_reviewing(self):
+        statuses = ["Copilot started reviewing on behalf of cat2151", "Copilot finished reviewing on behalf of cat2151"]
+        assert _is_review_still_in_progress(statuses) is False
+
+    def test_returns_false_for_plain_reviewing(self):
+        """Plain 'reviewing' (no started/finished prefix) is treated as completed."""
+        assert _is_review_still_in_progress(["reviewing something"]) is False
+
+    def test_returns_false_when_plain_reviewing_follows_started_reviewing(self):
+        """started reviewing → plain reviewing → treat as completed (not still in progress)."""
+        statuses = ["Copilot started reviewing", "reviewing something"]
+        assert _is_review_still_in_progress(statuses) is False
+
+    def test_returns_true_when_new_started_reviewing_after_finished(self):
+        """New 'started reviewing' after a previous 'finished reviewing' → still in progress."""
+        statuses = [
+            "Copilot started reviewing first",
+            "Copilot finished reviewing first",
+            "Copilot started reviewing second",
+        ]
+        assert _is_review_still_in_progress(statuses) is True
+
+    def test_returns_false_when_finished_reviewing_follows_started(self):
+        statuses = [
+            "Copilot started reviewing",
+            "Copilot finished reviewing",
+        ]
+        assert _is_review_still_in_progress(statuses) is False
+
+
+class TestPhase1cReviewInProgress:
+    def test_started_reviewing_only_returns_phase1c(self):
+        """Bug fix: 'started reviewing' without 'finished reviewing' → PHASE1C, not PHASE2A."""
+        statuses = ["Copilot started reviewing on behalf of cat2151 March 5, 2026 23:29"]
+        assert _determine_html_status(statuses, is_draft=False) == PHASE1C_REVIEW_IN_PROGRESS
+
+    def test_issue_example_returns_phase1c(self):
+        """Exact scenario from the bug report: started work, finished work, then started reviewing."""
+        statuses = [
+            "Copilot started work on behalf of cat2151 March 5, 2026 23:18",
+            "Copilot finished work on behalf of cat2151 March 5, 2026 23:24",
+            "Copilot started reviewing on behalf of cat2151 March 5, 2026 23:29",
+        ]
+        assert _determine_html_status(statuses, is_draft=False) == PHASE1C_REVIEW_IN_PROGRESS
+
+    def test_started_and_finished_reviewing_returns_phase2a(self):
+        """Once 'finished reviewing' is present, it should be PHASE2A (review done, no work yet)."""
+        statuses = [
+            "Copilot started reviewing on behalf of cat2151",
+            "Copilot finished reviewing on behalf of cat2151",
+        ]
+        assert _determine_html_status(statuses, is_draft=False) == PHASE2A_REVIEW_COMPLETED
+
+    def test_started_reviewing_then_started_work_returns_phase2b(self):
+        """started reviewing → finished reviewing → started work → PHASE2B."""
+        statuses = [
+            "Copilot started reviewing",
+            "Copilot finished reviewing",
+            "Copilot started work on feedback",
+        ]
+        assert _determine_html_status(statuses, is_draft=False) == PHASE2B_LLM_ADDRESSING_FEEDBACK
 
 
 class TestSaveAnalysisJson:

@@ -2,13 +2,113 @@
 Repository fetching module for GitHub repositories
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Set
 
 from .github_auth import get_current_user
 from .graphql_client import execute_graphql_query
 
 # GraphQL pagination constants
 REPOSITORIES_PER_PAGE = 100
+
+# Module-level cache: stores the last known updatedAt for each repository.
+# Used to detect which repos have changed since the previous check, allowing
+# expensive Phase 1/2 queries to be skipped when nothing has changed.
+_last_repo_updated_at: Dict[str, str] = {}
+
+
+def get_all_repos_updated_at() -> Dict[str, str]:
+    """Lightweight query: get updatedAt timestamps for all user-owned repositories.
+
+    This is used to cheaply detect which repositories have changed since the last
+    monitoring iteration, before deciding whether to run the expensive Phase 1/2 queries.
+
+    Returns:
+        Dict mapping repository name to its updatedAt ISO timestamp string.
+        Example: {"repo1": "2024-01-01T00:00:00Z", "repo2": "2024-01-02T00:00:00Z"}
+    """
+    current_user = get_current_user()
+
+    query = """
+    query($login: String!) {{
+      user(login: $login) {{
+        repositories(first: {repositories_per_page}, ownerAffiliations: [OWNER]) {{
+          nodes {{
+            name
+            updatedAt
+          }}
+          pageInfo {{
+            hasNextPage
+            endCursor
+          }}
+        }}
+      }}
+      rateLimit {{
+        cost
+        remaining
+      }}
+    }}
+    """.format(repositories_per_page=REPOSITORIES_PER_PAGE)
+
+    result: Dict[str, str] = {}
+    has_next_page = True
+    end_cursor = None
+
+    while has_next_page:
+        if end_cursor:
+            query_with_pagination = query.replace(
+                f"repositories(first: {REPOSITORIES_PER_PAGE}, ownerAffiliations: [OWNER])",
+                f'repositories(first: {REPOSITORIES_PER_PAGE}, ownerAffiliations: [OWNER], after: "{end_cursor}")',
+            )
+        else:
+            query_with_pagination = query
+
+        data = execute_graphql_query(
+            query_with_pagination, {"login": current_user}, intent="リポジトリ更新日時一括チェック"
+        )
+
+        repositories = data.get("data", {}).get("user", {}).get("repositories", {})
+        nodes = repositories.get("nodes", [])
+        page_info = repositories.get("pageInfo", {})
+
+        for repo in nodes:
+            name = repo.get("name", "")
+            updated_at = repo.get("updatedAt", "")
+            if name and updated_at:
+                result[name] = updated_at
+
+        has_next_page = page_info.get("hasNextPage", False)
+        end_cursor = page_info.get("endCursor")
+
+    return result
+
+
+def get_repos_changed_since_last_check() -> Optional[Set[str]]:
+    """Perform a lightweight updatedAt check to find repositories that changed.
+
+    On the first call (no stored baseline), stores the current updatedAt values
+    as the baseline and returns None.
+
+    On subsequent calls, compares current updatedAt values with the stored baseline,
+    updates the baseline, and returns the set of repository names that changed.
+
+    Returns:
+        None if no previous data exists (first call — baseline now stored).
+        Empty set if no repositories changed since the last check.
+        Non-empty set of repository names whose updatedAt changed.
+    """
+    current_map = get_all_repos_updated_at()
+
+    if not _last_repo_updated_at:
+        _last_repo_updated_at.update(current_map)
+        return None
+
+    changed: Set[str] = {name for name, ts in current_map.items() if _last_repo_updated_at.get(name) != ts}
+    # Also treat repos that disappeared from the snapshot (deleted/renamed/lost access) as changed
+    changed |= _last_repo_updated_at.keys() - current_map.keys()
+
+    _last_repo_updated_at.clear()
+    _last_repo_updated_at.update(current_map)
+    return changed
 
 
 def get_repositories_with_open_prs() -> List[Dict[str, Any]]:

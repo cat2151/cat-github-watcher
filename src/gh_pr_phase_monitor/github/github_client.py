@@ -28,14 +28,18 @@ from .pr_fetcher import get_pr_data, get_pr_details_batch
 # Re-export repository functions
 from .repository_fetcher import (
     get_all_repositories,
+    get_all_repos_updated_at,
     get_repositories_with_no_prs_and_open_issues,
     get_repositories_with_open_prs,
+    get_repos_changed_since_last_check,
 )
 
 __all__ = [
     "get_current_user",
     "get_repositories_with_open_prs",
     "get_all_repositories",
+    "get_all_repos_updated_at",
+    "get_repos_changed_since_last_check",
     "get_repositories_with_no_prs_and_open_issues",
     "get_pr_details_batch",
     "get_pr_data",

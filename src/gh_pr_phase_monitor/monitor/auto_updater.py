@@ -11,6 +11,8 @@ import time
 from pathlib import Path
 from typing import Optional, Tuple
 
+from ..core.colors import Colors
+
 UPDATE_CHECK_INTERVAL_SECONDS = 60
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -148,7 +150,7 @@ def maybe_self_update(repo_root: Path | None = None) -> bool:
         if not _pull_fast_forward(repo_root, remote_name, branch):
             return False
 
-        print("Auto-update applied: restarting application to use the latest code...")
+        print(f"{Colors.GREEN}Auto-update: update detected! Restarting application to apply the latest code...{Colors.RESET}", flush=True)
         restart_application()
         return True
 

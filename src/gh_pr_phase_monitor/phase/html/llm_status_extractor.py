@@ -77,6 +77,13 @@ def _add_status(statuses: List[str], seen: Set[str], text: str) -> None:
     key = lower
     if key in seen:
         return
+    # Skip if a longer already-captured entry already contains this text as a substring.
+    # This prevents short link-text forms (e.g. "started work") from being added when
+    # the full form (e.g. "Copilot started work on behalf of ... March 7, 2026 14:20")
+    # was already captured by the HTML-element extractor.
+    # Only check entries that are strictly longer (same-length exact matches are caught above).
+    if any(key in existing for existing in seen if len(existing) > len(key)):
+        return
     seen.add(key)
     statuses.append(normalized)
 

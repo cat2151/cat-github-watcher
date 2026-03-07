@@ -412,3 +412,59 @@ class TestCopilotReviewedExtraction:
         )
         result = analyze_pr_html(html, "https://github.com/owner/repo/pull/30")
         assert result["status"] == PHASE3A_LLM_FEEDBACK_FINISHED_WORK
+
+    def test_short_form_duplicates_not_added_after_full_form_captured(self):
+        """Bug fix: short link-text forms (e.g. 'started work', 'started reviewing') must not
+        be added to llm_statuses when the full-form version (with author, date, etc.) was
+        already captured by the HTML-element extractor.
+
+        Scenario from the issue: a PR with started work → finished work → started reviewing →
+        Copilot reviewed, where the session_id= links in the markdown use short anchor texts
+        ('started work', 'finished work', 'started reviewing').  Without the fix, those short
+        forms were appended after the full forms, making it appear that a new 'started reviewing'
+        cycle began *after* 'Copilot reviewed', incorrectly yielding PHASE1C_REVIEW_IN_PROGRESS.
+        """
+        html = (
+            # started work (full form via session_id= link)
+            '<div class="TimelineItem-body">'
+            '<a href="https://copilot.github.com/task?session_id=s1">'
+            "Copilot started work on behalf of cat2151 March 7, 2026 14:20"
+            "</a>"
+            "</div>"
+            # finished work (full form via session_id= link)
+            '<div class="TimelineItem-body">'
+            '<a href="https://copilot.github.com/task?session_id=s1">'
+            "Copilot finished work on behalf of cat2151 March 7, 2026 14:24"
+            "</a>"
+            "</div>"
+            # started reviewing (full form via session_id= link)
+            '<div class="TimelineItem-body">'
+            '<a href="https://copilot.github.com/task?session_id=s2">'
+            "Copilot started reviewing on behalf of cat2151 March 7, 2026 14:26"
+            "</a>"
+            "</div>"
+            # Copilot reviewed (via copilot hovercard, no session_id=)
+            '<div class="TimelineItem-body d-flex flex-column flex-md-row flex-justify-start">'
+            '<div class="flex-auto flex-md-self-center">'
+            "<strong>"
+            '<a class="author Link--primary text-bold css-overflow-wrap-anywhere"'
+            ' data-hovercard-type="copilot"'
+            ' data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer"'
+            ' href="/apps/copilot-pull-request-reviewer">Copilot</a>'
+            "</strong>"
+            "reviewed Mar 7, 2026"
+            "</div>"
+            "</div>"
+        )
+        result = analyze_pr_html(html, "https://github.com/cat2151/smf-to-ym2151log-rust/pull/148")
+        # Short-form duplicates must NOT appear in llm_statuses
+        assert "started work" not in result["llm_statuses"]
+        assert "finished work" not in result["llm_statuses"]
+        assert "started reviewing" not in result["llm_statuses"]
+        # Full forms and completion event must be present
+        assert any("started work" in s and "March 7" in s for s in result["llm_statuses"])
+        assert any("finished work" in s and "March 7" in s for s in result["llm_statuses"])
+        assert any("started reviewing" in s and "March 7" in s for s in result["llm_statuses"])
+        assert any("reviewed" in s.lower() for s in result["llm_statuses"])
+        # Status must reflect that the review is COMPLETED, not still in progress
+        assert result["status"] == PHASE2A_REVIEW_COMPLETED

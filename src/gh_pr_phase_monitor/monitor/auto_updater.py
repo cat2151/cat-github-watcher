@@ -75,23 +75,13 @@ def _get_local_head_sha(repo_root: Path) -> Optional[str]:
 def _get_remote_latest_sha(owner: str, repo: str, branch: str, cwd: Path) -> Optional[str]:
     """Fetch the latest SHA for the remote branch via gh api."""
     result = _run_command(
-        [
-            "gh",
-            "api",
-            f"repos/{owner}/{repo}/commits",
-            "-F",
-            f"sha={branch}",
-            "-F",
-            "per_page=1",
-            "--jq",
-            ".[0].sha",
-        ],
+        ["gh", "api", f"repos/{owner}/{repo}/branches/{branch}", "--jq", ".commit.sha"],
         cwd=cwd,
     )
     if result.returncode != 0:
         return None
     sha = result.stdout.strip()
-    return sha or None
+    return sha if sha and sha != "null" else None
 
 
 def _is_worktree_clean(repo_root: Path) -> bool:

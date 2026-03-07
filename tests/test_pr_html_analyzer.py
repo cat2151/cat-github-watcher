@@ -44,15 +44,25 @@ class TestIsDraftFromHtml:
 
     def test_draft_pr_with_data_status_and_started_work_is_phase1a(self):
         """Bug fix: Draft PR using data-status='draft' (GitHub's current HTML format) with
-        only 'started work' status must be PHASE1A, not PHASE1C."""
+        only 'started work' status must be PHASE1A, not PHASE1C.
+
+        This test also ensures that the 'started work' status is actually extracted as an
+        LLM status (non-empty llm_statuses) by using a TimelineItem-body with a session_id
+        attribute, matching the extractor's expectations.
+        """
         html = (
             '<span data-status="draft">Draft</span>'
-            '<div class="js-timeline-item">'
-            '<span class="f5">Copilot started work on behalf of cat2151 March 7, 2026 10:01</span>'
+            '<div class="TimelineItem-body">'
+            '<a href="https://copilot.github.com/task?session_id=123">'
+            'Copilot started work on behalf of cat2151 March 7, 2026 10:01'
+            '</a>'
             '</div>'
         )
         result = analyze_pr_html(html, "https://github.com/owner/repo/pull/375")
         assert result["is_draft"] is True
+        # Ensure that the 'started work' status was actually extracted as an LLM status.
+        assert result.get("llm_statuses")
+        assert any("started work" in status for status in result["llm_statuses"])
         assert result["status"] == PHASE1A_DRAFT_LLM_WORKING
 
     def test_returns_false_for_open_pr(self):

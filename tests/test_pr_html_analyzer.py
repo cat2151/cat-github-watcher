@@ -42,6 +42,14 @@ class TestIsDraftFromHtml:
         html = '<span class="prc-StateLabel-StateLabel-Iawzp flex-self-start" data-size="medium" data-status="draft"><svg>...</svg>Draft</span>'
         assert _is_draft_from_html(html) is True
 
+    def test_detects_state_json_draft(self):
+        html = '<script type="application/json">{"state":"DRAFT","title":"WIP: Fix bug"}</script>'
+        assert _is_draft_from_html(html) is True
+
+    def test_detects_octicon_git_pull_request_draft(self):
+        html = '<svg class="octicon octicon-git-pull-request-draft" aria-hidden="true"></svg>'
+        assert _is_draft_from_html(html) is True
+
     def test_draft_pr_with_data_status_and_started_work_is_phase1a(self):
         """Bug fix: Draft PR using data-status='draft' (GitHub's current HTML format) with
         only 'started work' status must be PHASE1A, not PHASE1C.

@@ -17,9 +17,10 @@ from .llm_status_extractor import _extract_llm_statuses
 from ..phase_detector import PHASE_3, _phase_from_llm_statuses, llm_working_from_statuses
 from .pr_html_fetcher import _html_to_simple_markdown
 
-# 6種のステータス定数
+# 7種のステータス定数
 PHASE1A_DRAFT_LLM_WORKING = "PHASE1A_DRAFT_LLM_WORKING"
 PHASE1B_DRAFT_LLM_FINISHED_WORK = "PHASE1B_DRAFT_LLM_FINISHED_WORK"
+PHASE1B_LLM_FINISHED_WORK = "PHASE1B_LLM_FINISHED_WORK"  # 非draft: reviewing前でfinished work済み
 PHASE1C_REVIEW_IN_PROGRESS = "PHASE1C_REVIEW_IN_PROGRESS"
 PHASE2A_REVIEW_COMPLETED = "PHASE2A_REVIEW_COMPLETED"
 PHASE2B_LLM_ADDRESSING_FEEDBACK = "PHASE2B_LLM_ADDRESSING_FEEDBACK"
@@ -77,8 +78,8 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
 
     if phase is None:
         # reviewingイベントなし = レビュー前フェーズ
-        # 条件1: draftで、finishedがあるなら、1Bは確定
-        # 条件2: started reviewingがなく、finishedがあるなら、1Bは確定
+        # 条件1: draftで、started work→finished work が検出された場合、1Bは確定
+        # 条件2: started reviewingがなく、started work→finished work が検出された場合、1Bは確定
         # （条件2はdraftでない場合も対象。両方書くことで想定ミスを防ぐ安全策とする）
         llm_working = llm_working_from_statuses(llm_statuses)
         if is_draft:
@@ -86,9 +87,9 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
                 return PHASE1B_DRAFT_LLM_FINISHED_WORK
             return PHASE1A_DRAFT_LLM_WORKING
         else:
-            # 非draft: started reviewingがない状態でfinishedがあるなら1B
+            # 非draft: started reviewingがない状態でstarted work→finished workが検出されたなら1B
             if llm_working is False:
-                return PHASE1B_DRAFT_LLM_FINISHED_WORK
+                return PHASE1B_LLM_FINISHED_WORK
             return PHASE1C_REVIEW_IN_PROGRESS
 
     if phase == PHASE_3:

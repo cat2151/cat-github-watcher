@@ -101,7 +101,7 @@ def colorize_phase(phase: str, llm_progress: str | None = None) -> str:
     Returns:
         Colorized phase string with ANSI codes
     """
-    if phase in ("phase1", "PHASE1B_DRAFT_LLM_FINISHED_WORK"):
+    if phase in ("phase1", "PHASE1B_DRAFT_LLM_FINISHED_WORK", "PHASE1B_LLM_FINISHED_WORK"):
         return f"{Colors.BOLD}{Colors.YELLOW}[{phase}]{Colors.RESET}"
     elif phase in ("phase2", "PHASE2A_REVIEW_COMPLETED"):
         return f"{Colors.BOLD}{Colors.CYAN}[{phase}]{Colors.RESET}"

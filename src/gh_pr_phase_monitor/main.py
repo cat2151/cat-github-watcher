@@ -237,9 +237,12 @@ def main():
                             )
                             pr_phases.append(PHASE_LLM_WORKING)
 
-                    # Save PR snapshot for display on subsequent skip-check iterations
-                    set_last_pr_snapshot(all_prs, pr_phases, repos_with_prs)
+                # Save PR snapshot for display on subsequent skip-check iterations.
+                # Done after Phase 1/2 (including the empty case) so the cache is always
+                # up-to-date and never shows stale PRs when there are actually none.
+                set_last_pr_snapshot(all_prs, pr_phases, repos_with_prs)
 
+                if all_prs:
                     # Count how many PRs are in "LLM working" phase
                     # This count is used for rate limit protection - when too many PRs are being
                     # worked on simultaneously, we pause auto-assignment to prevent API rate limits

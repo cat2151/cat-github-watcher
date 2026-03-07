@@ -209,6 +209,7 @@ def test_run_startup_self_update_foreground_prints_and_update_applied(monkeypatc
 
     captured = capsys.readouterr()
     assert "Auto-update" in captured.out
+    assert "update detected" in captured.out
     assert restarted, "restart_application should have been called"
 
 

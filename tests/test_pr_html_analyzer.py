@@ -412,3 +412,72 @@ class TestCopilotReviewedExtraction:
         )
         result = analyze_pr_html(html, "https://github.com/owner/repo/pull/30")
         assert result["status"] == PHASE3A_LLM_FEEDBACK_FINISHED_WORK
+
+    def test_short_form_duplicates_not_added_after_full_form_captured(self):
+        """Bug fix: short link-text forms (e.g. 'started work', 'started reviewing') must not
+        appear in llm_statuses when full-form versions are already present.
+
+        Root cause: out-of-body session_id= links (e.g. in PR comment markdown) produced
+        short-form anchor texts ('started work', 'finished work', 'started reviewing') that
+        the text-pattern extractor appended after the full forms captured by the HTML-element
+        extractor.  This made _is_review_still_in_progress see a new spurious review cycle
+        starting after 'Copilot reviewed', incorrectly yielding PHASE1C_REVIEW_IN_PROGRESS.
+
+        Fix: the text-pattern extractor no longer processes session_id= links at all.
+        All Copilot session events are captured authoritatively by the HTML-element extractor
+        from TimelineItem-body divs; out-of-body session_id= links are always duplicates.
+        """
+        html = (
+            '<div class="TimelineItem-body">'
+            '<a href="https://copilot.github.com/task?session_id=s1">'
+            "Copilot started work on behalf of cat2151 March 7, 2026 14:20"
+            "</a>"
+            "</div>"
+            '<div class="TimelineItem-body">'
+            '<a href="https://copilot.github.com/task?session_id=s1">'
+            "Copilot finished work on behalf of cat2151 March 7, 2026 14:24"
+            "</a>"
+            "</div>"
+            '<div class="TimelineItem-body">'
+            '<a href="https://copilot.github.com/task?session_id=s2">'
+            "Copilot started reviewing on behalf of cat2151 March 7, 2026 14:26"
+            "</a>"
+            "</div>"
+            # Copilot reviewed (via copilot hovercard, no session_id=)
+            '<div class="TimelineItem-body d-flex flex-column flex-md-row flex-justify-start">'
+            '<div class="flex-auto flex-md-self-center">'
+            "<strong>"
+            '<a class="author Link--primary text-bold css-overflow-wrap-anywhere"'
+            ' data-hovercard-type="copilot"'
+            ' data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer"'
+            ' href="/apps/copilot-pull-request-reviewer">Copilot</a>'
+            "</strong>"
+            "reviewed Mar 7, 2026"
+            "</div>"
+            "</div>"
+            # Short-form session_id= links OUTSIDE TimelineItem-body (the real-world source
+            # of the bug: these appear in GitHub PR markdown but not in the timeline elements).
+            # With the fix, the text-pattern extractor ignores all session_id= links,
+            # so these never reach llm_statuses.
+            "<p>"
+            '<a href="https://copilot.github.com/task?session_id=s1">started work</a>'
+            "</p>"
+            "<p>"
+            '<a href="https://copilot.github.com/task?session_id=s1">finished work</a>'
+            "</p>"
+            "<p>"
+            '<a href="https://copilot.github.com/task?session_id=s2">started reviewing</a>'
+            "</p>"
+        )
+        result = analyze_pr_html(html, "https://github.com/cat2151/smf-to-ym2151log-rust/pull/148")
+        # Short-form duplicates must NOT appear in llm_statuses
+        assert "started work" not in result["llm_statuses"]
+        assert "finished work" not in result["llm_statuses"]
+        assert "started reviewing" not in result["llm_statuses"]
+        # Full forms and completion event must be present
+        assert any("started work" in s and "March 7" in s for s in result["llm_statuses"])
+        assert any("finished work" in s and "March 7" in s for s in result["llm_statuses"])
+        assert any("started reviewing" in s and "March 7" in s for s in result["llm_statuses"])
+        assert any("reviewed" in s.lower() for s in result["llm_statuses"])
+        # Status must reflect that the review is COMPLETED, not still in progress
+        assert result["status"] == PHASE2A_REVIEW_COMPLETED

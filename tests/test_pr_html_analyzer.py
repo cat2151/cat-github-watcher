@@ -66,6 +66,16 @@ class TestDetermineHtmlStatus:
         """Non-draft PR with started but no reviewing → PHASE1C"""
         assert _determine_html_status(["started work"], is_draft=False) == PHASE1C_REVIEW_IN_PROGRESS
 
+    def test_phase1b_not_draft_finished_no_reviewing(self):
+        """Non-draft PR with finished work but no reviewing event → PHASE1B (not PHASE1C).
+
+        Bug fix: 'Latest LLM status: Copilot finished work' on a non-draft PR with no reviewing
+        was incorrectly classified as PHASE1C_REVIEW_IN_PROGRESS.
+        If there is no 'started reviewing' and 'finished work' is present, 1B is confirmed.
+        """
+        statuses = ["Copilot started work on behalf of cat2151", "Copilot finished work on behalf of cat2151"]
+        assert _determine_html_status(statuses, is_draft=False) == PHASE1B_DRAFT_LLM_FINISHED_WORK
+
     def test_phase2a_reviewing_only(self):
         """reviewing event but no started after → PHASE2A"""
         statuses = ["started work", "finished work", "reviewing something"]

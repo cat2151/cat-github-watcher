@@ -32,6 +32,7 @@ from .repository_fetcher import (
     get_repositories_with_no_prs_and_open_issues,
     get_repositories_with_open_prs,
     get_repos_changed_since_last_check,
+    reset_repos_updated_at_baseline,
 )
 
 __all__ = [
@@ -40,6 +41,7 @@ __all__ = [
     "get_all_repositories",
     "get_all_repos_updated_at",
     "get_repos_changed_since_last_check",
+    "reset_repos_updated_at_baseline",
     "get_repositories_with_no_prs_and_open_issues",
     "get_pr_details_batch",
     "get_pr_data",

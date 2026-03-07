@@ -25,7 +25,7 @@ from .core.config import (
 )
 from .ui.display import display_issues_from_repos_without_prs, display_status_summary
 from .github.github_auth import get_current_user
-from .github.github_client import get_pr_details_batch, get_repositories_with_open_prs, get_repos_changed_since_last_check
+from .github.github_client import get_pr_details_batch, get_repositories_with_open_prs, get_repos_changed_since_last_check, reset_repos_updated_at_baseline
 from .github.graphql_client import GitHubRateLimitError, get_rate_limit_info
 from .monitor.local_repo_watcher import (
     display_pending_local_repo_results,
@@ -64,6 +64,48 @@ def log_error_to_file(message: str, exc: Exception | None = None, base_dir: Path
     except Exception:
         # Avoid any logging-related failures impacting the main loop
         pass
+
+
+def _process_open_prs(
+    all_prs: list,
+    pr_phases: list,
+    phase3_repo_names: list,
+    config: dict,
+) -> None:
+    """HTML取得・phase判定・PR処理を全openなPRに対して実行する。
+
+    all_prs の各PRに対して fetch_and_analyze_pr_html → determine_phase → process_pr を実行し、
+    結果を pr_phases および phase3_repo_names に追記する。
+    """
+    for pr in all_prs:
+        try:
+            # HTMLを取得・解析・保存（メインフロー: phaseに関わらず全PRに対して実行）
+            try:
+                fetch_and_analyze_pr_html(pr)
+            except Exception as html_error:
+                print(f"    Failed to fetch/analyze HTML for PR: {html_error}")
+                log_error_to_file(
+                    f"Failed to fetch/analyze HTML for {pr.get('url', 'unknown')}",
+                    html_error,
+                )
+
+            # pr["llm_statuses"] が更新された後にphaseを判定する
+            phase = determine_phase(pr)
+
+            pr_phases.append(phase)
+            process_pr(pr, config, phase)
+
+            # phase3検知時: 該当リポジトリをpullable検査の対象に登録
+            if phase == PHASE_3:
+                repo_name = pr.get("repository", {}).get("name", "")
+                if repo_name and repo_name not in phase3_repo_names:
+                    phase3_repo_names.append(repo_name)
+        except Exception as pr_error:
+            log_error_to_file(
+                f"Failed to process PR {pr.get('url', 'unknown') or pr.get('title', 'unknown')}",
+                pr_error,
+            )
+            pr_phases.append(PHASE_LLM_WORKING)
 
 
 def main():
@@ -207,35 +249,7 @@ def main():
                     print(f"{'=' * 50}")
 
                     # Track phases to detect if all PRs are in "LLM working"
-                    for pr in all_prs:
-                        try:
-                            # HTMLを取得・解析・保存（メインフロー: phaseに関わらず全PRに対して実行）
-                            try:
-                                fetch_and_analyze_pr_html(pr)
-                            except Exception as html_error:
-                                print(f"    Failed to fetch/analyze HTML for PR: {html_error}")
-                                log_error_to_file(
-                                    f"Failed to fetch/analyze HTML for {pr.get('url', 'unknown')}",
-                                    html_error,
-                                )
-
-                            # pr["llm_statuses"] が更新された後にphaseを判定する
-                            phase = determine_phase(pr)
-
-                            pr_phases.append(phase)
-                            process_pr(pr, config, phase)
-
-                            # phase3検知時: 該当リポジトリをpullable検査の対象に登録
-                            if phase == PHASE_3:
-                                repo_name = pr.get("repository", {}).get("name", "")
-                                if repo_name and repo_name not in phase3_repo_names:
-                                    phase3_repo_names.append(repo_name)
-                        except Exception as pr_error:
-                            log_error_to_file(
-                                f"Failed to process PR {pr.get('url', 'unknown') or pr.get('title', 'unknown')}",
-                                pr_error,
-                            )
-                            pr_phases.append(PHASE_LLM_WORKING)
+                    _process_open_prs(all_prs, pr_phases, phase3_repo_names, config)
 
                 # Save PR snapshot for display on subsequent skip-check iterations.
                 # Done after Phase 1/2 (including the empty case) so the cache is always
@@ -282,6 +296,31 @@ def main():
                         # Display issues and potentially auto-assign new work
                         # Throttling is applied inside the function based on llm_working_count
                         display_issues_from_repos_without_prs(config, llm_working_count=llm_working_count)
+
+            elif skip_pr_check:
+                # updatedAt 不変: GraphQL Phase 1/2 はスキップ
+                # しかし、open PR のphase変化（1A→1B, 1B→2A等）を検知するため、HTMLを毎回再取得する
+                # (updatedAt はPRのphase変化では更新されないため、HTMLフェッチが必須)
+                snapshot = get_last_pr_snapshot()
+                if snapshot is not None and snapshot[0]:
+                    cached_prs, _, cached_repos = snapshot
+                    print("\n  open PR のHTML再取得 (updatedAt 不変でもphase変化を検知するため / Refetching HTML for open PRs to detect phase changes)...")
+                    all_prs = cached_prs
+                    repos_with_prs = cached_repos
+                    _process_open_prs(all_prs, pr_phases, phase3_repo_names, config)
+                    set_last_pr_snapshot(all_prs, pr_phases, repos_with_prs)
+                    # skip_pr_check を False にリセット: 今イテレーションの表示セクション (display_status_summary)
+                    # でスナップショットではなく最新のHTML取得結果を使うため
+                    skip_pr_check = False
+                else:
+                    # スナップショット未作成またはPRなし: 次イテレーションでフルチェックを強制する
+                    # (updatedAt ベースラインをリセットすることで、次回の get_repos_changed_since_last_check が
+                    #  None を返し、通常の Phase 1/2 チェックが実行される)
+                    log_error_to_file(
+                        "skip_pr_check=True but no cached PR snapshot; resetting updatedAt baseline for full check next iteration",
+                        None,
+                    )
+                    reset_repos_updated_at_baseline()
 
             # Check GitHub Pages deployment status for configured repos
             # This runs regardless of whether there are open PRs (covers post-merge case)

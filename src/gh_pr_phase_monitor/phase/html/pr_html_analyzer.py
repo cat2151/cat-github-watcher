@@ -77,14 +77,14 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
     コアのphase2/3検出はphase_detectorの_phase_from_llm_statusesに委譲する。
     llm_statusesは時系列順（古い順）で渡すこと。
     """
+    # Check for an in-progress review first: "started reviewing" without a subsequent
+    # completion event means the review is underway (PHASE1C), not yet done (PHASE2+).
+    if _is_review_still_in_progress(llm_statuses):
+        return PHASE1C_REVIEW_IN_PROGRESS
+
     phase = _phase_from_llm_statuses(llm_statuses)
 
     if phase is None:
-        # _phase_from_llm_statuses returns None when no completed review is found.
-        # A review that has started but not yet completed also yields None here,
-        # so check for it explicitly before falling back to llm_working_from_statuses.
-        if _is_review_still_in_progress(llm_statuses):
-            return PHASE1C_REVIEW_IN_PROGRESS
         llm_working = llm_working_from_statuses(llm_statuses)
         # 条件1: draftで、started work→finished work が検出された場合、1Bは確定
         if is_draft:

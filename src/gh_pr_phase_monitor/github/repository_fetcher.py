@@ -103,6 +103,8 @@ def get_repos_changed_since_last_check() -> Optional[Set[str]]:
         return None
 
     changed: Set[str] = {name for name, ts in current_map.items() if _last_repo_updated_at.get(name) != ts}
+    # Also treat repos that disappeared from the snapshot (deleted/renamed/lost access) as changed
+    changed |= _last_repo_updated_at.keys() - current_map.keys()
 
     _last_repo_updated_at.clear()
     _last_repo_updated_at.update(current_map)

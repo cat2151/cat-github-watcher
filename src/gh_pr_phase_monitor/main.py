@@ -25,8 +25,7 @@ from .core.config import (
 )
 from .ui.display import display_issues_from_repos_without_prs, display_status_summary
 from .github.github_auth import get_current_user
-from .github.github_client import get_pr_details_batch, get_repositories_with_open_prs
-from .github.repository_fetcher import get_repos_changed_since_last_check
+from .github.github_client import get_pr_details_batch, get_repositories_with_open_prs, get_repos_changed_since_last_check
 from .github.graphql_client import GitHubRateLimitError, get_rate_limit_info
 from .monitor.local_repo_watcher import (
     display_pending_local_repo_results,

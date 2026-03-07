@@ -8,8 +8,7 @@ Verifies that:
 - Module-level state is updated correctly after each call
 """
 
-import importlib
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 
 def _reset_module_state():
@@ -146,3 +145,21 @@ class TestGetReposChangedSinceLastCheck:
             get_repos_changed_since_last_check()
 
         assert rf._last_repo_updated_at == new_map
+
+    def test_includes_removed_repos_as_changed(self):
+        """A repo that was in the baseline but no longer appears is treated as changed."""
+        import src.gh_pr_phase_monitor.github.repository_fetcher as rf
+        from src.gh_pr_phase_monitor.github.repository_fetcher import get_repos_changed_since_last_check
+
+        old_map = {"repo-a": "2024-01-01T00:00:00Z", "repo-b": "2024-01-02T00:00:00Z"}
+        # repo-b has disappeared (deleted, renamed, or access revoked)
+        new_map = {"repo-a": "2024-01-01T00:00:00Z"}
+        rf._last_repo_updated_at.update(old_map)
+
+        with patch(
+            "src.gh_pr_phase_monitor.github.repository_fetcher.get_all_repos_updated_at",
+            return_value=new_map,
+        ):
+            result = get_repos_changed_since_last_check()
+
+        assert "repo-b" in result

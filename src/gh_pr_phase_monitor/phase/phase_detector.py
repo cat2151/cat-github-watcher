@@ -172,6 +172,32 @@ def has_inline_review_comments(review_body: str) -> bool:
     return bool(re.search(pattern, review_body, re.IGNORECASE))
 
 
+def _is_review_started_event(lowered: str) -> bool:
+    """Return True when the status represents a review that has started but not yet completed."""
+    return "started reviewing" in lowered
+
+
+def _is_review_completed_event(lowered: str) -> bool:
+    """Return True when the status represents a completed code review.
+
+    Two distinct forms are recognized:
+    - ``"reviewing"`` without a ``"started"`` prefix — covers both plain ``"reviewing"`` and
+      ``"finished reviewing"`` (neither has a ``"started"`` prefix)
+    - ``"reviewed"`` — GitHub timeline event (past tense) for a submitted PR review;
+      ``"reviewed"`` is not a substring of ``"reviewing"``, so this is a distinct check
+    """
+    if "reviewing" in lowered and "started" not in lowered:
+        return True
+    if "reviewed" in lowered:
+        return True
+    return False
+
+
+def _is_any_review_event(lowered: str) -> bool:
+    """Return True for any review-related event (started or completed)."""
+    return _is_review_started_event(lowered) or _is_review_completed_event(lowered)
+
+
 def llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
     """Determine LLM working state from ordered LLM statuses.
 
@@ -190,7 +216,7 @@ def llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
 
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
-        if "reviewing" in lowered or "reviewed" in lowered:
+        if _is_any_review_event(lowered):
             review_idx = idx
             started_after_review_idx = None
         if "started work" in lowered:
@@ -234,7 +260,7 @@ def _phase_from_llm_statuses(llm_statuses: List[str]) -> Optional[str]:
 
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
-        if "reviewing" in lowered or "reviewed" in lowered:
+        if _is_any_review_event(lowered):
             last_review_idx = idx
             last_started_after_review_idx = None  # reset on new reviewing event
             last_finished_after_started_after_review_idx = None

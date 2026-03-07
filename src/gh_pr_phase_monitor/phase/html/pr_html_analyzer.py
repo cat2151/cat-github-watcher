@@ -14,7 +14,14 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .llm_status_extractor import _extract_llm_statuses
-from ..phase_detector import PHASE_3, _phase_from_llm_statuses, llm_working_from_statuses
+from ..phase_detector import (
+    PHASE_3,
+    _is_any_review_event,
+    _is_review_completed_event,
+    _is_review_started_event,
+    _phase_from_llm_statuses,
+    llm_working_from_statuses,
+)
 from .pr_html_fetcher import _html_to_simple_markdown
 
 # 7種のステータス定数
@@ -43,29 +50,23 @@ def _is_draft_from_html(html: str) -> bool:
 
 
 def _is_review_still_in_progress(llm_statuses: list[str]) -> bool:
-    """Return True when the last reviewing event is 'started reviewing' without a subsequent 'finished reviewing'.
+    """Return True when the last reviewing event is 'started reviewing' without a subsequent completed review.
 
     This distinguishes between a review that is currently underway ("started reviewing" only)
-    and one that has completed ("finished reviewing" or a plain "reviewing" event is present
-    after the last "started reviewing", or no "started reviewing" was seen at all).
+    and one that has completed ("finished reviewing", a plain "reviewing" event, or "reviewed").
     """
     last_started_review_idx: Optional[int] = None
-    last_finished_review_idx: Optional[int] = None
+    last_completed_review_idx: Optional[int] = None
 
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
-        if "reviewing" in lowered or "reviewed" in lowered:
-            if "started" in lowered:
-                last_started_review_idx = idx
-                # A new review cycle begins; previous completion status is no longer relevant.
-                last_finished_review_idx = None
-            elif "finished" in lowered:
-                last_finished_review_idx = idx
-            else:
-                # plain "reviewing" (no started/finished prefix) → treat as completed.
-                last_finished_review_idx = idx
+        if _is_review_started_event(lowered):
+            last_started_review_idx = idx
+            last_completed_review_idx = None  # A new review cycle begins; previous completion is no longer relevant.
+        elif _is_review_completed_event(lowered):
+            last_completed_review_idx = idx
 
-    return last_started_review_idx is not None and last_finished_review_idx is None
+    return last_started_review_idx is not None and last_completed_review_idx is None
 
 
 def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
@@ -104,7 +105,7 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
     started_after_review = False
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
-        if "reviewing" in lowered or "reviewed" in lowered:
+        if _is_any_review_event(lowered):
             last_review_idx = idx
             started_after_review = False  # 新しいreviewingが来たらリセット
         if "started work" in lowered and last_review_idx is not None and idx > last_review_idx:

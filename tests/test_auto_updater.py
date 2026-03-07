@@ -51,6 +51,59 @@ def test_skips_when_interval_not_elapsed(monkeypatch):
     assert auto_updater.maybe_self_update(repo_root=auto_updater.REPO_ROOT) is False
 
 
+def test_get_remote_latest_sha_uses_branches_api(monkeypatch):
+    """_get_remote_latest_sha はブランチAPIを使い、-F フラグなしのGETリクエストを発行することを確認。
+
+    以前の実装は -F フラグを使用していたため、gh api がデフォルトでPOSTメソッドになり
+    コミットAPIの呼び出しが失敗していた（commits エンドポイントはGETのみ対応）。
+    修正後は branches/{branch} エンドポイントを使用し、GETリクエストで正しく動作する。
+    """
+    captured_args = []
+
+    def fake_run_command(args, cwd=None):
+        captured_args.append(args)
+        result = types.SimpleNamespace(returncode=0, stdout="abc123def456\n", stderr="")
+        return result
+
+    monkeypatch.setattr(auto_updater, "_run_command", fake_run_command)
+
+    sha = auto_updater._get_remote_latest_sha("owner", "repo", "main", auto_updater.REPO_ROOT)
+
+    assert sha == "abc123def456"
+    assert len(captured_args) == 1
+    cmd = captured_args[0]
+    # branches/{branch} エンドポイントを使用していること（-F フラグなし）
+    assert "repos/owner/repo/branches/main" in " ".join(cmd)
+    assert "-F" not in cmd
+    assert "--raw-field" not in cmd
+
+
+def test_get_remote_latest_sha_returns_none_on_failure(monkeypatch):
+    """_get_remote_latest_sha は API 呼び出し失敗時に None を返すことを確認。"""
+
+    def fake_run_command(args, cwd=None):
+        return types.SimpleNamespace(returncode=1, stdout="", stderr="error")
+
+    monkeypatch.setattr(auto_updater, "_run_command", fake_run_command)
+
+    sha = auto_updater._get_remote_latest_sha("owner", "repo", "main", auto_updater.REPO_ROOT)
+
+    assert sha is None
+
+
+def test_get_remote_latest_sha_returns_none_for_null_response(monkeypatch):
+    """_get_remote_latest_sha は jq が 'null' を返した場合に None を返すことを確認。"""
+
+    def fake_run_command(args, cwd=None):
+        return types.SimpleNamespace(returncode=0, stdout="null\n", stderr="")
+
+    monkeypatch.setattr(auto_updater, "_run_command", fake_run_command)
+
+    sha = auto_updater._get_remote_latest_sha("owner", "repo", "main", auto_updater.REPO_ROOT)
+
+    assert sha is None
+
+
 def test_skips_when_remote_matches_local(monkeypatch):
     calls = {"pulled": False, "restarted": False}
 

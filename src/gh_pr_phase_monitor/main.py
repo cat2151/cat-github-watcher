@@ -26,6 +26,7 @@ from .core.config import (
 from .ui.display import display_issues_from_repos_without_prs, display_status_summary
 from .github.github_auth import get_current_user
 from .github.github_client import get_pr_details_batch, get_repositories_with_open_prs
+from .github.repository_fetcher import get_repos_changed_since_last_check
 from .github.graphql_client import GitHubRateLimitError, get_rate_limit_info
 from .monitor.local_repo_watcher import (
     display_pending_local_repo_results,
@@ -152,19 +153,37 @@ def main():
         phase3_repo_names: list[str] = []
 
         try:
-            # Phase 1: Get all repositories with open PRs (lightweight query)
-            print("\nPhase 1: Fetching repositories with open PRs...")
-            repos_with_prs = get_repositories_with_open_prs()
+            # updatedAt pre-check: determine which repos (if any) changed since last iteration.
+            # On the first call this stores the baseline and returns None (run full check).
+            # On subsequent calls this compares the baseline and returns the set of changed repos.
+            # If the set is empty, nothing changed and we can skip Phase 1 + Phase 2 entirely.
+            skip_pr_check = False
+            try:
+                changed_repos = get_repos_changed_since_last_check()
+                if changed_repos is None:
+                    print("  updatedAt ベースライン記録済み (初回チェック)")
+                elif not changed_repos:
+                    print("  リポジトリに変化なし (updatedAt 不変)。Phase 1/2 をスキップします。")
+                    skip_pr_check = True
+                else:
+                    print(f"  {len(changed_repos)} リポジトリで変化を検知 → Phase 1/2 実行")
+            except Exception as updated_at_error:
+                log_error_to_file("updatedAt check failed, running full check", updated_at_error)
 
-            if not repos_with_prs:
-                print("  No repositories with open PRs found")
-                # Display issues when no repositories with open PRs are found
-                # No PRs means llm_working_count = 0
-                display_issues_from_repos_without_prs(config, llm_working_count=0)
-            else:
-                print(f"  Found {len(repos_with_prs)} repositories with open PRs:")
-                for repo in repos_with_prs:
-                    print(f"    - {repo['name']}: {repo['openPRCount']} open PR(s)")
+            if not skip_pr_check:
+                # Phase 1: Get all repositories with open PRs (lightweight query)
+                print("\nPhase 1: Fetching repositories with open PRs...")
+                repos_with_prs = get_repositories_with_open_prs()
+
+                if not repos_with_prs:
+                    print("  No repositories with open PRs found")
+                    # Display issues when no repositories with open PRs are found
+                    # No PRs means llm_working_count = 0
+                    display_issues_from_repos_without_prs(config, llm_working_count=0)
+                else:
+                    print(f"  Found {len(repos_with_prs)} repositories with open PRs:")
+                    for repo in repos_with_prs:
+                        print(f"    - {repo['name']}: {repo['openPRCount']} open PR(s)")
 
                 # Validate phase3_merge configuration for all repositories
                 # This must be done before processing PRs to fail fast

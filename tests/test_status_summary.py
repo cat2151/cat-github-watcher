@@ -45,6 +45,8 @@ class TestDisplayStatusSummary:
         assert "Existing PR" in output
         # No-change notice should be shown
         assert "前回から変化なし" in output
+        # URL should be shown so users can click it even when no change persists
+        assert "https://github.com/owner/repo1/pulls/1" in output
 
     def test_display_status_summary_with_mixed_phases(self, mocker):
         """Test that display_status_summary correctly displays PRs by phase"""

@@ -34,6 +34,7 @@ from .monitor.local_repo_watcher import (
 )
 from .monitor.monitor import check_no_state_change_timeout
 from .monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
+from .monitor.state_tracker import get_last_pr_snapshot, set_last_pr_snapshot
 from .phase.phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
 from .actions.pr_actions import process_pr
 from .phase.html.html_status_processor import fetch_and_analyze_pr_html
@@ -150,13 +151,13 @@ def main():
         pr_phases = []
         repos_with_prs = []
         phase3_repo_names: list[str] = []
+        skip_pr_check = False
 
         try:
             # updatedAt pre-check: determine which repos (if any) changed since last iteration.
             # On the first call this stores the baseline and returns None (run full check).
             # On subsequent calls this compares the baseline and returns the set of changed repos.
             # If the set is empty, nothing changed and we can skip Phase 1 + Phase 2 entirely.
-            skip_pr_check = False
             try:
                 changed_repos = get_repos_changed_since_last_check()
                 if changed_repos is None:
@@ -235,6 +236,9 @@ def main():
                                 pr_error,
                             )
                             pr_phases.append(PHASE_LLM_WORKING)
+
+                    # Save PR snapshot for display on subsequent skip-check iterations
+                    set_last_pr_snapshot(all_prs, pr_phases, repos_with_prs)
 
                     # Count how many PRs are in "LLM working" phase
                     # This count is used for rate limit protection - when too many PRs are being
@@ -367,7 +371,14 @@ def main():
             throttled_interval = normal_interval_seconds
 
         try:
-            display_status_summary(all_prs, pr_phases, repos_with_prs, config)
+            display_prs, display_phases, display_repos = all_prs, pr_phases, repos_with_prs
+            no_change = False
+            if skip_pr_check:
+                snapshot = get_last_pr_snapshot()
+                if snapshot is not None:
+                    display_prs, display_phases, display_repos = snapshot
+                    no_change = True
+            display_status_summary(display_prs, display_phases, display_repos, config, no_change=no_change)
         except Exception as summary_error:
             log_error_to_file("Failed to display status summary", summary_error)
 

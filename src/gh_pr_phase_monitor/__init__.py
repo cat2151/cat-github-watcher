@@ -31,9 +31,11 @@ from .phase.phase_detector import (
 from .actions.pr_actions import mark_pr_ready, open_browser, process_pr, process_repository
 from .monitor.state_tracker import (
     cleanup_old_pr_states,
+    get_last_pr_snapshot,
     get_last_state,
     get_pr_state_time,
     is_reduced_frequency_mode,
+    set_last_pr_snapshot,
     set_last_state,
     set_pr_state_time,
     set_reduced_frequency_mode,
@@ -79,9 +81,11 @@ __all__ = [
     "display_issues_from_repos_without_prs",
     # State Tracker
     "cleanup_old_pr_states",
+    "get_last_pr_snapshot",
     "get_last_state",
     "get_pr_state_time",
     "is_reduced_frequency_mode",
+    "set_last_pr_snapshot",
     "set_last_state",
     "set_pr_state_time",
     "set_reduced_frequency_mode",

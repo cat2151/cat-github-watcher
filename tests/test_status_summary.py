@@ -23,6 +23,29 @@ class TestDisplayStatusSummary:
         calls = [str(call) for call in mock_print.call_args_list]
         assert any("No open PRs to monitor" in str(call) for call in calls)
 
+    def test_display_status_summary_no_change_shows_prs_and_notice(self, mocker):
+        """When no_change=True, PRs from last check are listed with a no-change notice"""
+        all_prs = [
+            {
+                "title": "Existing PR",
+                "url": "https://github.com/owner/repo1/pulls/1",
+                "repository": {"name": "repo1", "owner": "owner"},
+            }
+        ]
+        pr_phases = [PHASE_1]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
+
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs, no_change=True)
+
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
+
+        # PR should still be listed
+        assert "Existing PR" in output
+        # No-change notice should be shown
+        assert "前回から変化なし" in output
+
     def test_display_status_summary_with_mixed_phases(self, mocker):
         """Test that display_status_summary correctly displays PRs by phase"""
         # Create mock PR data with repository info

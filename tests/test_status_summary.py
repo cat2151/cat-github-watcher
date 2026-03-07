@@ -6,7 +6,6 @@ This test ensures the new behavior requested in the issue:
 display a summary of LLM working status at the end before entering the waiting state"
 """
 
-from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.ui.display import display_status_summary
 from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
@@ -15,16 +14,16 @@ from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_1, PHASE_2, PHASE
 class TestDisplayStatusSummary:
     """Test the display_status_summary function"""
 
-    def test_display_status_summary_with_no_prs(self):
+    def test_display_status_summary_with_no_prs(self, mocker):
         """Test that display_status_summary correctly handles empty PR list"""
-        with patch("builtins.print") as mock_print:
-            display_status_summary([], [], [])
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary([], [], [])
 
-            # Verify that a "No open PRs" message is displayed
-            calls = [str(call) for call in mock_print.call_args_list]
-            assert any("No open PRs to monitor" in str(call) for call in calls)
+        # Verify that a "No open PRs" message is displayed
+        calls = [str(call) for call in mock_print.call_args_list]
+        assert any("No open PRs to monitor" in str(call) for call in calls)
 
-    def test_display_status_summary_with_mixed_phases(self):
+    def test_display_status_summary_with_mixed_phases(self, mocker):
         """Test that display_status_summary correctly displays PRs by phase"""
         # Create mock PR data with repository info
         all_prs = [
@@ -64,24 +63,24 @@ class TestDisplayStatusSummary:
             {"name": "repo3", "owner": "owner", "openPRCount": 1},
         ]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            # Extract all printed messages
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        # Extract all printed messages
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            # Verify that PRs are displayed in the format [repo] [phase] title
-            assert "[repo1]" in output
-            assert "[repo2]" in output
-            assert "[repo3]" in output
-            assert "PR 1" in output
-            assert "PR 2" in output
-            assert "PR 3" in output
-            assert "PR 4" in output
-            assert "PR 5" in output
+        # Verify that PRs are displayed in the format [repo] [phase] title
+        assert "[repo1]" in output
+        assert "[repo2]" in output
+        assert "[repo3]" in output
+        assert "PR 1" in output
+        assert "PR 2" in output
+        assert "PR 3" in output
+        assert "PR 4" in output
+        assert "PR 5" in output
 
-    def test_display_status_summary_with_all_llm_working(self):
+    def test_display_status_summary_with_all_llm_working(self, mocker):
         """Test that display_status_summary correctly handles all PRs in LLM working state"""
         # Create mock PR data with repository info
         all_prs = [
@@ -102,19 +101,19 @@ class TestDisplayStatusSummary:
 
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 2}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            # Extract all printed messages
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        # Extract all printed messages
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            # Verify that PRs are displayed
-            assert "[repo1]" in output
-            assert "PR 1" in output
-            assert "PR 2" in output
+        # Verify that PRs are displayed
+        assert "[repo1]" in output
+        assert "PR 1" in output
+        assert "PR 2" in output
 
-    def test_display_status_summary_with_single_phase(self):
+    def test_display_status_summary_with_single_phase(self, mocker):
         """Test that display_status_summary correctly handles PRs in single phase"""
         # Create mock PR data with repository info
         all_prs = [
@@ -140,20 +139,20 @@ class TestDisplayStatusSummary:
 
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 3}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            # Extract all printed messages
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        # Extract all printed messages
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            # Verify that PRs are displayed
-            assert "[repo1]" in output
-            assert "PR 1" in output
-            assert "PR 2" in output
-            assert "PR 3" in output
+        # Verify that PRs are displayed
+        assert "[repo1]" in output
+        assert "PR 1" in output
+        assert "PR 2" in output
+        assert "PR 3" in output
 
-    def test_display_status_summary_displays_summary_header(self):
+    def test_display_status_summary_displays_summary_header(self, mocker):
         """Test that display_status_summary displays a clear summary header"""
         all_prs = [
             {
@@ -165,17 +164,17 @@ class TestDisplayStatusSummary:
         pr_phases = [PHASE_1]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            # Extract all printed messages
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        # Extract all printed messages
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            # Verify that "Status Summary" header is displayed
-            assert "Status Summary:" in output
+        # Verify that "Status Summary" header is displayed
+        assert "Status Summary:" in output
 
-    def test_display_status_summary_hides_author_by_default(self):
+    def test_display_status_summary_hides_author_by_default(self, mocker):
         """Author login should be hidden when display_pr_author is disabled"""
         all_prs = [
             {
@@ -188,15 +187,15 @@ class TestDisplayStatusSummary:
         pr_phases = [PHASE_1]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            assert "Author:" not in output
+        assert "Author:" not in output
 
-    def test_display_status_summary_includes_author_for_all_phases(self):
+    def test_display_status_summary_includes_author_for_all_phases(self, mocker):
         """Author login should be shown for all phases when enabled"""
         all_prs = [
             {
@@ -227,18 +226,18 @@ class TestDisplayStatusSummary:
         pr_phases = [PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 4}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs, {"display_pr_author": True})
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs, {"display_pr_author": True})
 
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
 
-            assert "Author: phase1-author" in output
-            assert "Author: phase2-author" in output
-            assert "Author: phase3-author" in output
-            assert "Author: llm-author" in output
+        assert "Author: phase1-author" in output
+        assert "Author: phase2-author" in output
+        assert "Author: phase3-author" in output
+        assert "Author: llm-author" in output
 
-    def test_display_status_summary_shows_llm_progress(self):
+    def test_display_status_summary_shows_llm_progress(self, mocker):
         """LLM working output should include how far the pipeline has progressed"""
         all_prs = [
             {
@@ -295,17 +294,17 @@ class TestDisplayStatusSummary:
         pr_phases = [PHASE_LLM_WORKING, PHASE_LLM_WORKING, PHASE_LLM_WORKING, PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 4}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            output = " ".join(str(call) for call in mock_print.call_args_list)
+        output = " ".join(str(call) for call in mock_print.call_args_list)
 
-            assert "Phase 1 in progress, LLM working" in output
-            assert "Phase 1 completed, LLM working" in output
-            assert "Phase 2 in progress, LLM working" in output
-            assert "Phase 2 completed, LLM working" in output
+        assert "Phase 1 in progress, LLM working" in output
+        assert "Phase 1 completed, LLM working" in output
+        assert "Phase 2 in progress, LLM working" in output
+        assert "Phase 2 completed, LLM working" in output
 
-    def test_status_summary_includes_latest_llm_status(self):
+    def test_status_summary_includes_latest_llm_status(self, mocker):
         """Latest LLM status should be shown next to LLM working phase"""
         all_prs = [
             {
@@ -319,9 +318,9 @@ class TestDisplayStatusSummary:
         pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
-        with patch("builtins.print") as mock_print:
-            display_status_summary(all_prs, pr_phases, repos_with_prs)
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
 
-            output = " ".join(str(call) for call in mock_print.call_args_list)
+        output = " ".join(str(call) for call in mock_print.call_args_list)
 
-            assert "Latest LLM status: finished work items" in output
+        assert "Latest LLM status: finished work items" in output

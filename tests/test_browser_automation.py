@@ -138,9 +138,14 @@ class TestAssignIssueToCopilotAutomated:
         mock_start.assert_called_once()
         mock_start.return_value.close.assert_called_once()
 
-    def test_updates_notification_with_search_status(
-        self, mock_sleep, mock_start, mock_get_title, mock_click, mock_webbrowser, mock_wait
-    ):
+    def test_updates_notification_with_search_status(self, mocker):
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
+        mock_wait = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._wait_with_cancellation", return_value=False)
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+        mock_get_title = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._get_active_window_title")
+        mock_start = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._start_button_notification")
+        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
         """Splash window should reflect active window and search status."""
         mock_click.return_value = True
         mock_webbrowser.open.return_value = True
@@ -177,9 +182,13 @@ class TestAssignIssueToCopilotAutomated:
         mock_start.assert_called_once()
         mock_notification.close.assert_called_once()
 
-    def test_logs_and_returns_false_on_unexpected_error(
-        self, mock_sleep, mock_start, mock_click, mock_webbrowser, mock_log_error
-    ):
+    def test_logs_and_returns_false_on_unexpected_error(self, mocker):
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+        mock_start = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._start_button_notification")
+        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
+        mock_log_error = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._log_error")
         """Unexpected automation errors should be logged and surfaced as False without raising."""
         mock_webbrowser.open.return_value = True
         mock_start.return_value = mocker.MagicMock(close=mocker.MagicMock(), closed_by_user=False)
@@ -292,9 +301,13 @@ class TestAssignIssueToCopilotAutomated:
         # Browser should NOT be opened a second time
         assert mock_webbrowser.open.call_count == 1
 
-    def test_issue_url_can_be_retried_after_24_hours(
-        self, mock_time, mock_cooldown_time, mock_sleep, mock_click, mock_webbrowser
-    ):
+    def test_issue_url_can_be_retried_after_24_hours(self, mocker):
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
+        mock_cooldown_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
+        mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.time")
         """Test that issue URL can be retried after 24 hours"""
         mock_click.return_value = False  # Simulate button not found
         mock_webbrowser.open.return_value = True
@@ -323,9 +336,13 @@ class TestAssignIssueToCopilotAutomated:
         assert result3 is False
         assert mock_webbrowser.open.call_count == 2  # Now 2 (opened again)
 
-    def test_different_issue_urls_are_tracked_separately(
-        self, mock_time, mock_cooldown_time, mock_sleep, mock_click, mock_webbrowser
-    ):
+    def test_different_issue_urls_are_tracked_separately(self, mocker):
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
+        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.sleep")
+        mock_cooldown_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
+        mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.time.time")
         """Test that different issue URLs can each be attempted once"""
         mock_click.return_value = True  # Simulate success
         mock_webbrowser.open.return_value = True
@@ -430,9 +447,12 @@ class TestMergePrAutomated:
         assert result is True
         assert mock_click.call_count == 3
 
-    def test_merge_aborts_when_notification_closed(
-        self, mock_click, mock_webbrowser, mock_wait, mock_start_notification
-    ):
+    def test_merge_aborts_when_notification_closed(self, mocker):
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
+        mock_start_notification = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._start_button_notification")
+        mock_wait = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._wait_with_cancellation")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
         """If the notification is closed, merge automation should abort early"""
         mock_webbrowser.open.return_value = True
         mock_start_notification.return_value = mocker.MagicMock()

@@ -6,7 +6,6 @@ This test ensures the behavior requested in the issue:
 "If list has only 2 items (less than 3), always show the list table"
 """
 
-from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING
 
@@ -54,22 +53,14 @@ def _create_mock_pr(repo_name: str, title: str, url: str, phase: str):
     return base_pr
 
 
-@patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
-@patch("src.gh_pr_phase_monitor.main.display_status_summary")
-@patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
-@patch("src.gh_pr_phase_monitor.main.process_pr")
-@patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
-@patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-@patch("src.gh_pr_phase_monitor.main.load_config")
-def test_display_issues_when_two_prs_in_phase3(
-    mock_load_config,
-    mock_get_repos,
-    mock_get_prs,
-    mock_process_pr,
-    mock_display_issues,
-    mock_display_summary,
-    mock_wait,
-):
+def test_display_issues_when_two_prs_in_phase3(mocker):
+    mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.main.process_pr")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
+    mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """
     Test that issues are displayed when there are only 2 PRs (less than 3),
     even when they are in phase 3 (not "LLM working")
@@ -111,22 +102,14 @@ def test_display_issues_when_two_prs_in_phase3(
     assert call_args[1]["llm_working_count"] == 0
 
 
-@patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
-@patch("src.gh_pr_phase_monitor.main.display_status_summary")
-@patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
-@patch("src.gh_pr_phase_monitor.main.process_pr")
-@patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
-@patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-@patch("src.gh_pr_phase_monitor.main.load_config")
-def test_display_issues_when_one_pr_in_any_phase(
-    mock_load_config,
-    mock_get_repos,
-    mock_get_prs,
-    mock_process_pr,
-    mock_display_issues,
-    mock_display_summary,
-    mock_wait,
-):
+def test_display_issues_when_one_pr_in_any_phase(mocker):
+    mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.main.process_pr")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
+    mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """
     Test that issues are displayed when there is only 1 PR (less than 3),
     regardless of phase
@@ -158,22 +141,14 @@ def test_display_issues_when_one_pr_in_any_phase(
     assert mock_display_issues.called, "Issues should be displayed when PR count is less than 3"
 
 
-@patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
-@patch("src.gh_pr_phase_monitor.main.display_status_summary")
-@patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
-@patch("src.gh_pr_phase_monitor.main.process_pr")
-@patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
-@patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-@patch("src.gh_pr_phase_monitor.main.load_config")
-def test_no_display_issues_when_three_or_more_prs_not_llm_working(
-    mock_load_config,
-    mock_get_repos,
-    mock_get_prs,
-    mock_process_pr,
-    mock_display_issues,
-    mock_display_summary,
-    mock_wait,
-):
+def test_no_display_issues_when_three_or_more_prs_not_llm_working(mocker):
+    mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.main.process_pr")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
+    mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """
     Test that issues are NOT displayed when there are 3 or more PRs
     and not all are in "LLM working" phase
@@ -214,22 +189,14 @@ def test_no_display_issues_when_three_or_more_prs_not_llm_working(
     assert call_args[1]["llm_working_count"] == 0
 
 
-@patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
-@patch("src.gh_pr_phase_monitor.main.display_status_summary")
-@patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
-@patch("src.gh_pr_phase_monitor.main.process_pr")
-@patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
-@patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-@patch("src.gh_pr_phase_monitor.main.load_config")
-def test_display_issues_when_three_or_more_prs_all_llm_working(
-    mock_load_config,
-    mock_get_repos,
-    mock_get_prs,
-    mock_process_pr,
-    mock_display_issues,
-    mock_display_summary,
-    mock_wait,
-):
+def test_display_issues_when_three_or_more_prs_all_llm_working(mocker):
+    mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.main.process_pr")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
+    mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """
     Test that issues ARE displayed when there are 3 or more PRs
     and ALL are in "LLM working" phase (existing behavior should still work)
@@ -273,22 +240,14 @@ def test_display_issues_when_three_or_more_prs_all_llm_working(
     assert call_args[1]["llm_working_count"] == 3
 
 
-@patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
-@patch("src.gh_pr_phase_monitor.main.display_status_summary")
-@patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
-@patch("src.gh_pr_phase_monitor.main.process_pr")
-@patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
-@patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-@patch("src.gh_pr_phase_monitor.main.load_config")
-def test_display_issues_when_three_or_more_prs_all_phase3(
-    mock_load_config,
-    mock_get_repos,
-    mock_get_prs,
-    mock_process_pr,
-    mock_display_issues,
-    mock_display_summary,
-    mock_wait,
-):
+def test_display_issues_when_three_or_more_prs_all_phase3(mocker):
+    mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.main.process_pr")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
+    mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """
     Test that issues ARE displayed when there are 3 or more PRs
     and ALL are in phase3 (phase3 should not count toward parallel limits)
@@ -331,22 +290,14 @@ def test_display_issues_when_three_or_more_prs_all_phase3(
     assert call_args[1]["llm_working_count"] == 0
 
 
-@patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
-@patch("src.gh_pr_phase_monitor.main.display_status_summary")
-@patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
-@patch("src.gh_pr_phase_monitor.main.process_pr")
-@patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
-@patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-@patch("src.gh_pr_phase_monitor.main.load_config")
-def test_display_issues_when_phase3_and_llm_working_mix(
-    mock_load_config,
-    mock_get_repos,
-    mock_get_prs,
-    mock_process_pr,
-    mock_display_issues,
-    mock_display_summary,
-    mock_wait,
-):
+def test_display_issues_when_phase3_and_llm_working_mix(mocker):
+    mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.main.process_pr")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
+    mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """Phase3 PRs should not count toward the parallel cap; mixed phases still allow display."""
 
     mock_load_config.return_value = {"interval": "1m"}
@@ -379,26 +330,16 @@ def test_display_issues_when_phase3_and_llm_working_mix(
     assert call_args[1]["llm_working_count"] == 1
 
 
-@patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
-@patch("src.gh_pr_phase_monitor.main.display_status_summary")
-@patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
-@patch("src.gh_pr_phase_monitor.main.process_pr")
-@patch("src.gh_pr_phase_monitor.main.fetch_and_analyze_pr_html")
-@patch("src.gh_pr_phase_monitor.main.determine_phase")
-@patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
-@patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-@patch("src.gh_pr_phase_monitor.main.load_config")
-def test_display_issues_when_llm_working_below_cap_even_with_three_active_prs(
-    mock_load_config,
-    mock_get_repos,
-    mock_get_prs,
-    mock_determine_phase,
-    mock_fetch_html,
-    mock_process_pr,
-    mock_display_issues,
-    mock_display_summary,
-    mock_wait,
-):
+def test_display_issues_when_llm_working_below_cap_even_with_three_active_prs(mocker):
+    mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mock_determine_phase = mocker.patch("src.gh_pr_phase_monitor.main.determine_phase")
+    mock_fetch_html = mocker.patch("src.gh_pr_phase_monitor.main.fetch_and_analyze_pr_html")
+    mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.main.process_pr")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
+    mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """LLM working count below the configured cap should always trigger issue display."""
 
     mock_load_config.return_value = {"interval": "1m", "max_llm_working_parallel": 3}

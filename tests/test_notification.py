@@ -2,7 +2,6 @@
 Tests for notification functionality
 """
 
-from unittest.mock import MagicMock, patch
 
 from src.gh_pr_phase_monitor.ui.notifier import (
     format_notification_message,
@@ -110,39 +109,39 @@ class TestFormatNotificationMessage:
 class TestSendNtfyNotification:
     """Test the send_ntfy_notification function"""
 
-    @patch("urllib.request.urlopen")
-    def test_successful_notification(self, mock_urlopen):
+    def test_successful_notification(self, mocker):
+        mock_urlopen = mocker.patch("urllib.request.urlopen")
         """Test successful notification sending"""
         # Mock successful response
-        mock_response = MagicMock()
+        mock_response = mocker.MagicMock()
         mock_response.status = 200
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         result = send_ntfy_notification("test-topic", "Test message")
         assert result is True
 
-    @patch("urllib.request.urlopen")
-    def test_notification_with_title(self, mock_urlopen):
+    def test_notification_with_title(self, mocker):
+        mock_urlopen = mocker.patch("urllib.request.urlopen")
         """Test notification with title"""
-        mock_response = MagicMock()
+        mock_response = mocker.MagicMock()
         mock_response.status = 200
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         result = send_ntfy_notification("test-topic", "Test message", title="Test Title")
         assert result is True
 
-    @patch("urllib.request.urlopen")
-    def test_notification_with_priority(self, mock_urlopen):
+    def test_notification_with_priority(self, mocker):
+        mock_urlopen = mocker.patch("urllib.request.urlopen")
         """Test notification with priority"""
-        mock_response = MagicMock()
+        mock_response = mocker.MagicMock()
         mock_response.status = 200
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         result = send_ntfy_notification("test-topic", "Test message", priority=5)
         assert result is True
 
-    @patch("urllib.request.urlopen")
-    def test_failed_notification(self, mock_urlopen):
+    def test_failed_notification(self, mocker):
+        mock_urlopen = mocker.patch("urllib.request.urlopen")
         """Test failed notification sending"""
         # Mock exception
         mock_urlopen.side_effect = Exception("Network error")
@@ -165,41 +164,41 @@ class TestSendNtfyNotification:
         result = send_ntfy_notification("test/invalid", "Test message")
         assert result is False
 
-    @patch("urllib.request.urlopen")
-    def test_non_200_response_code(self, mock_urlopen):
+    def test_non_200_response_code(self, mocker):
+        mock_urlopen = mocker.patch("urllib.request.urlopen")
         """Test with non-200 response codes"""
         # Test 201 Created
-        mock_response_201 = MagicMock()
+        mock_response_201 = mocker.MagicMock()
         mock_response_201.status = 201
         mock_urlopen.return_value.__enter__.return_value = mock_response_201
         result = send_ntfy_notification("test-topic", "Test message")
         assert result is False
 
         # Test 400 Bad Request
-        mock_response_400 = MagicMock()
+        mock_response_400 = mocker.MagicMock()
         mock_response_400.status = 400
         mock_urlopen.return_value.__enter__.return_value = mock_response_400
         result = send_ntfy_notification("test-topic", "Test message")
         assert result is False
 
         # Test 404 Not Found
-        mock_response_404 = MagicMock()
+        mock_response_404 = mocker.MagicMock()
         mock_response_404.status = 404
         mock_urlopen.return_value.__enter__.return_value = mock_response_404
         result = send_ntfy_notification("test-topic", "Test message")
         assert result is False
 
         # Test 500 Internal Server Error
-        mock_response_500 = MagicMock()
+        mock_response_500 = mocker.MagicMock()
         mock_response_500.status = 500
         mock_urlopen.return_value.__enter__.return_value = mock_response_500
         result = send_ntfy_notification("test-topic", "Test message")
         assert result is False
 
-    @patch("urllib.request.urlopen")
-    def test_title_with_newline_characters(self, mock_urlopen):
+    def test_title_with_newline_characters(self, mocker):
+        mock_urlopen = mocker.patch("urllib.request.urlopen")
         """Test that titles with newlines are sanitized"""
-        mock_response = MagicMock()
+        mock_response = mocker.MagicMock()
         mock_response.status = 200
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
@@ -212,10 +211,10 @@ class TestSendNtfyNotification:
         request = call_args[0][0]
         assert "\n" not in request.headers.get("Title", "")
 
-    @patch("urllib.request.urlopen")
-    def test_title_with_carriage_return(self, mock_urlopen):
+    def test_title_with_carriage_return(self, mocker):
+        mock_urlopen = mocker.patch("urllib.request.urlopen")
         """Test that titles with carriage returns are sanitized"""
-        mock_response = MagicMock()
+        mock_response = mocker.MagicMock()
         mock_response.status = 200
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
@@ -228,10 +227,10 @@ class TestSendNtfyNotification:
         assert "\r" not in request.headers.get("Title", "")
         assert "\n" not in request.headers.get("Title", "")
 
-    @patch("urllib.request.urlopen")
-    def test_title_with_special_characters(self, mock_urlopen):
+    def test_title_with_special_characters(self, mocker):
+        mock_urlopen = mocker.patch("urllib.request.urlopen")
         """Test titles with various special characters"""
-        mock_response = MagicMock()
+        mock_response = mocker.MagicMock()
         mock_response.status = 200
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
@@ -243,10 +242,10 @@ class TestSendNtfyNotification:
         result = send_ntfy_notification("test-topic", "Test message", title="Test\tTitle")
         assert result is True
 
-    @patch("urllib.request.urlopen")
-    def test_notification_with_actions(self, mock_urlopen):
+    def test_notification_with_actions(self, mocker):
+        mock_urlopen = mocker.patch("urllib.request.urlopen")
         """Test notification with action buttons"""
-        mock_response = MagicMock()
+        mock_response = mocker.MagicMock()
         mock_response.status = 200
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
@@ -259,10 +258,10 @@ class TestSendNtfyNotification:
         assert "Actions" in request.headers
         assert request.headers["Actions"] == "view,Open URL,https://example.com"
 
-    @patch("urllib.request.urlopen")
-    def test_actions_with_newline_characters(self, mock_urlopen):
+    def test_actions_with_newline_characters(self, mocker):
+        mock_urlopen = mocker.patch("urllib.request.urlopen")
         """Test that actions with newlines are sanitized"""
-        mock_response = MagicMock()
+        mock_response = mocker.MagicMock()
         mock_response.status = 200
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
@@ -280,24 +279,24 @@ class TestSendNtfyNotification:
 class TestSendPhase3Notification:
     """Test the send_phase3_notification function"""
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_notification_disabled(self, mock_send):
+    def test_notification_disabled(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test when notifications are disabled"""
         config = {"ntfy": {"enabled": False, "topic": "test-topic"}}
         result = send_phase3_notification(config, "https://github.com/owner/repo/pull/1", "Test PR")
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_notification_enabled_no_topic(self, mock_send):
+    def test_notification_enabled_no_topic(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test when notifications are enabled but no topic configured"""
         config = {"ntfy": {"enabled": True}}
         result = send_phase3_notification(config, "https://github.com/owner/repo/pull/1", "Test PR")
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_successful_notification(self, mock_send):
+    def test_successful_notification(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test successful phase3 notification"""
         mock_send.return_value = True
         config = {
@@ -311,8 +310,8 @@ class TestSendPhase3Notification:
         assert result is True
         mock_send.assert_called_once()
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_default_message_template(self, mock_send):
+    def test_default_message_template(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test with default message template"""
         mock_send.return_value = True
         config = {"ntfy": {"enabled": True, "topic": "test-topic"}}
@@ -323,16 +322,16 @@ class TestSendPhase3Notification:
         assert "PR is ready for review:" in call_args[0][1]
         assert "https://github.com/owner/repo/pull/1" in call_args[0][1]
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_no_ntfy_config(self, mock_send):
+    def test_no_ntfy_config(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test when ntfy config is not present"""
         config = {}
         result = send_phase3_notification(config, "https://github.com/owner/repo/pull/1", "Test PR")
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_custom_priority(self, mock_send):
+    def test_custom_priority(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test notification with custom priority from config"""
         mock_send.return_value = True
         config = {
@@ -349,8 +348,8 @@ class TestSendPhase3Notification:
         call_args = mock_send.call_args
         assert call_args[1]["priority"] == 5
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_default_priority_when_not_specified(self, mock_send):
+    def test_default_priority_when_not_specified(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test that default priority is used when not in config"""
         mock_send.return_value = True
         config = {
@@ -366,8 +365,8 @@ class TestSendPhase3Notification:
         call_args = mock_send.call_args
         assert call_args[1]["priority"] == 4
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_action_button_is_included(self, mock_send):
+    def test_action_button_is_included(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test that action button is included in phase3 notification"""
         mock_send.return_value = True
         config = {
@@ -390,24 +389,24 @@ class TestSendPhase3Notification:
 class TestSendAllPhase3Notification:
     """Test the send_all_phase3_notification function"""
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_notification_disabled(self, mock_send):
+    def test_notification_disabled(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test when notifications are disabled"""
         config = {"ntfy": {"enabled": False, "topic": "test-topic"}}
         result = send_all_phase3_notification(config)
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_notification_enabled_no_topic(self, mock_send):
+    def test_notification_enabled_no_topic(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test when notifications are enabled but no topic configured"""
         config = {"ntfy": {"enabled": True}}
         result = send_all_phase3_notification(config)
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_successful_notification(self, mock_send):
+    def test_successful_notification(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test successful all-phase3 notification"""
         mock_send.return_value = True
         config = {
@@ -424,8 +423,8 @@ class TestSendAllPhase3Notification:
         call_args = mock_send.call_args
         assert call_args[0][1] == "All PRs are ready!"
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_default_message(self, mock_send):
+    def test_default_message(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test with default message when not configured"""
         mock_send.return_value = True
         config = {"ntfy": {"enabled": True, "topic": "test-topic"}}
@@ -435,16 +434,16 @@ class TestSendAllPhase3Notification:
         call_args = mock_send.call_args
         assert "All PRs are now in phase3 (ready for review)" in call_args[0][1]
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_no_ntfy_config(self, mock_send):
+    def test_no_ntfy_config(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test when ntfy config is not present"""
         config = {}
         result = send_all_phase3_notification(config)
         assert result is False
         mock_send.assert_not_called()
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_custom_priority(self, mock_send):
+    def test_custom_priority(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test notification with custom priority from config"""
         mock_send.return_value = True
         config = {
@@ -461,8 +460,8 @@ class TestSendAllPhase3Notification:
         call_args = mock_send.call_args
         assert call_args[1]["priority"] == 5
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_default_priority_when_not_specified(self, mock_send):
+    def test_default_priority_when_not_specified(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test that default priority is used when not in config"""
         mock_send.return_value = True
         config = {
@@ -478,8 +477,8 @@ class TestSendAllPhase3Notification:
         call_args = mock_send.call_args
         assert call_args[1]["priority"] == 4
 
-    @patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
-    def test_notification_title(self, mock_send):
+    def test_notification_title(self, mocker):
+        mock_send = mocker.patch("src.gh_pr_phase_monitor.ui.notifier.send_ntfy_notification")
         """Test that notification has correct title"""
         mock_send.return_value = True
         config = {

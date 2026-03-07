@@ -54,7 +54,7 @@ def _is_review_still_in_progress(llm_statuses: list[str]) -> bool:
 
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
-        if "reviewing" in lowered:
+        if "reviewing" in lowered or "reviewed" in lowered:
             if "started" in lowered:
                 last_started_review_idx = idx
                 # A new review cycle begins; previous completion status is no longer relevant.
@@ -104,7 +104,7 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
     started_after_review = False
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
-        if "reviewing" in lowered:
+        if "reviewing" in lowered or "reviewed" in lowered:
             last_review_idx = idx
             started_after_review = False  # 新しいreviewingが来たらリセット
         if "started work" in lowered and last_review_idx is not None and idx > last_review_idx:

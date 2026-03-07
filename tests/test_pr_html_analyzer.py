@@ -4,6 +4,7 @@ Tests for pr_html_analyzer module
 
 import json
 
+from src.gh_pr_phase_monitor.phase.html.llm_status_extractor import _extract_llm_statuses
 from src.gh_pr_phase_monitor.phase.html.pr_html_analyzer import (
     PHASE1A_DRAFT_LLM_WORKING,
     PHASE1B_DRAFT_LLM_FINISHED_WORK,
@@ -288,3 +289,38 @@ class TestSaveAnalysisJson:
         json_path = tmp_path / "repo_5.json"
         # Should not raise
         json.loads(json_path.read_text(encoding="utf-8"))
+
+
+class TestCopilotReviewedExtraction:
+    """Tests for detection of Copilot 'reviewed' events in TimelineItem-body blocks."""
+
+    _REVIEWED_HTML = """
+          <div class="TimelineItem-body d-flex flex-column flex-md-row flex-justify-start">
+            <div class="flex-auto flex-md-self-center">
+              <strong>
+                  <a class="author Link--primary text-bold css-overflow-wrap-anywhere" data-hovercard-type="copilot" data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer" href="/apps/copilot-pull-request-reviewer">Copilot</a>
+<span class="Label Label--secondary">AI</span>
+
+              </strong>
+
+              reviewed
+            </div>
+          </div>
+    """
+
+    def test_copilot_reviewed_extracted_from_html(self):
+        """Bug fix: 'Copilot reviewed' should be extracted from TimelineItem-body blocks
+        that have data-hovercard-type='copilot' even without session_id=."""
+        html_markdown = ""
+        statuses = _extract_llm_statuses(self._REVIEWED_HTML, html_markdown)
+        assert "Copilot reviewed" in statuses
+
+    def test_analyze_pr_html_includes_copilot_reviewed(self):
+        """analyze_pr_html should include 'Copilot reviewed' in llm_statuses."""
+        result = analyze_pr_html(self._REVIEWED_HTML, "https://github.com/owner/repo/pull/1")
+        assert "Copilot reviewed" in result["llm_statuses"]
+
+    def test_copilot_reviewed_leads_to_phase2a(self):
+        """A 'Copilot reviewed' event with no subsequent work should yield PHASE2A."""
+        result = analyze_pr_html(self._REVIEWED_HTML, "https://github.com/owner/repo/pull/1")
+        assert result["status"] == PHASE2A_REVIEW_COMPLETED

@@ -130,11 +130,25 @@ def _extract_llm_statuses_from_html(html: str, seen: Set[str]) -> List[str]:
     timeline_pattern = re.compile(
         r'<div[^>]*class="[^"]*TimelineItem-body[^"]*"[^>]*>(.*?)</div>', re.DOTALL | re.IGNORECASE
     )
+    copilot_hovercard_re = re.compile(r'data-hovercard-type=["\']copilot["\']', re.IGNORECASE)
+    author_from_copilot_re = re.compile(
+        r'data-hovercard-type=["\']copilot["\'][^>]*>([^<]+)</a>', re.IGNORECASE
+    )
     for body in re.findall(timeline_pattern, html):
-        if "session_id=" not in body:
-            continue
-        timeline_text = _html_to_simple_markdown(body)
-        _add_status(statuses, seen, timeline_text)
+        if "session_id=" in body:
+            timeline_text = _html_to_simple_markdown(body)
+            _add_status(statuses, seen, timeline_text)
+        elif copilot_hovercard_re.search(body):
+            author_match = author_from_copilot_re.search(body)
+            if not author_match:
+                continue
+            author = author_match.group(1).strip()
+            parts = re.split(r"</strong\b[^>]*>", body, maxsplit=1, flags=re.IGNORECASE)
+            if len(parts) < 2:
+                continue
+            action_text = _html_to_simple_markdown(parts[1]).strip()
+            if action_text:
+                _add_status(statuses, seen, f"{author} {action_text}")
 
     attribute_patterns = [
         r'data-llm-status=["\']([^"\']+)["\']',

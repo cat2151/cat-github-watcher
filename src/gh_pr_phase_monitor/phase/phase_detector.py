@@ -190,7 +190,7 @@ def llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
 
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
-        if "reviewing" in lowered:
+        if "reviewing" in lowered or "reviewed" in lowered:
             review_idx = idx
             started_after_review_idx = None
         if "started work" in lowered:
@@ -234,7 +234,7 @@ def _phase_from_llm_statuses(llm_statuses: List[str]) -> Optional[str]:
 
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
-        if "reviewing" in lowered:
+        if "reviewing" in lowered or "reviewed" in lowered:
             last_review_idx = idx
             last_started_after_review_idx = None  # reset on new reviewing event
             last_finished_after_started_after_review_idx = None

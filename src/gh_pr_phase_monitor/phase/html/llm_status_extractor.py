@@ -81,8 +81,13 @@ def _add_status(statuses: List[str], seen: Set[str], text: str) -> None:
     statuses.append(normalized)
 
 
-def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> List[str]:
-    """Extract LLM statuses from simplified markdown content."""
+def _extract_llm_statuses_via_text_patterns(html_markdown: str, seen: Set[str]) -> List[str]:
+    """Extract LLM statuses by scanning plain-text patterns in HTML-converted-to-markdown.
+
+    Handles two cases that the HTML-element extractor misses:
+    - Plain-text ``LLM status:`` labels written in PR comment bodies.
+    - ``session_id=`` links that appear outside ``TimelineItem-body`` elements.
+    """
     statuses: List[str] = []
     if not html_markdown:
         return statuses
@@ -138,8 +143,14 @@ def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> L
     return statuses
 
 
-def _extract_llm_statuses_from_html(html: str, seen: Set[str]) -> List[str]:
-    """Extract LLM statuses from timeline session blocks and HTML attributes."""
+def _extract_llm_statuses_via_html_elements(html: str, seen: Set[str]) -> List[str]:
+    """Extract LLM statuses by parsing HTML structural elements (timeline items and attributes).
+
+    Scans ``TimelineItem-body`` divs for ``session_id=`` links and Copilot hovercard
+    events, and also checks ``data-llm-status`` / ``aria-label`` / ``title`` attributes.
+    Because this walks the HTML structure in document order it preserves chronological
+    ordering of events (e.g. review before subsequent work events).
+    """
     statuses: List[str] = []
     if not html:
         return statuses
@@ -180,16 +191,17 @@ def _extract_llm_statuses_from_html(html: str, seen: Set[str]) -> List[str]:
 
 
 def _extract_llm_statuses(html: Optional[str], html_markdown: str) -> List[str]:
-    """Extract unique LLM statuses from HTML and its markdown representation.
+    """Extract unique LLM statuses from HTML and its plain-text representation.
 
-    HTML extraction runs first so that timeline items are processed in their
-    chronological order (review event before work events).  Markdown extraction
+    HTML-element extraction runs first so that timeline items are processed in their
+    chronological order (review event before work events).  Text-pattern extraction
     runs second as a fallback, contributing only events not already captured by
-    the HTML extractor (e.g. plain-text "LLM status:" labels).
+    the HTML-element extractor (e.g. plain-text "LLM status:" labels, or
+    ``session_id=`` links outside ``TimelineItem-body`` elements).
     """
     seen: Set[str] = set()
     statuses: List[str] = []
     if html:
-        statuses.extend(_extract_llm_statuses_from_html(html, seen))
-    statuses.extend(_extract_llm_statuses_from_markdown(html_markdown, seen))
+        statuses.extend(_extract_llm_statuses_via_html_elements(html, seen))
+    statuses.extend(_extract_llm_statuses_via_text_patterns(html_markdown, seen))
     return statuses

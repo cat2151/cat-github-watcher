@@ -3,7 +3,6 @@ Test to verify that the application exits when PR state does not change for too 
 """
 
 import time
-from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.monitor import state_tracker
 from src.gh_pr_phase_monitor.monitor.monitor import check_no_state_change_timeout
@@ -216,7 +215,7 @@ class TestNoChangeTimeout:
         # Should not exit because timer was reset
         check_no_state_change_timeout(all_prs, pr_phases, config)
 
-    def test_invalid_timeout_format(self):
+    def test_invalid_timeout_format(self, mocker):
         """Test that invalid timeout format is handled gracefully"""
         all_prs = [
             {
@@ -229,12 +228,12 @@ class TestNoChangeTimeout:
         config = {"no_change_timeout": "invalid"}
 
         # Should print warning and not exit
-        with patch("builtins.print") as mock_print:
-            check_no_state_change_timeout(all_prs, pr_phases, config)
+        mock_print = mocker.patch("builtins.print")
+        check_no_state_change_timeout(all_prs, pr_phases, config)
 
-            # Check that warning was printed
-            calls = [str(call) for call in mock_print.call_args_list]
-            assert any("Warning" in str(call) and "invalid" in str(call).lower() for call in calls)
+        # Check that warning was printed
+        calls = [str(call) for call in mock_print.call_args_list]
+        assert any("Warning" in str(call) and "invalid" in str(call).lower() for call in calls)
 
     def test_empty_pr_list(self):
         """Test that empty PR list doesn't cause issues"""
@@ -245,7 +244,7 @@ class TestNoChangeTimeout:
         # Should not exit
         check_no_state_change_timeout(all_prs, pr_phases, config)
 
-    def test_timeout_message_in_japanese(self):
+    def test_timeout_message_in_japanese(self, mocker):
         """Test that mode switch message is displayed in Japanese"""
         all_prs = [
             {
@@ -264,16 +263,16 @@ class TestNoChangeTimeout:
         time.sleep(1.5)
 
         # Second call: should switch to reduced frequency mode with Japanese message
-        with patch("builtins.print") as mock_print:
-            result = check_no_state_change_timeout(all_prs, pr_phases, config)
-            assert result is True
+        mock_print = mocker.patch("builtins.print")
+        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        assert result is True
 
-            # Check that Japanese message was printed
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
-            assert "変化がない" in output
-            assert "API利用の浪費を防止" in output
-            assert "監視間隔を" in output  # Check for the interval change message without hardcoding the interval
+        # Check that Japanese message was printed
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
+        assert "変化がない" in output
+        assert "API利用の浪費を防止" in output
+        assert "監視間隔を" in output  # Check for the interval change message without hardcoding the interval
 
     def test_mismatched_list_lengths(self):
         """Test that mismatched all_prs and pr_phases lengths are handled correctly"""
@@ -363,7 +362,7 @@ class TestNoChangeTimeout:
         # Should not have entered reduced frequency mode because state kept changing
         assert True  # If we get here, test passed
 
-    def test_return_to_normal_mode_after_change(self):
+    def test_return_to_normal_mode_after_change(self, mocker):
         """Test that monitoring returns to normal mode when changes are detected after timeout"""
         all_prs = [
             {
@@ -388,12 +387,12 @@ class TestNoChangeTimeout:
 
         # Third call: change phase, should return to normal mode
         pr_phases = [PHASE_2]
-        with patch("builtins.print") as mock_print:
-            result = check_no_state_change_timeout(all_prs, pr_phases, config)
-            assert result is False
+        mock_print = mocker.patch("builtins.print")
+        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        assert result is False
 
-            # Check that return-to-normal message was printed
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
-            assert "変化を検知" in output
-            assert "通常の監視間隔に戻ります" in output
+        # Check that return-to-normal message was printed
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
+        assert "変化を検知" in output
+        assert "通常の監視間隔に戻ります" in output

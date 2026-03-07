@@ -10,7 +10,6 @@ This test reproduces the bug where:
 """
 
 import time
-from unittest.mock import patch
 
 from src.gh_pr_phase_monitor.monitor import state_tracker
 from src.gh_pr_phase_monitor.monitor.monitor import check_no_state_change_timeout
@@ -25,7 +24,7 @@ class TestIntervalContaminationBug:
         state_tracker.set_last_state(None)
         state_tracker.set_reduced_frequency_mode(False)
 
-    def test_interval_not_contaminated_after_returning_from_reduced_mode(self):
+    def test_interval_not_contaminated_after_returning_from_reduced_mode(self, mocker):
         """
         Test that when returning from reduced frequency mode to normal mode,
         the normal interval is used, not the reduced frequency interval.
@@ -70,12 +69,12 @@ class TestIntervalContaminationBug:
 
         # Third call: change phase to trigger state change
         pr_phases = [PHASE_2]
-        with patch("builtins.print") as mock_print:
-            result = check_no_state_change_timeout(all_prs, pr_phases, config)
-            assert result is False  # Should return to normal mode
+        mock_print = mocker.patch("builtins.print")
+        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        assert result is False  # Should return to normal mode
 
-            # Verify that return-to-normal message was printed
-            calls = [str(call) for call in mock_print.call_args_list]
-            output = " ".join(calls)
-            assert "変化を検知" in output
-            assert "通常の監視間隔に戻ります" in output
+        # Verify that return-to-normal message was printed
+        calls = [str(call) for call in mock_print.call_args_list]
+        output = " ".join(calls)
+        assert "変化を検知" in output
+        assert "通常の監視間隔に戻ります" in output

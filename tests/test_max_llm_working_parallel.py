@@ -24,42 +24,42 @@ def test_assignment_paused_when_limit_reached(mocker):
         }
     ]
 
-                # Mock issue response - only for displaying issues
-                mock_get_issues.side_effect = [
-                    # Only call: top 10 issues (no assignment call should happen)
-                    [
-                        {
-                            "title": "Issue 1",
-                            "url": "https://github.com/testuser/test-repo/issues/1",
-                            "number": 1,
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "author": {"login": "contributor1"},
-                            "repository": {"owner": "testuser", "name": "test-repo"},
-                        },
-                    ],
-                ]
+    # Mock issue response - only for displaying issues
+    mock_get_issues.side_effect = [
+        # Only call: top 10 issues (no assignment call should happen)
+        [
+            {
+    "title": "Issue 1",
+    "url": "https://github.com/testuser/test-repo/issues/1",
+    "number": 1,
+    "updatedAt": "2024-01-01T00:00:00Z",
+    "author": {"login": "contributor1"},
+    "repository": {"owner": "testuser", "name": "test-repo"},
+            },
+        ],
+    ]
 
-                # Create config with assign_to_copilot enabled via rulesets
-                # and max_llm_working_parallel set to 3
-                config = {
-                    "assign_to_copilot": {},
-                    "max_llm_working_parallel": 3,
-                    "rulesets": [
-                        {
-                            "repositories": ["test-repo"],
-                            "assign_good_first_old": True,
-                        }
-                    ],
-                }
+    # Create config with assign_to_copilot enabled via rulesets
+    # and max_llm_working_parallel set to 3
+    config = {
+        "assign_to_copilot": {},
+        "max_llm_working_parallel": 3,
+        "rulesets": [
+            {
+    "repositories": ["test-repo"],
+    "assign_good_first_old": True,
+            }
+        ],
+    }
 
-                # Call with llm_working_count = 3 (at the limit)
-                display_issues_from_repos_without_prs(config, llm_working_count=3)
+    # Call with llm_working_count = 3 (at the limit)
+    display_issues_from_repos_without_prs(config, llm_working_count=3)
 
-                # Verify that assignment was NOT attempted (limit reached)
-                mock_assign.assert_not_called()
+    # Verify that assignment was NOT attempted (limit reached)
+    mock_assign.assert_not_called()
 
-                # Verify that issues were only fetched once (for display, not for assignment)
-                assert mock_get_issues.call_count == 1
+    # Verify that issues were only fetched once (for display, not for assignment)
+    assert mock_get_issues.call_count == 1
 
 
 def test_assigned_issues_count_as_llm_working(mocker):
@@ -77,7 +77,7 @@ def test_assigned_issues_count_as_llm_working(mocker):
         }
     ]
 
-                mock_get_issues.side_effect = [
+    mock_get_issues.side_effect = [
                     [
                         {
                             "title": "Assigned issue",
@@ -89,9 +89,9 @@ def test_assigned_issues_count_as_llm_working(mocker):
                             "assignees": ["openai-code-agent"],
                         }
                     ],
-                ]
+    ]
 
-                config = {
+    config = {
                     "assign_to_copilot": {},
                     "max_llm_working_parallel": 1,
                     "rulesets": [
@@ -100,12 +100,12 @@ def test_assigned_issues_count_as_llm_working(mocker):
                             "assign_good_first_old": True,
                         }
                     ],
-                }
+    }
 
-                display_issues_from_repos_without_prs(config, llm_working_count=0)
+    display_issues_from_repos_without_prs(config, llm_working_count=0)
 
-                mock_assign.assert_not_called()
-                assert mock_get_issues.call_count == 1
+    mock_assign.assert_not_called()
+    assert mock_get_issues.call_count == 1
 
 
 def test_assignment_proceeds_when_below_limit(mocker):
@@ -124,8 +124,8 @@ def test_assignment_proceeds_when_below_limit(mocker):
         }
     ]
 
-                # Mock issue response
-                mock_get_issues.side_effect = [
+    # Mock issue response
+    mock_get_issues.side_effect = [
                     # First call: top 10 issues
                     [
                         {
@@ -149,13 +149,13 @@ def test_assignment_proceeds_when_below_limit(mocker):
                             "labels": ["good first issue"],
                         }
                     ],
-                ]
+    ]
 
-                mock_assign.return_value = True
+    mock_assign.return_value = True
 
-                # Create config with assign_to_copilot enabled via rulesets
-                # and max_llm_working_parallel set to 3
-                config = {
+    # Create config with assign_to_copilot enabled via rulesets
+    # and max_llm_working_parallel set to 3
+    config = {
                     "assign_to_copilot": {},
                     "max_llm_working_parallel": 3,
                     "rulesets": [
@@ -164,16 +164,16 @@ def test_assignment_proceeds_when_below_limit(mocker):
                             "assign_good_first_old": True,
                         }
                     ],
-                }
+    }
 
-                # Call with llm_working_count = 2 (below the limit)
-                display_issues_from_repos_without_prs(config, llm_working_count=2)
+    # Call with llm_working_count = 2 (below the limit)
+    display_issues_from_repos_without_prs(config, llm_working_count=2)
 
-                # Verify that assignment WAS attempted (below limit)
-                mock_assign.assert_called_once()
+    # Verify that assignment WAS attempted (below limit)
+    mock_assign.assert_called_once()
 
-                # Verify that issues were fetched twice (assignment + display)
-                assert mock_get_issues.call_count == 2
+    # Verify that issues were fetched twice (assignment + display)
+    assert mock_get_issues.call_count == 2
 
 
 def test_default_limit_when_not_configured(mocker):
@@ -192,8 +192,8 @@ def test_default_limit_when_not_configured(mocker):
         }
     ]
 
-                # Mock issue response - only for displaying issues
-                mock_get_issues.side_effect = [
+    # Mock issue response - only for displaying issues
+    mock_get_issues.side_effect = [
                     [
                         {
                             "title": "Issue 1",
@@ -204,10 +204,10 @@ def test_default_limit_when_not_configured(mocker):
                             "repository": {"owner": "testuser", "name": "test-repo"},
                         },
                     ],
-                ]
+    ]
 
-                # Create config WITHOUT max_llm_working_parallel (should use default of 3)
-                config = {
+    # Create config WITHOUT max_llm_working_parallel (should use default of 3)
+    config = {
                     "assign_to_copilot": {},
                     "rulesets": [
                         {
@@ -215,13 +215,13 @@ def test_default_limit_when_not_configured(mocker):
                             "assign_good_first_old": True,
                         }
                     ],
-                }
+    }
 
-                # Call with llm_working_count = 3 (at the default limit)
-                display_issues_from_repos_without_prs(config, llm_working_count=3)
+    # Call with llm_working_count = 3 (at the default limit)
+    display_issues_from_repos_without_prs(config, llm_working_count=3)
 
-                # Verify that assignment was NOT attempted (default limit reached)
-                mock_assign.assert_not_called()
+    # Verify that assignment was NOT attempted (default limit reached)
+    mock_assign.assert_not_called()
 
 
 def test_custom_limit(mocker):
@@ -240,8 +240,8 @@ def test_custom_limit(mocker):
         }
     ]
 
-                # Mock issue response
-                mock_get_issues.side_effect = [
+    # Mock issue response
+    mock_get_issues.side_effect = [
                     # First call: top 10 issues
                     [
                         {
@@ -265,12 +265,12 @@ def test_custom_limit(mocker):
                             "labels": ["good first issue"],
                         }
                     ],
-                ]
+    ]
 
-                mock_assign.return_value = True
+    mock_assign.return_value = True
 
-                # Create config with custom max_llm_working_parallel of 5
-                config = {
+    # Create config with custom max_llm_working_parallel of 5
+    config = {
                     "assign_to_copilot": {},
                     "max_llm_working_parallel": 5,
                     "rulesets": [
@@ -279,13 +279,13 @@ def test_custom_limit(mocker):
                             "assign_good_first_old": True,
                         }
                     ],
-                }
+    }
 
-                # Call with llm_working_count = 4 (below custom limit of 5)
-                display_issues_from_repos_without_prs(config, llm_working_count=4)
+    # Call with llm_working_count = 4 (below custom limit of 5)
+    display_issues_from_repos_without_prs(config, llm_working_count=4)
 
-                # Verify that assignment WAS attempted (below custom limit)
-                mock_assign.assert_called_once()
+    # Verify that assignment WAS attempted (below custom limit)
+    mock_assign.assert_called_once()
 
 
 def test_invalid_limit_uses_default(mocker):
@@ -304,8 +304,8 @@ def test_invalid_limit_uses_default(mocker):
         }
     ]
 
-                # Mock issue response - only for displaying issues
-                mock_get_issues.side_effect = [
+    # Mock issue response - only for displaying issues
+    mock_get_issues.side_effect = [
                     [
                         {
                             "title": "Issue 1",
@@ -316,10 +316,10 @@ def test_invalid_limit_uses_default(mocker):
                             "repository": {"owner": "testuser", "name": "test-repo"},
                         },
                     ],
-                ]
+    ]
 
-                # Create config with INVALID max_llm_working_parallel (string instead of int)
-                config = {
+    # Create config with INVALID max_llm_working_parallel (string instead of int)
+    config = {
                     "assign_to_copilot": {},
                     "max_llm_working_parallel": "invalid",  # Invalid type
                     "rulesets": [
@@ -328,13 +328,13 @@ def test_invalid_limit_uses_default(mocker):
                             "assign_good_first_old": True,
                         }
                     ],
-                }
+    }
 
-                # Call with llm_working_count = 3 (at the default limit)
-                display_issues_from_repos_without_prs(config, llm_working_count=3)
+    # Call with llm_working_count = 3 (at the default limit)
+    display_issues_from_repos_without_prs(config, llm_working_count=3)
 
-                # Verify that assignment was NOT attempted (default limit used)
-                mock_assign.assert_not_called()
+    # Verify that assignment was NOT attempted (default limit used)
+    mock_assign.assert_not_called()
 
 
 def test_zero_llm_working_count(mocker):
@@ -353,8 +353,8 @@ def test_zero_llm_working_count(mocker):
         }
     ]
 
-                # Mock issue response
-                mock_get_issues.side_effect = [
+    # Mock issue response
+    mock_get_issues.side_effect = [
                     # First call: top 10 issues
                     [
                         {
@@ -378,12 +378,12 @@ def test_zero_llm_working_count(mocker):
                             "labels": ["good first issue"],
                         }
                     ],
-                ]
+    ]
 
-                mock_assign.return_value = True
+    mock_assign.return_value = True
 
-                # Create config
-                config = {
+    # Create config
+    config = {
                     "assign_to_copilot": {},
                     "max_llm_working_parallel": 3,
                     "rulesets": [
@@ -392,13 +392,13 @@ def test_zero_llm_working_count(mocker):
                             "assign_good_first_old": True,
                         }
                     ],
-                }
+    }
 
-                # Call with llm_working_count = 0 (well below limit)
-                display_issues_from_repos_without_prs(config, llm_working_count=0)
+    # Call with llm_working_count = 0 (well below limit)
+    display_issues_from_repos_without_prs(config, llm_working_count=0)
 
-                # Verify that assignment WAS attempted
-                mock_assign.assert_called_once()
+    # Verify that assignment WAS attempted
+    mock_assign.assert_called_once()
 
 
 def test_config_validation_at_load_time():

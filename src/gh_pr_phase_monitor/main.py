@@ -283,6 +283,45 @@ def main():
                         # Throttling is applied inside the function based on llm_working_count
                         display_issues_from_repos_without_prs(config, llm_working_count=llm_working_count)
 
+            elif skip_pr_check:
+                # updatedAt 不変: GraphQL Phase 1/2 はスキップ
+                # しかし、open PR のphase変化（1A→1B, 1B→2A等）を検知するため、HTMLを毎回再取得する
+                # (updatedAt はPRのphase変化では更新されないため、HTMLフェッチが必須)
+                snapshot = get_last_pr_snapshot()
+                if snapshot is not None:
+                    cached_prs, _, cached_repos = snapshot
+                    if cached_prs:
+                        print("\n  open PR のHTML再取得 (updatedAt 不変でもphase変化を検知するため / Refetching HTML for open PRs to detect phase changes)...")
+                        all_prs = cached_prs
+                        repos_with_prs = cached_repos
+                        for pr in all_prs:
+                            try:
+                                try:
+                                    fetch_and_analyze_pr_html(pr)
+                                except Exception as html_error:
+                                    print(f"    Failed to fetch/analyze HTML for PR: {html_error}")
+                                    log_error_to_file(
+                                        f"Failed to fetch/analyze HTML for {pr.get('url', 'unknown')}",
+                                        html_error,
+                                    )
+                                phase = determine_phase(pr)
+                                pr_phases.append(phase)
+                                process_pr(pr, config, phase)
+                                if phase == PHASE_3:
+                                    repo_name = pr.get("repository", {}).get("name", "")
+                                    if repo_name and repo_name not in phase3_repo_names:
+                                        phase3_repo_names.append(repo_name)
+                            except Exception as pr_error:
+                                log_error_to_file(
+                                    f"Failed to process PR {pr.get('url', 'unknown') or pr.get('title', 'unknown')}",
+                                    pr_error,
+                                )
+                                pr_phases.append(PHASE_LLM_WORKING)
+                        set_last_pr_snapshot(all_prs, pr_phases, repos_with_prs)
+                        # skip_pr_check を False にリセット: 今イテレーションの表示セクション (display_status_summary)
+                        # でスナップショットではなく最新のHTML取得結果を使うため
+                        skip_pr_check = False
+
             # Check GitHub Pages deployment status for configured repos
             # This runs regardless of whether there are open PRs (covers post-merge case)
             try:

@@ -359,3 +359,56 @@ class TestCopilotReviewedExtraction:
         """A 'Copilot reviewed' event with no subsequent work should yield PHASE2A."""
         result = analyze_pr_html(self._REVIEWED_HTML, "https://github.com/owner/repo/pull/1")
         assert result["status"] == PHASE2A_REVIEW_COMPLETED
+
+    def test_copilot_reviewed_no_inline_comments_with_subsequent_work_is_phase3a(self):
+        """Bug fix: when Copilot reviews with no inline comments and the coding agent
+        subsequently starts and finishes work, the result must be PHASE3A, not PHASE2A/2B.
+
+        Root cause: session_id= events (started/finished work) were extracted from
+        markdown BEFORE the 'Copilot reviewed' event was extracted from the HTML timeline
+        (via copilot hovercard). The markdown segment containing both the review event
+        text and the first session_id= link was added as a combined status, which then
+        caused incorrect phase detection when the HTML-extracted 'Copilot reviewed' was
+        appended after the work events.
+
+        The fix:
+        1. HTML extraction runs first so timeline order is preserved.
+        2. Markdown extraction extracts individual session_id= link texts instead of the
+           combined segment text, preventing spurious combined-text review-reset events.
+        """
+        html = (
+            # Review event timeline item (copilot reviewer — no inline comments)
+            # This event is only detectable via the copilot hovercard (no session_id=).
+            '<div class="TimelineItem-body d-flex flex-column flex-md-row flex-justify-start">'
+            '<div class="flex-auto flex-md-self-center">'
+            "<strong>"
+            '<a class="author Link--primary text-bold css-overflow-wrap-anywhere"'
+            ' data-hovercard-type="copilot"'
+            ' data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer"'
+            ' href="/apps/copilot-pull-request-reviewer">Copilot</a>'
+            '<span class="Label Label--secondary">AI</span>'
+            "</strong>"
+            "reviewed"
+            "</div>"
+            "</div>"
+            # Coding agent: started work — wrapped in <p> so it creates a separate
+            # double-newline segment in the markdown representation, simulating the
+            # realistic GitHub HTML structure that triggers the ordering bug.
+            '<div class="TimelineItem-body">'
+            "<p>"
+            '<a href="https://copilot.github.com/task?session_id=abc123">'
+            "Codex started work on behalf of cat2151 March 7, 2026 10:01"
+            "</a>"
+            "</p>"
+            "</div>"
+            # Coding agent: finished work (also wrapped in <p>)
+            '<div class="TimelineItem-body">'
+            "<p>"
+            '<a href="https://copilot.github.com/task?session_id=abc123">'
+            "Codex finished work on behalf of cat2151 March 7, 2026 10:30"
+            "</a>"
+            "</p>"
+            "</div>"
+        )
+        result = analyze_pr_html(html, "https://github.com/owner/repo/pull/30")
+        assert result["status"] == PHASE3A_LLM_FEEDBACK_FINISHED_WORK

@@ -81,8 +81,13 @@ def _add_status(statuses: List[str], seen: Set[str], text: str) -> None:
     statuses.append(normalized)
 
 
-def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> List[str]:
-    """Extract LLM statuses from simplified markdown content."""
+def _extract_llm_statuses_via_text_patterns(html_markdown: str, seen: Set[str]) -> List[str]:
+    """Extract LLM statuses by scanning plain-text patterns in HTML-converted-to-markdown.
+
+    Handles two cases that the HTML-element extractor misses:
+    - Plain-text ``LLM status:`` labels written in PR comment bodies.
+    - ``session_id=`` links that appear outside ``TimelineItem-body`` elements.
+    """
     statuses: List[str] = []
     if not html_markdown:
         return statuses
@@ -114,15 +119,38 @@ def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> L
             if payload:
                 _add_status(statuses, seen, payload)
         elif "session_id=" in segment:
-            _add_status(statuses, seen, combined)
+            # Extract individual session_id= link texts instead of the full combined segment.
+            # A markdown segment may contain both non-session content (e.g. "reviewed" text
+            # from an adjacent review-event timeline item) and one or more session_id= links.
+            # Adding the whole combined segment would create a spurious status string that
+            # confuses review-cycle detection in _phase_from_llm_statuses (the combined
+            # "reviewed…started work" text would be treated as a single review-reset event).
+            # Extracting individual link texts preserves each session event separately while
+            # leaving the "reviewed" detection to the HTML extractor (which runs first and
+            # processes timeline items in chronological order).
+            session_link_re = re.compile(r"\[([^\]]+)\]\([^)]*session_id=[^)]+\)")
+            session_texts = [m.group(1) for m in session_link_re.finditer(segment)]
+            if session_texts:
+                for text in session_texts:
+                    _add_status(statuses, seen, text)
+            else:
+                # Fallback: no session_id= links found in markdown-link format,
+                # so fall back to adding the combined text (e.g. plain-text mode).
+                _add_status(statuses, seen, combined)
 
         idx += 1
 
     return statuses
 
 
-def _extract_llm_statuses_from_html(html: str, seen: Set[str]) -> List[str]:
-    """Extract LLM statuses from timeline session blocks and HTML attributes."""
+def _extract_llm_statuses_via_html_elements(html: str, seen: Set[str]) -> List[str]:
+    """Extract LLM statuses by parsing HTML structural elements (timeline items and attributes).
+
+    Scans ``TimelineItem-body`` divs for ``session_id=`` links and Copilot hovercard
+    events, and also checks ``data-llm-status`` / ``aria-label`` / ``title`` attributes.
+    Because this walks the HTML structure in document order it preserves chronological
+    ordering of events (e.g. review before subsequent work events).
+    """
     statuses: List[str] = []
     if not html:
         return statuses
@@ -163,10 +191,17 @@ def _extract_llm_statuses_from_html(html: str, seen: Set[str]) -> List[str]:
 
 
 def _extract_llm_statuses(html: Optional[str], html_markdown: str) -> List[str]:
-    """Extract unique LLM statuses from HTML and its markdown representation."""
+    """Extract unique LLM statuses from HTML and its plain-text representation.
+
+    HTML-element extraction runs first so that timeline items are processed in their
+    chronological order (review event before work events).  Text-pattern extraction
+    runs second as a fallback, contributing only events not already captured by
+    the HTML-element extractor (e.g. plain-text "LLM status:" labels, or
+    ``session_id=`` links outside ``TimelineItem-body`` elements).
+    """
     seen: Set[str] = set()
     statuses: List[str] = []
-    statuses.extend(_extract_llm_statuses_from_markdown(html_markdown, seen))
     if html:
-        statuses.extend(_extract_llm_statuses_from_html(html, seen))
+        statuses.extend(_extract_llm_statuses_via_html_elements(html, seen))
+    statuses.extend(_extract_llm_statuses_via_text_patterns(html_markdown, seen))
     return statuses

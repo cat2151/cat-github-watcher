@@ -2,7 +2,7 @@
 State tracking for PRs and monitoring mode
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Track PR states and detection times
 # Key: (pr_url, phase), Value: timestamp when first detected
@@ -16,6 +16,10 @@ _last_state: Optional[Tuple[frozenset, float]] = None
 # Track the current monitoring mode
 # True = reduced frequency mode (uses the configured reduced_frequency_interval), False = normal mode
 _reduced_frequency_mode: bool = False
+
+# Cache the last known PR snapshot for display when skipping PR check
+# Stores (all_prs, pr_phases, repos_with_prs) from the most recent successful fetch
+_last_pr_snapshot: Optional[Tuple[List[Dict[str, Any]], List[str], List[Dict[str, Any]]]] = None
 
 
 def cleanup_old_pr_states(current_prs_with_phases: List[Tuple[str, str]]) -> None:
@@ -91,3 +95,29 @@ def set_reduced_frequency_mode(enabled: bool) -> None:
     """
     global _reduced_frequency_mode
     _reduced_frequency_mode = enabled
+
+
+def get_last_pr_snapshot() -> Optional[Tuple[List[Dict[str, Any]], List[str], List[Dict[str, Any]]]]:
+    """Get the last known PR snapshot (all_prs, pr_phases, repos_with_prs)
+
+    Returns:
+        Tuple of (all_prs, pr_phases, repos_with_prs) from the last successful fetch,
+        or None if no snapshot has been stored yet
+    """
+    return _last_pr_snapshot
+
+
+def set_last_pr_snapshot(
+    all_prs: List[Dict[str, Any]],
+    pr_phases: List[str],
+    repos_with_prs: List[Dict[str, Any]],
+) -> None:
+    """Store the PR snapshot from the most recent successful fetch
+
+    Args:
+        all_prs: List of all PRs from the last fetch
+        pr_phases: List of phase strings corresponding to all_prs
+        repos_with_prs: List of repositories with open PRs
+    """
+    global _last_pr_snapshot
+    _last_pr_snapshot = (all_prs, pr_phases, repos_with_prs)

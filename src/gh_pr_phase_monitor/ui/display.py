@@ -25,6 +25,7 @@ def display_status_summary(
     pr_phases: List[str],
     repos_with_prs: List[Dict[str, Any]],
     config: Optional[Dict[str, Any]] = None,
+    no_change: bool = False,
 ) -> None:
     """Display a concise summary of current PR status
 
@@ -37,6 +38,8 @@ def display_status_summary(
         pr_phases: List of phase strings corresponding to all_prs
         repos_with_prs: List of repositories with open PRs
         config: Optional configuration dict (uses display_pr_author when true)
+        no_change: When True, indicates PR check was skipped because no changes were
+                   detected; a note is appended to indicate no change since last check
     """
     print(f"\n{'=' * 50}")
     print("Status Summary:")
@@ -108,6 +111,9 @@ def display_status_summary(
 
     # Clean up old PR states that are no longer present
     cleanup_old_pr_states(current_states)
+
+    if no_change:
+        print("  （前回から変化なし）")
 
 
 def _resolve_assign_to_copilot_config(issue: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:

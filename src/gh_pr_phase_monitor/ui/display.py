@@ -92,6 +92,7 @@ def display_status_summary(
             print(f"{base_line} (現在、検知してから{elapsed_str}経過)")
         else:
             print(base_line)
+        print(f"    URL: {colorize_url(url)}")
 
         # Show warning for LLM working PRs older than 30 minutes since creation
         if phase == PHASE_LLM_WORKING:

@@ -16,7 +16,6 @@ from typing import Any, Optional
 from .llm_status_extractor import _extract_llm_statuses
 from ..phase_detector import (
     PHASE_3,
-    _is_any_review_event,
     _is_review_completed_event,
     _is_review_started_event,
     _phase_from_llm_statuses,
@@ -78,7 +77,11 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
     phase = _phase_from_llm_statuses(llm_statuses)
 
     if phase is None:
-        # reviewingイベントなし = レビュー前フェーズ
+        # _phase_from_llm_statuses returns None when no completed review is found.
+        # A review that has started but not yet completed also yields None here,
+        # so check for it explicitly before falling back to llm_working_from_statuses.
+        if _is_review_still_in_progress(llm_statuses):
+            return PHASE1C_REVIEW_IN_PROGRESS
         llm_working = llm_working_from_statuses(llm_statuses)
         # 条件1: draftで、started work→finished work が検出された場合、1Bは確定
         if is_draft:
@@ -94,20 +97,19 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
     if phase == PHASE_3:
         return PHASE3A_LLM_FEEDBACK_FINISHED_WORK
 
-    # phase == PHASE_2: まずレビューがまだ進行中かどうかを確認する。
-    # "started reviewing" のみで "finished reviewing" がない場合はまだレビュー中。
-    if _is_review_still_in_progress(llm_statuses):
-        return PHASE1C_REVIEW_IN_PROGRESS
-
+    # phase == PHASE_2: review completed.
     # PHASE2A（未着手）とPHASE2B（対応中）を区別する
-    # 最後のreviewingイベント以降にstarted workがあるかで判断する
+    # 最後のcompleted reviewイベント以降にstarted workがあるかで判断する
     last_review_idx: Optional[int] = None
     started_after_review = False
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
-        if _is_any_review_event(lowered):
-            last_review_idx = idx
-            started_after_review = False  # 新しいreviewingが来たらリセット
+        if _is_review_started_event(lowered):
+            last_review_idx = None  # 新しいreviewサイクル開始: anchorをリセット
+            started_after_review = False
+        elif _is_review_completed_event(lowered):
+            last_review_idx = idx  # review完了: anchorを更新
+            started_after_review = False
         if "started work" in lowered and last_review_idx is not None and idx > last_review_idx:
             started_after_review = True
 

@@ -31,7 +31,7 @@ class TestDeterminePhaseWithLLMStatus:
         assert determine_phase(pr) == PHASE_LLM_WORKING
 
     def test_reviewing_started_without_finish_returns_phase2(self):
-        """When reviewing occurred but finished work has not followed, phase is 2."""
+        """When review completed but LLM started work has not finished, phase is 2."""
         reset_comment_reaction_resolution_cache()
 
         pr = {
@@ -42,7 +42,7 @@ class TestDeterminePhaseWithLLMStatus:
             "title": "Test PR",
             "author": {"login": "octocat"},
             "llm_statuses": [
-                "Copilot started reviewing on behalf of cat2151",
+                "Copilot finished reviewing on behalf of cat2151",
                 "Codex started work on behalf of cat2151",
             ],
         }
@@ -50,7 +50,7 @@ class TestDeterminePhaseWithLLMStatus:
         assert determine_phase(pr) == PHASE_2
 
     def test_reviewing_started_finished_returns_phase3(self):
-        """When reviewing → started work → finished work all present, phase is 3."""
+        """When review completed → started work → finished work all present, phase is 3."""
         reset_comment_reaction_resolution_cache()
 
         pr = {
@@ -61,7 +61,7 @@ class TestDeterminePhaseWithLLMStatus:
             "title": "Test PR",
             "author": {"login": "octocat"},
             "llm_statuses": [
-                "Copilot started reviewing on behalf of cat2151",
+                "Copilot finished reviewing on behalf of cat2151",
                 "Codex started work on behalf of cat2151",
                 "Codex finished work on behalf of cat2151",
             ],

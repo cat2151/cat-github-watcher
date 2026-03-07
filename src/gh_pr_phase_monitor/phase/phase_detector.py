@@ -193,11 +193,6 @@ def _is_review_completed_event(lowered: str) -> bool:
     return False
 
 
-def _is_any_review_event(lowered: str) -> bool:
-    """Return True for any review-related event (started or completed)."""
-    return _is_review_started_event(lowered) or _is_review_completed_event(lowered)
-
-
 def llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
     """Determine LLM working state from ordered LLM statuses.
 
@@ -216,9 +211,16 @@ def llm_working_from_statuses(llm_statuses: List[str]) -> Optional[bool]:
 
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
-        if _is_any_review_event(lowered):
+        if _is_review_started_event(lowered):
+            # New review cycle beginning: clear any review anchor until review completes.
+            review_idx = None
+            started_after_review_idx = None
+            reviewing_chain_finished_idx = None
+        elif _is_review_completed_event(lowered):
+            # Review done: set anchor for post-review work tracking.
             review_idx = idx
             started_after_review_idx = None
+            reviewing_chain_finished_idx = None
         if "started work" in lowered:
             last_started_idx = idx
             if review_idx is not None and idx > review_idx:
@@ -260,9 +262,15 @@ def _phase_from_llm_statuses(llm_statuses: List[str]) -> Optional[str]:
 
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
-        if _is_any_review_event(lowered):
+        if _is_review_started_event(lowered):
+            # New review cycle beginning: clear anchor until review completes.
+            last_review_idx = None
+            last_started_after_review_idx = None
+            last_finished_after_started_after_review_idx = None
+        elif _is_review_completed_event(lowered):
+            # Review done: this is the anchor for phase 2/3.
             last_review_idx = idx
-            last_started_after_review_idx = None  # reset on new reviewing event
+            last_started_after_review_idx = None
             last_finished_after_started_after_review_idx = None
         elif "started work" in lowered and last_review_idx is not None:
             last_started_after_review_idx = idx

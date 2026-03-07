@@ -418,26 +418,32 @@ class TestCopilotReviewedExtraction:
         be added to llm_statuses when the full-form version (with author, date, etc.) was
         already captured by the HTML-element extractor.
 
-        Scenario from the issue: a PR with started work → finished work → started reviewing →
-        Copilot reviewed, where the session_id= links in the markdown use short anchor texts
-        ('started work', 'finished work', 'started reviewing').  Without the fix, those short
-        forms were appended after the full forms, making it appear that a new 'started reviewing'
-        cycle began *after* 'Copilot reviewed', incorrectly yielding PHASE1C_REVIEW_IN_PROGRESS.
+        Scenario from the issue: a PR where TimelineItem-body divs contain full-form session_id=
+        link anchor texts (captured by the HTML-element extractor), but additional short-form
+        session_id= links appear OUTSIDE TimelineItem-body in the page HTML.  Those out-of-body
+        links are invisible to the HTML-element extractor but appear in the full-page markdown
+        processed by the text-pattern extractor.  Without the fix, the text-pattern extractor
+        would append 'started work', 'finished work', and 'started reviewing' after 'Copilot
+        reviewed', making _is_review_still_in_progress see a new spurious review cycle and
+        incorrectly return PHASE1C_REVIEW_IN_PROGRESS.
+
+        This test exercises the new substring-deduplication check in _add_status: the short
+        forms ('started work' etc.) are substrings of the already-seen full forms, so the new
+        check skips them even though they are not identical strings (exact-match dedup alone
+        would not catch them).
         """
         html = (
-            # started work (full form via session_id= link)
+            # TimelineItem-body divs: full-form anchor texts captured by HTML-element extractor.
             '<div class="TimelineItem-body">'
             '<a href="https://copilot.github.com/task?session_id=s1">'
             "Copilot started work on behalf of cat2151 March 7, 2026 14:20"
             "</a>"
             "</div>"
-            # finished work (full form via session_id= link)
             '<div class="TimelineItem-body">'
             '<a href="https://copilot.github.com/task?session_id=s1">'
             "Copilot finished work on behalf of cat2151 March 7, 2026 14:24"
             "</a>"
             "</div>"
-            # started reviewing (full form via session_id= link)
             '<div class="TimelineItem-body">'
             '<a href="https://copilot.github.com/task?session_id=s2">'
             "Copilot started reviewing on behalf of cat2151 March 7, 2026 14:26"
@@ -455,6 +461,20 @@ class TestCopilotReviewedExtraction:
             "reviewed Mar 7, 2026"
             "</div>"
             "</div>"
+            # Short-form session_id= links OUTSIDE TimelineItem-body.
+            # The HTML-element extractor ignores these (no TimelineItem-body wrapper).
+            # _html_to_simple_markdown converts them to markdown links, so the text-pattern
+            # extractor sees '[started work](url?session_id=s1)' etc. and tries to add the
+            # short anchor texts.  The new substring check in _add_status must block them.
+            "<p>"
+            '<a href="https://copilot.github.com/task?session_id=s1">started work</a>'
+            "</p>"
+            "<p>"
+            '<a href="https://copilot.github.com/task?session_id=s1">finished work</a>'
+            "</p>"
+            "<p>"
+            '<a href="https://copilot.github.com/task?session_id=s2">started reviewing</a>'
+            "</p>"
         )
         result = analyze_pr_html(html, "https://github.com/cat2151/smf-to-ym2151log-rust/pull/148")
         # Short-form duplicates must NOT appear in llm_statuses

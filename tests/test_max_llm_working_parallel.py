@@ -5,26 +5,24 @@ This test ensures that auto-assignment of issues is paused when the number
 of PRs in "LLM working" state reaches the configured maximum parallel limit.
 """
 
-from unittest.mock import patch
-
 from src.gh_pr_phase_monitor.ui.display import display_issues_from_repos_without_prs
 
 
-def test_assignment_paused_when_limit_reached():
+def test_assignment_paused_when_limit_reached(mocker):
     """
     Test that assignment is paused when LLM working count reaches the limit
     """
-    with patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot") as mock_assign:
-                # Mock response: repos with no PRs but with issues
-                mock_get_repos.return_value = [
-                    {
-                        "name": "test-repo",
-                        "owner": "testuser",
-                        "openIssueCount": 2,
-                    }
-                ]
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues")
+    mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    mock_assign = mocker.patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot")
+    # Mock response: repos with no PRs but with issues
+    mock_get_repos.return_value = [
+        {
+            "name": "test-repo",
+            "owner": "testuser",
+            "openIssueCount": 2,
+        }
+    ]
 
                 # Mock issue response - only for displaying issues
                 mock_get_issues.side_effect = [
@@ -64,20 +62,20 @@ def test_assignment_paused_when_limit_reached():
                 assert mock_get_issues.call_count == 1
 
 
-def test_assigned_issues_count_as_llm_working():
+def test_assigned_issues_count_as_llm_working(mocker):
     """
     Test that issues with assignees are treated as LLM working to prevent new assignments
     """
-    with patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot") as mock_assign:
-                mock_get_repos.return_value = [
-                    {
-                        "name": "test-repo",
-                        "owner": "testuser",
-                        "openIssueCount": 1,
-                    }
-                ]
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues")
+    mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    mock_assign = mocker.patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot")
+    mock_get_repos.return_value = [
+        {
+            "name": "test-repo",
+            "owner": "testuser",
+            "openIssueCount": 1,
+        }
+    ]
 
                 mock_get_issues.side_effect = [
                     [
@@ -110,21 +108,21 @@ def test_assigned_issues_count_as_llm_working():
                 assert mock_get_issues.call_count == 1
 
 
-def test_assignment_proceeds_when_below_limit():
+def test_assignment_proceeds_when_below_limit(mocker):
     """
     Test that assignment proceeds when LLM working count is below the limit
     """
-    with patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot") as mock_assign:
-                # Mock response: repos with no PRs but with issues
-                mock_get_repos.return_value = [
-                    {
-                        "name": "test-repo",
-                        "owner": "testuser",
-                        "openIssueCount": 2,
-                    }
-                ]
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues")
+    mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    mock_assign = mocker.patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot")
+    # Mock response: repos with no PRs but with issues
+    mock_get_repos.return_value = [
+        {
+            "name": "test-repo",
+            "owner": "testuser",
+            "openIssueCount": 2,
+        }
+    ]
 
                 # Mock issue response
                 mock_get_issues.side_effect = [
@@ -178,21 +176,21 @@ def test_assignment_proceeds_when_below_limit():
                 assert mock_get_issues.call_count == 2
 
 
-def test_default_limit_when_not_configured():
+def test_default_limit_when_not_configured(mocker):
     """
     Test that the default limit (3) is used when not configured
     """
-    with patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot") as mock_assign:
-                # Mock response: repos with no PRs but with issues
-                mock_get_repos.return_value = [
-                    {
-                        "name": "test-repo",
-                        "owner": "testuser",
-                        "openIssueCount": 2,
-                    }
-                ]
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues")
+    mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    mock_assign = mocker.patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot")
+    # Mock response: repos with no PRs but with issues
+    mock_get_repos.return_value = [
+        {
+            "name": "test-repo",
+            "owner": "testuser",
+            "openIssueCount": 2,
+        }
+    ]
 
                 # Mock issue response - only for displaying issues
                 mock_get_issues.side_effect = [
@@ -226,21 +224,21 @@ def test_default_limit_when_not_configured():
                 mock_assign.assert_not_called()
 
 
-def test_custom_limit():
+def test_custom_limit(mocker):
     """
     Test that custom max_llm_working_parallel values are respected
     """
-    with patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot") as mock_assign:
-                # Mock response: repos with no PRs but with issues
-                mock_get_repos.return_value = [
-                    {
-                        "name": "test-repo",
-                        "owner": "testuser",
-                        "openIssueCount": 2,
-                    }
-                ]
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues")
+    mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    mock_assign = mocker.patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot")
+    # Mock response: repos with no PRs but with issues
+    mock_get_repos.return_value = [
+        {
+            "name": "test-repo",
+            "owner": "testuser",
+            "openIssueCount": 2,
+        }
+    ]
 
                 # Mock issue response
                 mock_get_issues.side_effect = [
@@ -290,21 +288,21 @@ def test_custom_limit():
                 mock_assign.assert_called_once()
 
 
-def test_invalid_limit_uses_default():
+def test_invalid_limit_uses_default(mocker):
     """
     Test that invalid max_llm_working_parallel values fall back to default
     """
-    with patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot") as mock_assign:
-                # Mock response: repos with no PRs but with issues
-                mock_get_repos.return_value = [
-                    {
-                        "name": "test-repo",
-                        "owner": "testuser",
-                        "openIssueCount": 2,
-                    }
-                ]
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues")
+    mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    mock_assign = mocker.patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot")
+    # Mock response: repos with no PRs but with issues
+    mock_get_repos.return_value = [
+        {
+            "name": "test-repo",
+            "owner": "testuser",
+            "openIssueCount": 2,
+        }
+    ]
 
                 # Mock issue response - only for displaying issues
                 mock_get_issues.side_effect = [
@@ -339,21 +337,21 @@ def test_invalid_limit_uses_default():
                 mock_assign.assert_not_called()
 
 
-def test_zero_llm_working_count():
+def test_zero_llm_working_count(mocker):
     """
     Test that assignment proceeds when llm_working_count is 0
     """
-    with patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues") as mock_get_repos:
-        with patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories") as mock_get_issues:
-            with patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot") as mock_assign:
-                # Mock response: repos with no PRs but with issues
-                mock_get_repos.return_value = [
-                    {
-                        "name": "test-repo",
-                        "owner": "testuser",
-                        "openIssueCount": 2,
-                    }
-                ]
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues")
+    mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    mock_assign = mocker.patch("src.gh_pr_phase_monitor.ui.display.assign_issue_to_copilot")
+    # Mock response: repos with no PRs but with issues
+    mock_get_repos.return_value = [
+        {
+            "name": "test-repo",
+            "owner": "testuser",
+            "openIssueCount": 2,
+        }
+    ]
 
                 # Mock issue response
                 mock_get_issues.side_effect = [

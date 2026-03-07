@@ -114,7 +114,24 @@ def _extract_llm_statuses_from_markdown(html_markdown: str, seen: Set[str]) -> L
             if payload:
                 _add_status(statuses, seen, payload)
         elif "session_id=" in segment:
-            _add_status(statuses, seen, combined)
+            # Extract individual session_id= link texts instead of the full combined segment.
+            # A markdown segment may contain both non-session content (e.g. "reviewed" text
+            # from an adjacent review-event timeline item) and one or more session_id= links.
+            # Adding the whole combined segment would create a spurious status string that
+            # confuses review-cycle detection in _phase_from_llm_statuses (the combined
+            # "reviewed…started work" text would be treated as a single review-reset event).
+            # Extracting individual link texts preserves each session event separately while
+            # leaving the "reviewed" detection to the HTML extractor (which runs first and
+            # processes timeline items in chronological order).
+            session_link_re = re.compile(r"\[([^\]]+)\]\([^)]*session_id=[^)]+\)")
+            session_texts = [m.group(1) for m in session_link_re.finditer(segment)]
+            if session_texts:
+                for text in session_texts:
+                    _add_status(statuses, seen, text)
+            else:
+                # Fallback: no session_id= links found in markdown-link format,
+                # so fall back to adding the combined text (e.g. plain-text mode).
+                _add_status(statuses, seen, combined)
 
         idx += 1
 
@@ -163,10 +180,16 @@ def _extract_llm_statuses_from_html(html: str, seen: Set[str]) -> List[str]:
 
 
 def _extract_llm_statuses(html: Optional[str], html_markdown: str) -> List[str]:
-    """Extract unique LLM statuses from HTML and its markdown representation."""
+    """Extract unique LLM statuses from HTML and its markdown representation.
+
+    HTML extraction runs first so that timeline items are processed in their
+    chronological order (review event before work events).  Markdown extraction
+    runs second as a fallback, contributing only events not already captured by
+    the HTML extractor (e.g. plain-text "LLM status:" labels).
+    """
     seen: Set[str] = set()
     statuses: List[str] = []
-    statuses.extend(_extract_llm_statuses_from_markdown(html_markdown, seen))
     if html:
         statuses.extend(_extract_llm_statuses_from_html(html, seen))
+    statuses.extend(_extract_llm_statuses_from_markdown(html_markdown, seen))
     return statuses

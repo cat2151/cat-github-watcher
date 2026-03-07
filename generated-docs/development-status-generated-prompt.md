@@ -1,4 +1,4 @@
-Last updated: 2026-03-07
+Last updated: 2026-03-08
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -332,18 +332,59 @@ Last updated: 2026-03-07
 - tests/test_rate_limit_usage_display.py
 - tests/test_repos_with_prs_structure.py
 - tests/test_show_issues_when_pr_count_less_than_3.py
+- tests/test_skip_pr_check_html_refetch.py
 - tests/test_status_summary.py
+- tests/test_updated_at_optimization.py
 - tests/test_validate_phase3_merge_config.py
 - tests/test_verbose_config.py
 - tests/test_wait_handler_callback.py
 
 ## 現在のオープンIssues
-## [Issue #360](../issue-notes/360.md): Fix phase detection bug: "started reviewing" without "finished reviewing" incorrectly triggers phase2 action
-When `llm_statuses` contained `"Copilot started reviewing"` but no `"Copilot finished reviewing"`, `html_status` was set to `PHASE2A_REVIEW_COMPLETED`, causing a "please address review comments" comment to be posted on a PR that hadn't been reviewed yet.
-
-**Root cause**: `_phase_from_llm_statuses` m...
+## [Issue #385](../issue-notes/385.md): Fix: short-form duplicate llm_statuses cause incorrect PHASE1C_REVIEW_IN_PROGRESS after review completes
+After `"Copilot reviewed"`, the status was incorrectly remaining `PHASE1C_REVIEW_IN_PROGRESS` because short-form entries (`"started work"`, `"finished work"`, `"started reviewing"`) were being appended **after** their full-form equivalents, making `_is_review_still_in_progress` see a new review cycl...
 ラベル: 
---- issue-notes/360.md の内容 ---
+--- issue-notes/385.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #384](../issue-notes/384.md): まだ「reviewedがあるのに、誤ってreviewing扱いしてしまう」が発生している
+
+ラベル: 
+--- issue-notes/384.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #381](../issue-notes/381.md): 変化がないとき、Top 10 issues (sorted by last update, descending): が表示されなくなってしまった
+
+ラベル: 
+--- issue-notes/381.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #379](../issue-notes/379.md): phase3Aが実態であるのに、判定結果がphase2Aなことがある
+
+ラベル: 
+--- issue-notes/379.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #369](../issue-notes/369.md): Test failed on push to main
+Tests failed on push to main.
+
+- Commit: 605b1b658a681af66d8cb511091ebf324ad53d78
+- Pusher: cat2151
+- Workflow run: https://github.com/cat2151/cat-github-watcher/actions/runs/22795664696
+...
+ラベル: 
+--- issue-notes/369.md の内容 ---
 
 ```markdown
 
@@ -358,28 +399,10 @@ When `llm_statuses` contained `"Copilot started reviewing"` but no `"Copilot fin
 
 ```
 
-## [Issue #350](../issue-notes/350.md): phase判定バグ。レビューされていないのに、レビュー指摘対応せよというコメントが投稿されてしまった
-
-ラベル: 
---- issue-notes/350.md の内容 ---
-
-```markdown
-
-```
-
 ## [Issue #349](../issue-notes/349.md): phase3などでブラウザを開くとき、たまたまuserがwindow close操作をしようとすると「もしや、せっかく開かれたものを閉じてしまったか？」と混乱する
 
 ラベル: 
 --- issue-notes/349.md の内容 ---
-
-```markdown
-
-```
-
-## [Issue #319](../issue-notes/319.md): ムダにGraphQLクエリを消費しすぎ
-
-ラベル: 
---- issue-notes/319.md の内容 ---
 
 ```markdown
 
@@ -433,45 +456,6 @@ When `llm_statuses` contained `"Copilot started reviewing"` but no `"Copilot fin
 # 結果
 - test green
 - closeする
-
-{% endraw %}
-```
-
-### .github/actions-tmp/issue-notes/19.md
-```md
-{% raw %}
-# issue project-summary の development-status 生成時、issue-notes/ 配下のmdファイルの内容を参照させる #19
-[issues #19](https://github.com/cat2151/github-actions/issues/19)
-
-# 何が困るの？
-- issue解決に向けての次の一手の内容が実態に即していないことが多い。
-
-# 対策案
-- issue-notes/ 配下のmdファイルの内容を参照させる
-
-# 備考
-- さらにmd内に書かれているfileも、project内をcjsに検索させて添付させると、よりGeminiの生成品質が向上する可能性がある。
-    - [issues #20](https://github.com/cat2151/github-actions/issues/20)
-- さらにproject overviewでGeminiがまとめたmdも、Geminiに与えると、よりGeminiの生成品質が向上する可能性がある。
-    - [issues #21](https://github.com/cat2151/github-actions/issues/21)
-- さらに、Geminiに与えたpromptをfileにしてcommit pushしておくと、デバッグに役立つ可能性がある。
-    - [issues #22](https://github.com/cat2151/github-actions/issues/22)
-
-# close条件
-- issues #22 がcloseされること。
-- commitされたpromptを確認し、issue-notes/ 配下のmdファイルがpromptに添付されていること、が確認できること。
-
-# 状況
-- 課題、実装したがtestができていない
-- 対策、issues #22 が実装されれば、testができる
-- 対策、issues #22 のcloseを待つ
-
-# 状況
-- issues #22 がcloseされた
-- testできるようになった
-- commitされたpromptを確認した。issue-notes/ 配下のmdファイルがpromptに添付されていること、が確認できた
-
-# closeする
 
 {% endraw %}
 ```
@@ -654,53 +638,33 @@ jobs:
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-2171014 Merge pull request #359 from cat2151/copilot/add-auto-restart-after-pull
-3f21433 Remove unused `from pathlib import Path` import in test_repo_root_points_to_actual_repo_root
-3c2c998 Auto-translate README.ja.md to README.md [auto]
-87fb13b Fix REPO_ROOT having too few parent levels, causing auto-restart to never trigger after local repo pull
-8c2a6d6 Initial plan
-287a9ee Merge pull request #357 from cat2151/copilot/implement-auto-update-check
-741ce0a docs: update README to reflect unconditional startup update check
-dcd7c6c Always run startup auto-update check unconditionally at startup
-5097cc2 Initial plan
-08ae669 Merge pull request #355 from cat2151/copilot/update-ci-test-workflow
+5523bd0 Merge pull request #383 from cat2151/copilot/fix-updated-at-value-detection
+5dae3e7 Address review: extract _process_open_prs helper, fix snapshot-None fallback, add tests
+19e6334 Fix: fetch HTML for open PRs even when updatedAt unchanged to detect phase transitions (1A→1B, 1B→2A)
+a7c458f Initial plan
+236f6c2 Merge pull request #380 from cat2151/copilot/fix-phase2a-detection-error
+44b6f0f Rename extraction functions for clarity: from_html→via_html_elements, from_markdown→via_text_patterns
+a35d441 fix: phase3A misdetected as phase2A when Copilot review has no inline comments
+4087c53 Initial plan
+4872346 Merge pull request #378 from cat2151/copilot/add-url-display-for-no-change
+98707dd Show URL in display_status_summary (前回から変化なし欄にURLを表示)
 
 ### 変更されたファイル:
-.github/workflows/run-tests-on-push.yml
-README.ja.md
-README.md
-generated-docs/development-status-generated-prompt.md
-generated-docs/development-status.md
-generated-docs/project-overview-generated-prompt.md
-generated-docs/project-overview.md
-src/gh_pr_phase_monitor/actions/pr_actions.py
 src/gh_pr_phase_monitor/core/colors.py
-src/gh_pr_phase_monitor/core/config.py
-src/gh_pr_phase_monitor/core/config_printer.py
+src/gh_pr_phase_monitor/github/github_client.py
+src/gh_pr_phase_monitor/github/repository_fetcher.py
 src/gh_pr_phase_monitor/main.py
 src/gh_pr_phase_monitor/monitor/auto_updater.py
-src/gh_pr_phase_monitor/phase/html/__init__.py
-src/gh_pr_phase_monitor/phase/html/html_status_processor.py
 src/gh_pr_phase_monitor/phase/html/llm_status_extractor.py
 src/gh_pr_phase_monitor/phase/html/pr_html_analyzer.py
-src/gh_pr_phase_monitor/phase/html/pr_html_fetcher.py
-src/gh_pr_phase_monitor/phase/html/pr_html_saver.py
 src/gh_pr_phase_monitor/phase/phase_detector.py
-src/gh_pr_phase_monitor/phase/phase_detector_graphql.py
-src/gh_pr_phase_monitor/phase/pr_data_recorder.py
 src/gh_pr_phase_monitor/ui/display.py
-tests/test_auto_update_config.py
 tests/test_auto_updater.py
-tests/test_fetch_pr_html.py
-tests/test_html_status_processor.py
-tests/test_html_to_markdown.py
 tests/test_phase_detection_llm_status.py
-tests/test_pr_data_recorder.py
-tests/test_pr_data_recorder_html.py
-tests/test_pr_data_recorder_json.py
 tests/test_pr_html_analyzer.py
-tests/test_show_issues_when_pr_count_less_than_3.py
+tests/test_skip_pr_check_html_refetch.py
+tests/test_status_summary.py
 
 
 ---
-Generated at: 2026-03-07 07:02:56 JST
+Generated at: 2026-03-08 07:01:15 JST

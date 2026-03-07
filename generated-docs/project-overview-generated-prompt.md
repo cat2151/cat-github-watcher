@@ -1,4 +1,4 @@
-Last updated: 2026-03-07
+Last updated: 2026-03-08
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -627,7 +627,9 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_rate_limit_usage_display.py
   📄 test_repos_with_prs_structure.py
   📄 test_show_issues_when_pr_count_less_than_3.py
+  📄 test_skip_pr_check_html_refetch.py
   📄 test_status_summary.py
+  📄 test_updated_at_optimization.py
   📄 test_validate_phase3_merge_config.py
   📄 test_verbose_config.py
   📄 test_wait_handler_callback.py
@@ -656,4 +658,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-03-07 07:02:55 JST
+Generated at: 2026-03-08 07:01:14 JST

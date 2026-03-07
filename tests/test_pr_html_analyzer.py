@@ -8,7 +8,6 @@ from src.gh_pr_phase_monitor.phase.html.pr_html_analyzer import (
     PHASE1A_DRAFT_LLM_WORKING,
     PHASE1B_DRAFT_LLM_FINISHED_WORK,
     PHASE1C_REVIEW_IN_PROGRESS,
-    PHASE1D_LLM_REVIEWING,
     PHASE2A_REVIEW_COMPLETED,
     PHASE2B_LLM_ADDRESSING_FEEDBACK,
     PHASE3A_LLM_FEEDBACK_FINISHED_WORK,
@@ -155,7 +154,6 @@ class TestDetermineHtmlStatus:
             PHASE1A_DRAFT_LLM_WORKING,
             PHASE1B_DRAFT_LLM_FINISHED_WORK,
             PHASE1C_REVIEW_IN_PROGRESS,
-            PHASE1D_LLM_REVIEWING,
             PHASE2A_REVIEW_COMPLETED,
             PHASE2B_LLM_ADDRESSING_FEEDBACK,
             PHASE3A_LLM_FEEDBACK_FINISHED_WORK,
@@ -205,20 +203,20 @@ class TestIsReviewStillInProgress:
         assert _is_review_still_in_progress(statuses) is False
 
 
-class TestPhase1dLlmReviewing:
-    def test_started_reviewing_only_returns_phase1d(self):
-        """Bug fix: 'started reviewing' without 'finished reviewing' → PHASE1D, not PHASE2A."""
+class TestPhase1cReviewInProgress:
+    def test_started_reviewing_only_returns_phase1c(self):
+        """Bug fix: 'started reviewing' without 'finished reviewing' → PHASE1C, not PHASE2A."""
         statuses = ["Copilot started reviewing on behalf of cat2151 March 5, 2026 23:29"]
-        assert _determine_html_status(statuses, is_draft=False) == PHASE1D_LLM_REVIEWING
+        assert _determine_html_status(statuses, is_draft=False) == PHASE1C_REVIEW_IN_PROGRESS
 
-    def test_issue_example_returns_phase1d(self):
+    def test_issue_example_returns_phase1c(self):
         """Exact scenario from the bug report: started work, finished work, then started reviewing."""
         statuses = [
             "Copilot started work on behalf of cat2151 March 5, 2026 23:18",
             "Copilot finished work on behalf of cat2151 March 5, 2026 23:24",
             "Copilot started reviewing on behalf of cat2151 March 5, 2026 23:29",
         ]
-        assert _determine_html_status(statuses, is_draft=False) == PHASE1D_LLM_REVIEWING
+        assert _determine_html_status(statuses, is_draft=False) == PHASE1C_REVIEW_IN_PROGRESS
 
     def test_started_and_finished_reviewing_returns_phase2a(self):
         """Once 'finished reviewing' is present, it should be PHASE2A (review done, no work yet)."""

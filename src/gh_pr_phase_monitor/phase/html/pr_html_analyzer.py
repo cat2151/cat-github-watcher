@@ -17,11 +17,10 @@ from .llm_status_extractor import _extract_llm_statuses
 from ..phase_detector import PHASE_3, _phase_from_llm_statuses, llm_working_from_statuses
 from .pr_html_fetcher import _html_to_simple_markdown
 
-# 7種のステータス定数
+# 6種のステータス定数
 PHASE1A_DRAFT_LLM_WORKING = "PHASE1A_DRAFT_LLM_WORKING"
 PHASE1B_DRAFT_LLM_FINISHED_WORK = "PHASE1B_DRAFT_LLM_FINISHED_WORK"
 PHASE1C_REVIEW_IN_PROGRESS = "PHASE1C_REVIEW_IN_PROGRESS"
-PHASE1D_LLM_REVIEWING = "PHASE1D_LLM_REVIEWING"
 PHASE2A_REVIEW_COMPLETED = "PHASE2A_REVIEW_COMPLETED"
 PHASE2B_LLM_ADDRESSING_FEEDBACK = "PHASE2B_LLM_ADDRESSING_FEEDBACK"
 PHASE3A_LLM_FEEDBACK_FINISHED_WORK = "PHASE3A_LLM_FEEDBACK_FINISHED_WORK"
@@ -92,7 +91,7 @@ def _determine_html_status(llm_statuses: list[str], is_draft: bool) -> str:
     # phase == PHASE_2: まずレビューがまだ進行中かどうかを確認する。
     # "started reviewing" のみで "finished reviewing" がない場合はまだレビュー中。
     if _is_review_still_in_progress(llm_statuses):
-        return PHASE1D_LLM_REVIEWING
+        return PHASE1C_REVIEW_IN_PROGRESS
 
     # PHASE2A（未着手）とPHASE2B（対応中）を区別する
     # 最後のreviewingイベント以降にstarted workがあるかで判断する

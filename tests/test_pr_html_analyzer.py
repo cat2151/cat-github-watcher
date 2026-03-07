@@ -38,6 +38,23 @@ class TestIsDraftFromHtml:
         html = '<div data-state="draft">...</div>'
         assert _is_draft_from_html(html) is True
 
+    def test_detects_data_status_draft(self):
+        html = '<span class="prc-StateLabel-StateLabel-Iawzp flex-self-start" data-size="medium" data-status="draft"><svg>...</svg>Draft</span>'
+        assert _is_draft_from_html(html) is True
+
+    def test_draft_pr_with_data_status_and_started_work_is_phase1a(self):
+        """Bug fix: Draft PR using data-status='draft' (GitHub's current HTML format) with
+        only 'started work' status must be PHASE1A, not PHASE1C."""
+        html = (
+            '<span data-status="draft">Draft</span>'
+            '<div class="js-timeline-item">'
+            '<span class="f5">Copilot started work on behalf of cat2151 March 7, 2026 10:01</span>'
+            '</div>'
+        )
+        result = analyze_pr_html(html, "https://github.com/owner/repo/pull/375")
+        assert result["is_draft"] is True
+        assert result["status"] == PHASE1A_DRAFT_LLM_WORKING
+
     def test_returns_false_for_open_pr(self):
         html = "<span>Open</span><div>Some PR content</div>"
         assert _is_draft_from_html(html) is False

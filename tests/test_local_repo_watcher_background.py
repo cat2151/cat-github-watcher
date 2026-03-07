@@ -9,7 +9,7 @@ import sys
 import tempfile
 import threading
 import types
-import unittest.mock as _mock
+from unittest.mock import patch
 
 import pytest
 
@@ -95,7 +95,7 @@ class TestBackgroundMonitoring:
         with local_repo_watcher._state_lock:
             local_repo_watcher._repo_states["myrepo"] = local_repo_watcher.REPO_STATE_STARTUP_CHECKING
 
-        with _mock.patch.object(threading.Thread, "start", lambda self: started.append(True)):
+        with patch.object(threading.Thread, "start", lambda self: started.append(True)):
             with tempfile.TemporaryDirectory() as tmpdir:
                 (pathlib.Path(tmpdir) / "myrepo").mkdir()
                 config = {"local_repo_watcher_base_dir": tmpdir}
@@ -167,7 +167,7 @@ class TestBackgroundMonitoring:
             local_repo_watcher._repo_states["myrepo"] = local_repo_watcher.REPO_STATE_DONE
 
         started = []
-        with _mock.patch.object(threading.Thread, "start", lambda self: started.append(True)):
+        with patch.object(threading.Thread, "start", lambda self: started.append(True)):
             with tempfile.TemporaryDirectory() as tmpdir:
                 (pathlib.Path(tmpdir) / "myrepo").mkdir()
                 config = {"local_repo_watcher_base_dir": tmpdir}

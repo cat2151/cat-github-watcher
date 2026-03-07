@@ -415,25 +415,19 @@ class TestCopilotReviewedExtraction:
 
     def test_short_form_duplicates_not_added_after_full_form_captured(self):
         """Bug fix: short link-text forms (e.g. 'started work', 'started reviewing') must not
-        be added to llm_statuses when the full-form version (with author, date, etc.) was
-        already captured by the HTML-element extractor.
+        appear in llm_statuses when full-form versions are already present.
 
-        Scenario from the issue: a PR where TimelineItem-body divs contain full-form session_id=
-        link anchor texts (captured by the HTML-element extractor), but additional short-form
-        session_id= links appear OUTSIDE TimelineItem-body in the page HTML.  Those out-of-body
-        links are invisible to the HTML-element extractor but appear in the full-page markdown
-        processed by the text-pattern extractor.  Without the fix, the text-pattern extractor
-        would append 'started work', 'finished work', and 'started reviewing' after 'Copilot
-        reviewed', making _is_review_still_in_progress see a new spurious review cycle and
-        incorrectly return PHASE1C_REVIEW_IN_PROGRESS.
+        Root cause: out-of-body session_id= links (e.g. in PR comment markdown) produced
+        short-form anchor texts ('started work', 'finished work', 'started reviewing') that
+        the text-pattern extractor appended after the full forms captured by the HTML-element
+        extractor.  This made _is_review_still_in_progress see a new spurious review cycle
+        starting after 'Copilot reviewed', incorrectly yielding PHASE1C_REVIEW_IN_PROGRESS.
 
-        This test exercises the new substring-deduplication check in _add_status: the short
-        forms ('started work' etc.) are substrings of the already-seen full forms, so the new
-        check skips them even though they are not identical strings (exact-match dedup alone
-        would not catch them).
+        Fix: the text-pattern extractor no longer processes session_id= links at all.
+        All Copilot session events are captured authoritatively by the HTML-element extractor
+        from TimelineItem-body divs; out-of-body session_id= links are always duplicates.
         """
         html = (
-            # TimelineItem-body divs: full-form anchor texts captured by HTML-element extractor.
             '<div class="TimelineItem-body">'
             '<a href="https://copilot.github.com/task?session_id=s1">'
             "Copilot started work on behalf of cat2151 March 7, 2026 14:20"
@@ -461,11 +455,10 @@ class TestCopilotReviewedExtraction:
             "reviewed Mar 7, 2026"
             "</div>"
             "</div>"
-            # Short-form session_id= links OUTSIDE TimelineItem-body.
-            # The HTML-element extractor ignores these (no TimelineItem-body wrapper).
-            # _html_to_simple_markdown converts them to markdown links, so the text-pattern
-            # extractor sees '[started work](url?session_id=s1)' etc. and tries to add the
-            # short anchor texts.  The new substring check in _add_status must block them.
+            # Short-form session_id= links OUTSIDE TimelineItem-body (the real-world source
+            # of the bug: these appear in GitHub PR markdown but not in the timeline elements).
+            # With the fix, the text-pattern extractor ignores all session_id= links,
+            # so these never reach llm_statuses.
             "<p>"
             '<a href="https://copilot.github.com/task?session_id=s1">started work</a>'
             "</p>"

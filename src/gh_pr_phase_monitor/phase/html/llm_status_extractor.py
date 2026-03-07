@@ -91,9 +91,15 @@ def _add_status(statuses: List[str], seen: Set[str], text: str) -> None:
 def _extract_llm_statuses_via_text_patterns(html_markdown: str, seen: Set[str]) -> List[str]:
     """Extract LLM statuses by scanning plain-text patterns in HTML-converted-to-markdown.
 
-    Handles two cases that the HTML-element extractor misses:
+    Handles the case that the HTML-element extractor misses:
     - Plain-text ``LLM status:`` labels written in PR comment bodies.
-    - ``session_id=`` links that appear outside ``TimelineItem-body`` elements.
+
+    Note: ``session_id=`` links are intentionally NOT handled here.  All Copilot
+    session events appear inside ``TimelineItem-body`` elements and are captured
+    authoritatively by ``_extract_llm_statuses_via_html_elements``.  Any
+    ``session_id=`` links outside those elements are duplicate references —
+    always with degraded short-form anchor texts — and processing them causes
+    spurious short-form entries that break review-cycle detection.
     """
     statuses: List[str] = []
     if not html_markdown:
@@ -104,46 +110,21 @@ def _extract_llm_statuses_via_text_patterns(html_markdown: str, seen: Set[str]) 
     while idx < len(segments):
         segment = segments[idx]
         lowered = segment.lower()
-        combined = segment
 
-        should_collect_trailing = "llm status" in lowered
-        if should_collect_trailing:
+        if "llm status" in lowered:
             next_idx = idx + 1
             while next_idx < len(segments):
                 next_segment = segments[next_idx]
                 next_lower = next_segment.lower()
-                if "llm status" in next_lower or "session_id=" in next_segment:
+                if "llm status" in next_lower:
                     break
-                if "llm status" in lowered:
-                    _add_status(statuses, seen, next_segment)
-                else:
-                    combined = f"{combined} {next_segment}"
+                _add_status(statuses, seen, next_segment)
                 next_idx += 1
             idx = next_idx - 1
 
-        if "llm status" in lowered:
             payload = re.sub(r"^llm status[:\s-]+", "", segment, flags=re.IGNORECASE).strip()
             if payload:
                 _add_status(statuses, seen, payload)
-        elif "session_id=" in segment:
-            # Extract individual session_id= link texts instead of the full combined segment.
-            # A markdown segment may contain both non-session content (e.g. "reviewed" text
-            # from an adjacent review-event timeline item) and one or more session_id= links.
-            # Adding the whole combined segment would create a spurious status string that
-            # confuses review-cycle detection in _phase_from_llm_statuses (the combined
-            # "reviewed…started work" text would be treated as a single review-reset event).
-            # Extracting individual link texts preserves each session event separately while
-            # leaving the "reviewed" detection to the HTML extractor (which runs first and
-            # processes timeline items in chronological order).
-            session_link_re = re.compile(r"\[([^\]]+)\]\([^)]*session_id=[^)]+\)")
-            session_texts = [m.group(1) for m in session_link_re.finditer(segment)]
-            if session_texts:
-                for text in session_texts:
-                    _add_status(statuses, seen, text)
-            else:
-                # Fallback: no session_id= links found in markdown-link format,
-                # so fall back to adding the combined text (e.g. plain-text mode).
-                _add_status(statuses, seen, combined)
 
         idx += 1
 

@@ -263,8 +263,8 @@ def _phase_from_llm_statuses(llm_statuses: List[str]) -> Optional[str]:
     for idx, status in enumerate(llm_statuses):
         lowered = status.lower()
         if _is_review_started_event(lowered):
-            # New review cycle beginning: clear anchor until review completes.
-            last_review_idx = None
+            # New review cycle beginning: set anchor and reset post-review tracking.
+            last_review_idx = idx
             last_started_after_review_idx = None
             last_finished_after_started_after_review_idx = None
         elif _is_review_completed_event(lowered):

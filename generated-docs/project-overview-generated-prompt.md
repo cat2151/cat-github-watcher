@@ -1,4 +1,4 @@
-Last updated: 2026-03-08
+Last updated: 2026-03-09
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -555,7 +555,6 @@ MIT License - 詳細はLICENSEファイルを参照してください
       📄 local_repo_watcher.py
       📄 monitor.py
       📄 pages_watcher.py
-      📄 snapshot_markdown.py
       📄 snapshot_path_utils.py
       📄 state_tracker.py
     📁 phase/
@@ -600,8 +599,11 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_integration_issue_fetching.py
   📄 test_interval_contamination_bug.py
   📄 test_interval_parsing.py
+  📄 test_is_llm_working.py
   📄 test_issue_assignment_priority.py
   📄 test_issue_fetching.py
+  📄 test_llm_status_timestamp.py
+  📄 test_llm_working_warning.py
   📄 test_local_repo_watcher.py
   📄 test_local_repo_watcher_background.py
   📄 test_max_llm_working_parallel.py
@@ -621,6 +623,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_pr_actions_rulesets_features.py
   📄 test_pr_actions_with_rulesets.py
   📄 test_pr_html_analyzer.py
+  📄 test_pr_html_analyzer_copilot_review.py
   📄 test_pr_title_fix.py
   📄 test_rate_limit_reset_display.py
   📄 test_rate_limit_throttle.py
@@ -658,4 +661,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-03-08 07:01:14 JST
+Generated at: 2026-03-09 07:01:14 JST

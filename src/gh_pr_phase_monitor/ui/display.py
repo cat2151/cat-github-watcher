@@ -16,6 +16,7 @@ from ..core.config import (
 )
 from ..github.github_client import assign_issue_to_copilot, get_issues_from_repositories
 from ..phase.phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label
+from ..phase.html.llm_status_extractor import get_latest_started_timestamp
 from ..monitor.state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from ..core.time_utils import format_elapsed_time
 
@@ -113,21 +114,34 @@ def display_status_summary(
             print(base_line)
         print(f"    URL: {colorize_url(url)}")
 
-        # Show warning for LLM working PRs older than 30 minutes since creation
+        # Show warning for LLM working PRs where the session appears stuck.
+        # Primary check: if the latest 'started' timestamp is available (embedded in
+        # llm_statuses), warn when it is >= 1 hour old.  This prevents false alerts
+        # when Copilot recently restarted even if the PR was created long ago.
+        # Fallback: when no parseable 'started' timestamp exists, use the PR's
+        # createdAt field with the original 30-minute threshold.
         if phase == PHASE_LLM_WORKING:
-            created_at = pr.get("createdAt", "")
-            if created_at:
-                try:
-                    # GitHub API returns ISO 8601 UTC timestamps ending with "Z"
-                    # e.g. "2024-01-15T10:30:00Z"; replace Z with +00:00 for fromisoformat()
-                    created_ts = datetime.fromisoformat(created_at.replace("Z", "+00:00")).timestamp()
-                    if current_time - created_ts >= 1800:
-                        print(
-                            "    ⚠️  バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります。"
-                            "PRを人力で開いてチェックしてください"
-                        )
-                except (ValueError, AttributeError):
-                    pass
+            latest_started_ts = get_latest_started_timestamp(llm_statuses)
+            if latest_started_ts is not None:
+                if current_time - latest_started_ts >= 3600:
+                    print(
+                        "    ⚠️  バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります。"
+                        "PRを人力で開いてチェックしてください"
+                    )
+            else:
+                created_at = pr.get("createdAt", "")
+                if created_at:
+                    try:
+                        # GitHub API returns ISO 8601 UTC timestamps ending with "Z"
+                        # e.g. "2024-01-15T10:30:00Z"; replace Z with +00:00 for fromisoformat()
+                        created_ts = datetime.fromisoformat(created_at.replace("Z", "+00:00")).timestamp()
+                        if current_time - created_ts >= 1800:
+                            print(
+                                "    ⚠️  バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります。"
+                                "PRを人力で開いてチェックしてください"
+                            )
+                    except (ValueError, AttributeError):
+                        pass
 
     # Clean up old PR states that are no longer present
     cleanup_old_pr_states(current_states)

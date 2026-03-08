@@ -378,6 +378,60 @@ class TestPostPhase2Comment:
         cmd = mock_run.call_args[0][0]
         assert "@claude[agent] apply changes" in cmd[5]
 
+    def test_post_comment_blocked_by_safety_check_when_button_absent(self, mocker):
+        """Safety check: comment must NOT be sent when has_implement_suggestions_button is False."""
+        mock_run = mocker.patch("src.gh_pr_phase_monitor.github.comment_manager.subprocess.run")
+        mock_get_comments = mocker.patch("src.gh_pr_phase_monitor.github.comment_manager.get_existing_comments")
+        mock_get_comments.return_value = []
+        mock_run.return_value = mocker.MagicMock(returncode=0)
+
+        pr = {
+            "url": "https://github.com/user/repo/pull/123",
+            "reviews": [],
+            "has_implement_suggestions_button": False,
+        }
+
+        result = post_phase2_comment(pr, None)
+
+        assert result is None
+        mock_run.assert_not_called()
+
+    def test_post_comment_allowed_when_button_present(self, mocker):
+        """Safety check passes: comment sent when has_implement_suggestions_button is True."""
+        mock_run = mocker.patch("src.gh_pr_phase_monitor.github.comment_manager.subprocess.run")
+        mock_get_comments = mocker.patch("src.gh_pr_phase_monitor.github.comment_manager.get_existing_comments")
+        mock_get_comments.return_value = []
+        mock_run.return_value = mocker.MagicMock(returncode=0)
+
+        pr = {
+            "url": "https://github.com/user/repo/pull/123",
+            "reviews": [],
+            "has_implement_suggestions_button": True,
+        }
+
+        result = post_phase2_comment(pr, None)
+
+        assert result is True
+        mock_run.assert_called_once()
+
+    def test_post_comment_skips_safety_check_when_key_absent(self, mocker):
+        """When has_implement_suggestions_button key is missing (HTML not analyzed), comment is allowed."""
+        mock_run = mocker.patch("src.gh_pr_phase_monitor.github.comment_manager.subprocess.run")
+        mock_get_comments = mocker.patch("src.gh_pr_phase_monitor.github.comment_manager.get_existing_comments")
+        mock_get_comments.return_value = []
+        mock_run.return_value = mocker.MagicMock(returncode=0)
+
+        pr = {
+            "url": "https://github.com/user/repo/pull/123",
+            "reviews": [],
+            # key intentionally absent
+        }
+
+        result = post_phase2_comment(pr, None)
+
+        assert result is True
+        mock_run.assert_called_once()
+
 
 class TestMarkPRReady:
     """Test the mark_pr_ready function"""

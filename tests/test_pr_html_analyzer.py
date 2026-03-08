@@ -19,6 +19,7 @@ from src.gh_pr_phase_monitor.phase.html.pr_html_analyzer import (
     _is_draft_from_html,
     _is_review_still_in_progress,
     analyze_pr_html,
+    has_implement_suggestions_button,
     save_analysis_json,
 )
 
@@ -326,4 +327,64 @@ class TestSaveAnalysisJson:
         json_path = tmp_path / "repo_5.json"
         # Should not raise
         json.loads(json_path.read_text(encoding="utf-8"))
+
+
+class TestHasImplementSuggestionsButton:
+    """Tests for has_implement_suggestions_button safety check function."""
+
+    def test_detects_implement_all_suggestions(self):
+        html = '<button>Implement all suggestions</button>'
+        assert has_implement_suggestions_button(html) is True
+
+    def test_detects_implement_suggestion_singular(self):
+        html = '<button>Implement suggestion</button>'
+        assert has_implement_suggestions_button(html) is True
+
+    def test_detects_implement_suggestions_plural(self):
+        html = '<button>Implement suggestions</button>'
+        assert has_implement_suggestions_button(html) is True
+
+    def test_case_insensitive(self):
+        html = '<button>IMPLEMENT ALL SUGGESTIONS</button>'
+        assert has_implement_suggestions_button(html) is True
+
+    def test_detects_via_aria_label(self):
+        html = '<button aria-label="Implement all suggestions">...</button>'
+        assert has_implement_suggestions_button(html) is True
+
+    def test_detects_via_aria_label_singular(self):
+        html = '<span aria-label="Implement suggestion">...</span>'
+        assert has_implement_suggestions_button(html) is True
+
+    def test_returns_false_when_absent(self):
+        html = '<div>Some review comment without inline suggestions.</div>'
+        assert has_implement_suggestions_button(html) is False
+
+    def test_returns_false_for_empty_html(self):
+        assert has_implement_suggestions_button("") is False
+
+    def test_returns_false_when_phrase_only_in_comment_body(self):
+        """Text-only match should NOT trigger — only actual button/aria-label elements count."""
+        html = '<div class="comment-body">Please click Implement all suggestions to apply.</div>'
+        assert has_implement_suggestions_button(html) is False
+
+    def test_detects_button_with_extra_attributes(self):
+        html = '<button type="button" class="btn btn-sm" data-action="click">Implement all suggestions</button>'
+        assert has_implement_suggestions_button(html) is True
+
+    def test_analyze_pr_html_includes_key(self):
+        """analyze_pr_html result must always include the has_implement_suggestions_button key."""
+        html = "<html><body></body></html>"
+        result = analyze_pr_html(html)
+        assert "has_implement_suggestions_button" in result
+
+    def test_analyze_pr_html_true_when_button_present(self):
+        html = '<html><body><button>Implement all suggestions</button></body></html>'
+        result = analyze_pr_html(html)
+        assert result["has_implement_suggestions_button"] is True
+
+    def test_analyze_pr_html_false_when_button_absent(self):
+        html = '<html><body><p>No suggestions here.</p></body></html>'
+        result = analyze_pr_html(html)
+        assert result["has_implement_suggestions_button"] is False
 

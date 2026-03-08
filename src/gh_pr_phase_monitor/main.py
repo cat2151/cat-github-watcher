@@ -23,7 +23,7 @@ from .core.config import (
     print_config,
     validate_phase3_merge_config_required,
 )
-from .ui.display import display_issues_from_repos_without_prs, display_status_summary
+from .ui.display import display_cached_top_issues, display_issues_from_repos_without_prs, display_status_summary
 from .github.github_auth import get_current_user
 from .github.github_client import get_pr_details_batch, get_repositories_with_open_prs, get_repos_changed_since_last_check, reset_repos_updated_at_baseline
 from .github.graphql_client import GitHubRateLimitError, get_rate_limit_info
@@ -321,6 +321,9 @@ def main():
                         None,
                     )
                     reset_repos_updated_at_baseline()
+
+                # 変化なし: キャッシュからTop 10 issuesを表示 (GraphQLクエリ不要)
+                display_cached_top_issues()
 
             # Check GitHub Pages deployment status for configured repos
             # This runs regardless of whether there are open PRs (covers post-merge case)

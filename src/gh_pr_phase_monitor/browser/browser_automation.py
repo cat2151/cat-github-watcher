@@ -124,7 +124,9 @@ def _should_autoraise_window(config: Optional[Dict[str, Any]] = None) -> bool:
         print("  ℹ cat-window-watcher is running, browser window will not be raised to foreground")
         return False
 
-    return True
+    # Open browser in background by default to avoid CTRL+W accidentally closing
+    # the newly opened tab when user was intending to close another window
+    return False
 
 
 def assign_issue_to_copilot_automated(issue_url: str, config: Optional[Dict[str, Any]] = None) -> bool:

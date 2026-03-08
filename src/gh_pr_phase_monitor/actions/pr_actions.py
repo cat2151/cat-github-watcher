@@ -124,6 +124,7 @@ def open_browser(url: str, config: Optional[Dict[str, Any]] = None) -> bool:
 
     webbrowser.open(url, autoraise=autoraise)
     _record_browser_open()
+    print(f"    タブを誤って閉じた場合は手動で開いてください: {url}")
     return True
 
 

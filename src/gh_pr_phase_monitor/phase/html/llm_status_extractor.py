@@ -4,9 +4,64 @@ Utilities for extracting LLM working status information from PR HTML pages.
 
 import html as html_lib
 import re
+from datetime import datetime, timezone
 from typing import List, Optional, Set
 
 from .pr_html_fetcher import _html_to_simple_markdown
+
+_MONTH_NAMES = {
+    "january": 1, "february": 2, "march": 3, "april": 4,
+    "may": 5, "june": 6, "july": 7, "august": 8,
+    "september": 9, "october": 10, "november": 11, "december": 12,
+}
+
+_DATE_IN_STATUS_RE = re.compile(
+    r"\b(january|february|march|april|may|june|july|august"
+    r"|september|october|november|december)"
+    r"\s+(\d{1,2}),?\s+(\d{4})\s+(\d{1,2}):(\d{2})\b",
+    re.IGNORECASE,
+)
+
+
+def _parse_timestamp_from_status_text(text: str) -> Optional[float]:
+    """Parse a timestamp from status text like 'Copilot started work ... March 7, 2026 10:01'.
+
+    Returns:
+        Unix timestamp (float) treating the parsed date as UTC, or None if no date found.
+    """
+    match = _DATE_IN_STATUS_RE.search(text)
+    if not match:
+        return None
+    month_str, day, year, hour, minute = match.groups()
+    try:
+        month = _MONTH_NAMES[month_str.lower()]
+        dt = datetime(int(year), month, int(day), int(hour), int(minute), tzinfo=timezone.utc)
+        return dt.timestamp()
+    except (ValueError, KeyError):
+        return None
+
+
+def get_latest_activity_timestamp(llm_statuses: List[str]) -> Optional[float]:
+    """Get the timestamp of the most recent LLM session activity from status strings.
+
+    Scans the llm_statuses list in reverse (i.e. from most recent to oldest, as the
+    list is built in chronological order from the HTML page) and returns the timestamp
+    embedded in the first entry that contains a parseable date (e.g. 'Copilot started
+    work on behalf of user March 7, 2026 10:01', 'Copilot started reviewing ...',
+    'Copilot finished work ...').
+
+    Any LLM status event with an embedded timestamp is treated as proof that the
+    session was active at that time — not just 'started work' events.
+
+    Returns:
+        Unix timestamp (float) of the latest activity event, or None if no entry
+        with a parseable timestamp is found.
+    """
+    for status in reversed(llm_statuses):
+        ts = _parse_timestamp_from_status_text(status)
+        if ts is not None:
+            return ts
+    return None
 
 
 def _normalize_status_text(text: str) -> str:

@@ -106,11 +106,45 @@ def test_pr_count_unchanged_skips_phase2(mocker):
 
 
 def test_pr_count_changed_triggers_phase12(mocker):
-    """updatedAt不変でも open PR 件数が変わっていたら Phase 1/2 を強制実行する。"""
+    """updatedAt不変でも open PR 件数/構成が変わっていたら Phase 1/2 を強制実行し、バリデーションも行う。"""
     pr = _make_mock_pr()
     # キャッシュは 1 件
     snapshot = ([pr], [{"name": "repo1", "owner": "testuser", "openPRCount": 1}])
     # GraphQL で取得した新鮮なリストは 2 件
+    fresh_repos = [{"name": "repo1", "owner": "testuser", "openPRCount": 2}]
+
+    _, mock_get_repos, mock_get_prs = _setup_mocks(
+        mocker, changed_repos=set(), snapshot=snapshot, fresh_repos_with_prs=fresh_repos
+    )
+    mock_validate = mocker.patch("src.gh_pr_phase_monitor.main.validate_phase3_merge_config_required")
+
+    from src.gh_pr_phase_monitor.main import main
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
+
+    # 件数チェック用の GraphQL は呼ばれる
+    mock_get_repos.assert_called_once()
+    # 件数が変わったので get_pr_details_batch も呼ばれる
+    mock_get_prs.assert_called_once()
+    # validate_phase3_merge_config_required が呼ばれることを確認
+    mock_validate.assert_called_once_with(mocker.ANY, "testuser", "repo1")
+
+
+def test_count_map_change_triggers_phase12_same_total(mocker):
+    """1件クローズ+1件新規のように合計件数が同じでもリポジトリ構成が変わった場合は Phase 1/2 を強制実行する。"""
+    pr = _make_mock_pr()
+    # キャッシュ: repo1=1件, repo2=1件 (合計2件)
+    snapshot = (
+        [pr],
+        [
+            {"name": "repo1", "owner": "testuser", "openPRCount": 1},
+            {"name": "repo2", "owner": "testuser", "openPRCount": 1},
+        ],
+    )
+    # 新鮮: repo1=2件, repo2=0件 (合計は同じ2件だが構成が変化)
     fresh_repos = [{"name": "repo1", "owner": "testuser", "openPRCount": 2}]
 
     _, mock_get_repos, mock_get_prs = _setup_mocks(
@@ -126,7 +160,7 @@ def test_pr_count_changed_triggers_phase12(mocker):
 
     # 件数チェック用の GraphQL は呼ばれる
     mock_get_repos.assert_called_once()
-    # 件数が変わったので get_pr_details_batch も呼ばれる
+    # 合計は同じでもリポジトリ構成が変わったので get_pr_details_batch が呼ばれる
     mock_get_prs.assert_called_once()
 
 

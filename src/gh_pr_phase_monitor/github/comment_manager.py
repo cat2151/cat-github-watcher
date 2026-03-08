@@ -73,7 +73,7 @@ def post_phase2_comment(
 
     Returns:
         True if comment was posted successfully
-        None if comment was skipped (already exists, or safety check blocked it)
+        None if comment was skipped (already exists)
         False if posting failed (e.g., invalid PR URL, subprocess error)
     """
     pr_url = pr.get("url", "")

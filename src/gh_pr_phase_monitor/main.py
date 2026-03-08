@@ -9,11 +9,7 @@ import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .monitor.auto_updater import (
-    UPDATE_CHECK_INTERVAL_SECONDS,
-    maybe_self_update,
-    run_startup_self_update_foreground,
-)
+from .actions.pr_actions import process_pr
 from .core.config import (
     DEFAULT_ENABLE_AUTO_UPDATE,
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
@@ -23,10 +19,25 @@ from .core.config import (
     print_config,
     validate_phase3_merge_config_required,
 )
-from .ui.display import display_cached_top_issues, display_issues_from_repos_without_prs, display_status_summary
+from .core.time_utils import format_elapsed_time
 from .github.github_auth import get_current_user
-from .github.github_client import get_pr_details_batch, get_repositories_with_open_prs, get_repos_changed_since_last_check, reset_repos_updated_at_baseline
+from .github.github_client import (
+    get_pr_details_batch,
+    get_repos_changed_since_last_check,
+    get_repositories_with_open_prs,
+    reset_repos_updated_at_baseline,
+)
 from .github.graphql_client import GitHubRateLimitError, get_rate_limit_info
+from .github.rate_limit_handler import (
+    _check_rate_limit_throttle,
+    _display_rate_limit_usage,
+    _format_rate_limit_reset,
+)
+from .monitor.auto_updater import (
+    UPDATE_CHECK_INTERVAL_SECONDS,
+    maybe_self_update,
+    run_startup_self_update_foreground,
+)
 from .monitor.local_repo_watcher import (
     display_pending_local_repo_results,
     notify_phase3_detected,
@@ -35,15 +46,9 @@ from .monitor.local_repo_watcher import (
 from .monitor.monitor import check_no_state_change_timeout
 from .monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
 from .monitor.state_tracker import get_last_pr_snapshot, set_last_pr_snapshot
-from .phase.phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
-from .actions.pr_actions import process_pr
 from .phase.html.html_status_processor import fetch_and_analyze_pr_html
-from .github.rate_limit_handler import (
-    _check_rate_limit_throttle,
-    _display_rate_limit_usage,
-    _format_rate_limit_reset,
-)
-from .core.time_utils import format_elapsed_time
+from .phase.phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase, is_llm_working
+from .ui.display import display_cached_top_issues, display_issues_from_repos_without_prs, display_status_summary
 from .ui.wait_handler import wait_with_countdown
 
 LOG_DIR = Path("logs")
@@ -258,7 +263,7 @@ def main():
                     # Count how many PRs are in "LLM working" phase
                     # This count is used for rate limit protection - when too many PRs are being
                     # worked on simultaneously, we pause auto-assignment to prevent API rate limits
-                    llm_working_count = sum(1 for pr in all_prs if pr.get("phase") == PHASE_LLM_WORKING)
+                    llm_working_count = sum(1 for pr in all_prs if is_llm_working(pr))
                     max_llm_working_parallel = config.get("max_llm_working_parallel", DEFAULT_MAX_LLM_WORKING_PARALLEL)
                     llm_working_below_cap = llm_working_count < max_llm_working_parallel
 
@@ -267,7 +272,7 @@ def main():
                     # 2. PR count is less than 3 (few PRs, so we can look for more work)
                     # The llm_working_count throttles assignment when parallel work is too high
                     total_pr_count = len(all_prs)
-                    all_llm_working = bool(all_prs) and all(pr.get("phase") == PHASE_LLM_WORKING for pr in all_prs)
+                    all_llm_working = bool(all_prs) and all(is_llm_working(pr) for pr in all_prs)
                     all_phase3 = bool(all_prs) and all(pr.get("phase") == PHASE_3 for pr in all_prs)
                     active_parallel_prs = sum(1 for pr in all_prs if pr.get("phase") != PHASE_3)
 

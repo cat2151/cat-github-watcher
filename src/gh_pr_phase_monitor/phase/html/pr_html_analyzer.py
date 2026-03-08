@@ -13,24 +13,33 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
-from .llm_status_extractor import _extract_llm_statuses
 from ..phase_detector import (
+    PHASE1A_DRAFT_LLM_WORKING,
+    PHASE1B_DRAFT_LLM_FINISHED_WORK,
+    PHASE1B_LLM_FINISHED_WORK,
+    PHASE1C_REVIEW_IN_PROGRESS,
+    PHASE2A_REVIEW_COMPLETED,
+    PHASE2B_LLM_ADDRESSING_FEEDBACK,
+    PHASE3A_LLM_FEEDBACK_FINISHED_WORK,
     PHASE_3,
     _is_review_completed_event,
     _is_review_started_event,
     _phase_from_llm_statuses,
     llm_working_from_statuses,
 )
+from .llm_status_extractor import _extract_llm_statuses
 from .pr_html_fetcher import _html_to_simple_markdown
 
-# 7種のステータス定数
-PHASE1A_DRAFT_LLM_WORKING = "PHASE1A_DRAFT_LLM_WORKING"
-PHASE1B_DRAFT_LLM_FINISHED_WORK = "PHASE1B_DRAFT_LLM_FINISHED_WORK"
-PHASE1B_LLM_FINISHED_WORK = "PHASE1B_LLM_FINISHED_WORK"  # 非draft: reviewing前でfinished work済み
-PHASE1C_REVIEW_IN_PROGRESS = "PHASE1C_REVIEW_IN_PROGRESS"
-PHASE2A_REVIEW_COMPLETED = "PHASE2A_REVIEW_COMPLETED"
-PHASE2B_LLM_ADDRESSING_FEEDBACK = "PHASE2B_LLM_ADDRESSING_FEEDBACK"
-PHASE3A_LLM_FEEDBACK_FINISHED_WORK = "PHASE3A_LLM_FEEDBACK_FINISHED_WORK"
+# 7種のステータス定数 (phase_detector.py からインポート; 後方互換性のためここで再エクスポート)
+__all__ = [
+    "PHASE1A_DRAFT_LLM_WORKING",
+    "PHASE1B_DRAFT_LLM_FINISHED_WORK",
+    "PHASE1B_LLM_FINISHED_WORK",
+    "PHASE1C_REVIEW_IN_PROGRESS",
+    "PHASE2A_REVIEW_COMPLETED",
+    "PHASE2B_LLM_ADDRESSING_FEEDBACK",
+    "PHASE3A_LLM_FEEDBACK_FINISHED_WORK",
+]
 
 _DRAFT_PATTERNS = [
     re.compile(r"<span[^>]*>\s*Draft\s*</span>", re.IGNORECASE),

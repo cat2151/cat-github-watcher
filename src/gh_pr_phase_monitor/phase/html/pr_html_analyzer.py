@@ -45,7 +45,12 @@ _DRAFT_PATTERNS = [
 # Matches GitHub Copilot's review summary when it left no inline code comments.
 _NO_INLINE_COMMENTS_PATTERN = re.compile(r"generated\s+(?:no|0)\s+comments?", re.IGNORECASE)
 # Matches the "Implement suggestion(s)" button that appears when a review has inline code suggestions.
-_IMPLEMENT_SUGGESTIONS_PATTERN = re.compile(r"Implement (?:all )?suggestions?", re.IGNORECASE)
+# Anchored to actual HTML button elements or aria-label attributes to avoid false positives from
+# quoted text in PR comments/bodies that happen to contain the same phrase.
+_IMPLEMENT_SUGGESTIONS_PATTERNS = [
+    re.compile(r"<button[^>]*>\s*Implement (?:all )?suggestions?\s*</button>", re.IGNORECASE),
+    re.compile(r'aria-label="[^"]*Implement (?:all )?suggestions?[^"]*"', re.IGNORECASE),
+]
 # Lookahead that splits HTML at the start of each TimelineItem-body div boundary.
 _TIMELINE_ITEM_BODY_SPLIT_PATTERN = re.compile(r"(?=<div[^>]*TimelineItem-body[^>]*>)", re.IGNORECASE)
 
@@ -65,10 +70,13 @@ def has_implement_suggestions_button(html: str) -> bool:
     Its presence is used as a safety check before posting the PHASE2A comment:
     if the button is absent, PHASE2A detection may be a false positive and the
     comment should not be sent.
+
+    Detection is anchored to actual HTML button elements or aria-label attributes
+    to avoid false positives from quoted text in PR comment bodies.
     """
     if not html:
         return False
-    return bool(_IMPLEMENT_SUGGESTIONS_PATTERN.search(html))
+    return any(pattern.search(html) for pattern in _IMPLEMENT_SUGGESTIONS_PATTERNS)
 
 
 def _copilot_review_has_no_inline_comments(html: str) -> bool:

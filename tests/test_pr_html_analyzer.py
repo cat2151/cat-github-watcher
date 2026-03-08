@@ -348,12 +348,29 @@ class TestHasImplementSuggestionsButton:
         html = '<button>IMPLEMENT ALL SUGGESTIONS</button>'
         assert has_implement_suggestions_button(html) is True
 
+    def test_detects_via_aria_label(self):
+        html = '<button aria-label="Implement all suggestions">...</button>'
+        assert has_implement_suggestions_button(html) is True
+
+    def test_detects_via_aria_label_singular(self):
+        html = '<span aria-label="Implement suggestion">...</span>'
+        assert has_implement_suggestions_button(html) is True
+
     def test_returns_false_when_absent(self):
         html = '<div>Some review comment without inline suggestions.</div>'
         assert has_implement_suggestions_button(html) is False
 
     def test_returns_false_for_empty_html(self):
         assert has_implement_suggestions_button("") is False
+
+    def test_returns_false_when_phrase_only_in_comment_body(self):
+        """Text-only match should NOT trigger — only actual button/aria-label elements count."""
+        html = '<div class="comment-body">Please click Implement all suggestions to apply.</div>'
+        assert has_implement_suggestions_button(html) is False
+
+    def test_detects_button_with_extra_attributes(self):
+        html = '<button type="button" class="btn btn-sm" data-action="click">Implement all suggestions</button>'
+        assert has_implement_suggestions_button(html) is True
 
     def test_analyze_pr_html_includes_key(self):
         """analyze_pr_html result must always include the has_implement_suggestions_button key."""

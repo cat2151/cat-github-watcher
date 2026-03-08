@@ -73,7 +73,7 @@ def post_phase2_comment(
 
     Returns:
         True if comment was posted successfully
-        None if comment already exists (skipped)
+        None if comment was skipped (already exists, or safety check blocked it)
         False if posting failed (e.g., invalid PR URL, subprocess error)
     """
     pr_url = pr.get("url", "")
@@ -87,7 +87,7 @@ def post_phase2_comment(
             '    Safety check failed: "Implement suggestion(s)" button not found in HTML.'
             " Skipping comment to prevent false positive."
         )
-        return False
+        return None
 
     agent_mention = _get_agent_mention(pr, config)
 

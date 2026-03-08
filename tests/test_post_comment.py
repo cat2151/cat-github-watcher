@@ -393,7 +393,7 @@ class TestPostPhase2Comment:
 
         result = post_phase2_comment(pr, None)
 
-        assert result is False
+        assert result is None
         mock_run.assert_not_called()
 
     def test_post_comment_allowed_when_button_present(self, mocker):

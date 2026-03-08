@@ -15,7 +15,7 @@ from src.gh_pr_phase_monitor.monitor.state_tracker import _pr_state_times
 from src.gh_pr_phase_monitor.core.time_utils import format_elapsed_time
 from src.gh_pr_phase_monitor.ui.wait_handler import wait_with_countdown
 from src.gh_pr_phase_monitor.phase.html.llm_status_extractor import (
-    get_latest_started_timestamp,
+    get_latest_activity_timestamp,
     _parse_timestamp_from_status_text,
 )
 
@@ -376,8 +376,8 @@ class TestParseTimestampFromStatusText:
             assert dt.month == month_num
 
 
-class TestGetLatestStartedTimestamp:
-    """Unit tests for get_latest_started_timestamp()"""
+class TestGetLatestActivityTimestamp:
+    """Unit tests for get_latest_activity_timestamp()"""
 
     def _make_status(self, label: str, seconds_ago: float) -> str:
         dt = datetime.now(timezone.utc) - timedelta(seconds=seconds_ago)
@@ -385,53 +385,60 @@ class TestGetLatestStartedTimestamp:
         return f"Copilot {label} on behalf of cat2151 {month_name} {dt.day}, {dt.year} {dt.strftime('%H:%M')}"
 
     def test_returns_none_for_empty_list(self):
-        assert get_latest_started_timestamp([]) is None
+        assert get_latest_activity_timestamp([]) is None
 
-    def test_returns_none_when_no_started_entry(self):
+    def test_returns_none_when_no_entry_has_timestamp(self):
+        """Entries without an embedded date return None."""
         statuses = ["Copilot finished work on behalf of user"]
-        assert get_latest_started_timestamp(statuses) is None
+        assert get_latest_activity_timestamp(statuses) is None
 
-    def test_returns_none_for_started_reviewing(self):
-        """'started reviewing' must NOT be treated as a 'started work' event."""
-        dt = datetime.now(timezone.utc) - timedelta(seconds=120)
-        month_name = dt.strftime("%B")
-        reviewing_status = (
-            f"Copilot started reviewing on behalf of cat2151 "
-            f"{month_name} {dt.day}, {dt.year} {dt.strftime('%H:%M')}"
-        )
-        assert get_latest_started_timestamp([reviewing_status]) is None
-
-    def test_returns_none_when_started_has_no_timestamp(self):
-        """If 'started' entries lack a date, return None"""
-        assert get_latest_started_timestamp(["started work"]) is None
-
-    def test_returns_timestamp_of_started_entry(self):
+    def test_returns_timestamp_for_started_work(self):
+        """'started work' with an embedded date is a valid activity timestamp."""
         status = self._make_status("started work", 120)  # 2 minutes ago
-        ts = get_latest_started_timestamp([status])
+        ts = get_latest_activity_timestamp([status])
         assert ts is not None
         assert abs(time.time() - ts - 120) < 65  # within 1 minute of expected (rounding)
 
-    def test_returns_latest_started_when_multiple(self):
-        """Should return the timestamp of the most recent 'started' entry"""
+    def test_returns_timestamp_for_started_reviewing(self):
+        """'started reviewing' with an embedded date is also a valid activity timestamp."""
+        status = self._make_status("started reviewing", 120)  # 2 minutes ago
+        ts = get_latest_activity_timestamp([status])
+        assert ts is not None
+        assert abs(time.time() - ts - 120) < 65
+
+    def test_returns_none_when_no_status_has_timestamp(self):
+        """If no status entry contains a parseable date, return None."""
+        assert get_latest_activity_timestamp(["started work"]) is None
+
+    def test_returns_latest_when_multiple_entries(self):
+        """Should return the timestamp of the most recent entry."""
         older = self._make_status("started work", 7200)  # 2 hours ago
         newer = self._make_status("started work on feedback", 300)  # 5 minutes ago
-        ts = get_latest_started_timestamp([older, newer])
+        ts = get_latest_activity_timestamp([older, newer])
         assert ts is not None
         # Should be closer to 5 minutes ago than 2 hours ago
         assert abs(time.time() - ts - 300) < 65
 
+    def test_returns_latest_across_mixed_event_types(self):
+        """The newest timestamp wins regardless of event type."""
+        older_started = self._make_status("started work", 7200)  # 2 hours ago
+        newer_reviewing = self._make_status("started reviewing", 300)  # 5 minutes ago
+        ts = get_latest_activity_timestamp([older_started, newer_reviewing])
+        assert ts is not None
+        assert abs(time.time() - ts - 300) < 65
 
-class TestLLMWorkingLatestStartedWarning:
-    """Tests for warning logic based on latest 'started' LLM status timestamp."""
+
+class TestLLMWorkingLatestActivityWarning:
+    """Tests for warning logic based on latest LLM session activity timestamp."""
 
     def setup_method(self):
         _pr_state_times.clear()
 
-    def _make_started_status(self, seconds_ago: float) -> str:
+    def _make_activity_status(self, label: str, seconds_ago: float) -> str:
         dt = datetime.now(timezone.utc) - timedelta(seconds=seconds_ago)
         month_name = dt.strftime("%B")
         return (
-            f"Copilot started work on behalf of cat2151 "
+            f"Copilot {label} on behalf of cat2151 "
             f"{month_name} {dt.day}, {dt.year} {dt.strftime('%H:%M')}"
         )
 
@@ -439,10 +446,10 @@ class TestLLMWorkingLatestStartedWarning:
         dt = datetime.now(timezone.utc) - timedelta(seconds=seconds_ago)
         return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    def test_warning_not_shown_when_started_is_recent(self, mocker):
-        """Warning must NOT appear when latest 'started' is only 4 minutes ago,
+    def test_warning_not_shown_when_activity_is_recent(self, mocker):
+        """Warning must NOT appear when latest activity is only 4 minutes ago,
         even if the PR was created more than 24 hours ago."""
-        started_status = self._make_started_status(240)  # 4 minutes ago
+        started_status = self._make_activity_status("started work", 240)  # 4 minutes ago
         all_prs = [
             {
                 "title": "Long-running PR with recent activity",
@@ -462,10 +469,32 @@ class TestLLMWorkingLatestStartedWarning:
         assert "バグって" not in output
         assert "PRを人力で開いてチェックしてください" not in output
 
-    def test_warning_shown_when_started_is_over_1_hour_ago(self, mocker):
-        """Warning must appear when latest 'started' was more than 1 hour ago
+    def test_warning_not_shown_when_reviewing_is_recent(self, mocker):
+        """'started reviewing' 4 minutes ago must also suppress the warning."""
+        reviewing_status = self._make_activity_status("started reviewing", 240)  # 4 minutes ago
+        all_prs = [
+            {
+                "title": "Long-running PR with recent review activity",
+                "url": "https://github.com/owner/repo1/pulls/1",
+                "repository": {"name": "repo1", "owner": "owner"},
+                "createdAt": self._make_created_at(86401),  # > 24 hours ago
+                "llm_statuses": [reviewing_status],
+            }
+        ]
+        pr_phases = [PHASE_LLM_WORKING]
+        repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
+
+        mock_print = mocker.patch("builtins.print")
+        display_status_summary(all_prs, pr_phases, repos_with_prs)
+
+        output = " ".join(str(c) for c in mock_print.call_args_list)
+        assert "バグって" not in output
+        assert "PRを人力で開いてチェックしてください" not in output
+
+    def test_warning_shown_when_activity_is_over_1_hour_ago(self, mocker):
+        """Warning must appear when latest activity was more than 1 hour ago
         (session hang scenario)."""
-        started_status = self._make_started_status(3601)  # just over 1 hour ago
+        started_status = self._make_activity_status("started work", 3601)  # just over 1 hour ago
         all_prs = [
             {
                 "title": "Hung session PR",
@@ -485,14 +514,14 @@ class TestLLMWorkingLatestStartedWarning:
         assert "バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります" in output
         assert "PRを人力で開いてチェックしてください" in output
 
-    def test_warning_not_shown_when_started_is_exactly_below_1_hour(self, mocker):
-        """Warning must NOT appear when latest 'started' is well under 1 hour ago.
+    def test_warning_not_shown_when_activity_is_exactly_below_1_hour(self, mocker):
+        """Warning must NOT appear when latest activity is well under 1 hour ago.
 
         Note: status text stores only hour:minute (no seconds), so a borderline value
         of exactly 3599s could appear as ≥3600s after minute-truncation.  We use 45
         minutes (2700s) to remain safely below the threshold.
         """
-        started_status = self._make_started_status(2700)  # 45 minutes ago
+        started_status = self._make_activity_status("started work", 2700)  # 45 minutes ago
         all_prs = [
             {
                 "title": "Active PR",
@@ -511,14 +540,14 @@ class TestLLMWorkingLatestStartedWarning:
         output = " ".join(str(c) for c in mock_print.call_args_list)
         assert "バグって" not in output
 
-    def test_latest_started_takes_precedence_over_created_at(self, mocker):
-        """When llm_statuses contain a parseable 'started' timestamp, it must be
+    def test_latest_activity_takes_precedence_over_created_at(self, mocker):
+        """When llm_statuses contain a parseable timestamp, it must be
         used instead of createdAt for the warning decision."""
-        # PR is >30 minutes old (would trigger old logic), but latest started is recent
-        started_status = self._make_started_status(60)  # 1 minute ago
+        # PR is >30 minutes old (would trigger old logic), but latest activity is recent
+        started_status = self._make_activity_status("started work", 60)  # 1 minute ago
         all_prs = [
             {
-                "title": "Old PR, but recently started",
+                "title": "Old PR, but recently active",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
                 "createdAt": self._make_created_at(3600),  # 1 hour ago

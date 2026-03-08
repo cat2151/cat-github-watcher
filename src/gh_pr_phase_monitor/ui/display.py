@@ -16,7 +16,7 @@ from ..core.config import (
 )
 from ..github.github_client import assign_issue_to_copilot, get_issues_from_repositories
 from ..phase.phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label
-from ..phase.html.llm_status_extractor import get_latest_started_timestamp
+from ..phase.html.llm_status_extractor import get_latest_activity_timestamp
 from ..monitor.state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from ..core.time_utils import format_elapsed_time
 
@@ -115,15 +115,17 @@ def display_status_summary(
         print(f"    URL: {colorize_url(url)}")
 
         # Show warning for LLM working PRs where the session appears stuck.
-        # Primary check: if the latest 'started' timestamp is available (embedded in
-        # llm_statuses), warn when it is >= 1 hour old.  This prevents false alerts
-        # when Copilot recently restarted even if the PR was created long ago.
-        # Fallback: when no parseable 'started' timestamp exists, use the PR's
-        # createdAt field with the original 30-minute threshold.
+        # Primary check: if any LLM status entry carries an embedded timestamp,
+        # use the most recent one as the "session last active" time and warn when
+        # it is >= 1 hour old.  This prevents false alerts when Copilot recently
+        # restarted — even if the PR was created long ago — and covers all event
+        # types (started work, started reviewing, finished work, etc.).
+        # Fallback: when no parseable timestamp exists in any status entry, use
+        # the PR's createdAt field with the original 30-minute threshold.
         if phase == PHASE_LLM_WORKING:
-            latest_started_ts = get_latest_started_timestamp(llm_statuses)
-            if latest_started_ts is not None:
-                if current_time - latest_started_ts >= 3600:
+            latest_activity_ts = get_latest_activity_timestamp(llm_statuses)
+            if latest_activity_ts is not None:
+                if current_time - latest_activity_ts >= 3600:
                     print(
                         "    ⚠️  バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります。"
                         "PRを人力で開いてチェックしてください"

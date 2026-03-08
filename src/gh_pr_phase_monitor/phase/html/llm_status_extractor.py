@@ -41,25 +41,26 @@ def _parse_timestamp_from_status_text(text: str) -> Optional[float]:
         return None
 
 
-def get_latest_started_timestamp(llm_statuses: List[str]) -> Optional[float]:
-    """Get the timestamp of the most recent 'started work' event from LLM status strings.
+def get_latest_activity_timestamp(llm_statuses: List[str]) -> Optional[float]:
+    """Get the timestamp of the most recent LLM session activity from status strings.
 
-    Scans the llm_statuses list in reverse to find the latest 'started work' entry
-    that contains an embedded timestamp (e.g. 'Copilot started work on behalf of
-    user March 7, 2026 10:01').
+    Scans the llm_statuses list in reverse (i.e. from most recent to oldest, as the
+    list is built in chronological order from the HTML page) and returns the timestamp
+    embedded in the first entry that contains a parseable date (e.g. 'Copilot started
+    work on behalf of user March 7, 2026 10:01', 'Copilot started reviewing ...',
+    'Copilot finished work ...').
 
-    Only 'started work' events are considered (not 'started reviewing' or similar
-    events that share the 'started' prefix but indicate a different phase).
+    Any LLM status event with an embedded timestamp is treated as proof that the
+    session was active at that time — not just 'started work' events.
 
     Returns:
-        Unix timestamp (float) of the latest 'started work' event, or None if no
-        such entry with a parseable timestamp is found.
+        Unix timestamp (float) of the latest activity event, or None if no entry
+        with a parseable timestamp is found.
     """
     for status in reversed(llm_statuses):
-        if "started work" in status.lower():
-            ts = _parse_timestamp_from_status_text(status)
-            if ts is not None:
-                return ts
+        ts = _parse_timestamp_from_status_text(status)
+        if ts is not None:
+            return ts
     return None
 
 

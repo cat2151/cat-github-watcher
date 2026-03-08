@@ -307,11 +307,31 @@ def main():
                 snapshot = get_last_pr_snapshot()
                 if snapshot is not None and snapshot[0]:
                     cached_prs, cached_repos = snapshot
-                    print("\n  open PR のHTML再取得 (updatedAt 不変でもphase変化を検知するため / Refetching HTML for open PRs to detect phase changes)...")
-                    all_prs = cached_prs
-                    repos_with_prs = cached_repos
-                    _process_open_prs(all_prs, phase3_repo_names, config)
-                    set_last_pr_snapshot(all_prs, repos_with_prs)
+
+                    # open PR 件数を毎回 GraphQL で再取得し、変化があれば Phase 1/2 を強制実行する
+                    # (updatedAt は PR の新規作成を反映しないことがあるため、件数の乖離が生じうる)
+                    print("\n  open PR 件数を再確認中 (GraphQL)...")
+                    fresh_repos_with_prs = get_repositories_with_open_prs()
+                    cached_total = sum(r.get("openPRCount", 0) for r in cached_repos)
+                    fresh_total = sum(r.get("openPRCount", 0) for r in fresh_repos_with_prs)
+
+                    if fresh_total != cached_total:
+                        # PR 件数が変化 → Phase 1/2 を強制実行して最新の PR 一覧を取得する
+                        print(f"  open PR 件数が変化 ({cached_total} → {fresh_total})。Phase 1/2 を強制実行します。")
+                        repos_with_prs = fresh_repos_with_prs
+                        all_prs = get_pr_details_batch(repos_with_prs)
+                        if all_prs:
+                            print(f"\n  Found {len(all_prs)} open PR(s) total")
+                            _process_open_prs(all_prs, phase3_repo_names, config)
+                        set_last_pr_snapshot(all_prs, repos_with_prs)
+                    else:
+                        # PR 件数は変化なし → HTML のみ再取得 (phase 変化を検知するため)
+                        print("\n  open PR のHTML再取得 (updatedAt 不変でもphase変化を検知するため / Refetching HTML for open PRs to detect phase changes)...")
+                        all_prs = cached_prs
+                        repos_with_prs = cached_repos
+                        _process_open_prs(all_prs, phase3_repo_names, config)
+                        set_last_pr_snapshot(all_prs, repos_with_prs)
+
                     # skip_pr_check を False にリセット: 今イテレーションの表示セクション (display_status_summary)
                     # でスナップショットではなく最新のHTML取得結果を使うため
                     skip_pr_check = False

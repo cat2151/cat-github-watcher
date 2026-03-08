@@ -3,9 +3,11 @@ Tests for the skip_pr_check HTML re-fetch behavior.
 
 When updatedAt is unchanged (get_repos_changed_since_last_check returns empty set),
 the main loop should:
-- Skip GraphQL Phase 1/2 (get_repositories_with_open_prs, get_pr_details_batch)
-- Still re-fetch HTML for each cached open PR to detect phase transitions
+- Still call get_repositories_with_open_prs to check the fresh open PR count
+- If open PR count is unchanged: skip get_pr_details_batch (GraphQL Phase 2),
+  but still re-fetch HTML for each cached open PR to detect phase transitions
   (because updatedAt does not change when phase transitions 1A->1B, 1B->2A occur)
+- If open PR count changed: run full Phase 1/2 (get_pr_details_batch is called)
 
 When updatedAt is unchanged but snapshot is None or empty (error during prior iteration):
 - Should reset the updatedAt baseline so the next iteration performs a full check
@@ -26,8 +28,13 @@ def _make_mock_pr(pr_url="https://github.com/testuser/repo1/pull/1"):
     }
 
 
-def _setup_mocks(mocker, *, changed_repos, snapshot):
-    """Set up common mocks for main loop tests."""
+def _setup_mocks(mocker, *, changed_repos, snapshot, fresh_repos_with_prs=None):
+    """Set up common mocks for main loop tests.
+
+    Args:
+        fresh_repos_with_prs: What get_repositories_with_open_prs returns for the fresh count check.
+            Defaults to the same repos as in snapshot (same counts → no Phase 1/2 forced).
+    """
     mocker.patch("src.gh_pr_phase_monitor.main.load_config", return_value={"interval": "1m"})
     mocker.patch(
         "src.gh_pr_phase_monitor.main.get_repos_changed_since_last_check",
@@ -38,7 +45,14 @@ def _setup_mocks(mocker, *, changed_repos, snapshot):
         return_value=snapshot,
     )
     mocker.patch("src.gh_pr_phase_monitor.main.set_last_pr_snapshot")
-    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs", return_value=[])
+
+    # By default, fresh count matches cached repos (no count change → no forced Phase 1/2)
+    if fresh_repos_with_prs is None:
+        fresh_repos_with_prs = snapshot[1] if snapshot is not None else []
+    mock_get_repos = mocker.patch(
+        "src.gh_pr_phase_monitor.main.get_repositories_with_open_prs",
+        return_value=fresh_repos_with_prs,
+    )
     mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch", return_value=[])
     mock_fetch_html = mocker.patch("src.gh_pr_phase_monitor.main.fetch_and_analyze_pr_html", return_value=None)
     mocker.patch("src.gh_pr_phase_monitor.main.determine_phase", return_value="LLM working")
@@ -50,7 +64,7 @@ def _setup_mocks(mocker, *, changed_repos, snapshot):
 
 
 def test_html_refetched_for_cached_prs_when_updated_at_unchanged(mocker):
-    """updatedAt不変 + キャッシュPRあり: GraphQLスキップ、HTMLは再取得される。"""
+    """updatedAt不変 + キャッシュPRあり + 件数変化なし: 件数チェック (Phase 1) を呼び、HTMLは再取得される。Phase 2 は呼ばれない。"""
     pr = _make_mock_pr()
     snapshot = ([pr], [{"name": "repo1", "owner": "testuser", "openPRCount": 1}])
 
@@ -65,13 +79,14 @@ def test_html_refetched_for_cached_prs_when_updated_at_unchanged(mocker):
 
     # HTMLは再取得される（phase変化を検知するため）
     mock_fetch_html.assert_called_once_with(pr)
-    # GraphQL Phase 1/2 は呼ばれない
-    mock_get_repos.assert_not_called()
+    # 件数チェック用の GraphQL は呼ばれる
+    mock_get_repos.assert_called_once()
+    # 件数が変わっていないので get_pr_details_batch は呼ばれない
     mock_get_prs.assert_not_called()
 
 
-def test_graphql_not_called_when_updated_at_unchanged(mocker):
-    """updatedAt不変のとき、get_repositories_with_open_prs と get_pr_details_batch は呼ばれない。"""
+def test_pr_count_unchanged_skips_phase2(mocker):
+    """updatedAt不変 + キャッシュPRあり + 件数変化なし: Phase 1 (件数チェック) は呼ばれるが、Phase 2 (PR詳細取得) は呼ばれない。"""
     pr = _make_mock_pr()
     snapshot = ([pr], [{"name": "repo1", "owner": "testuser", "openPRCount": 1}])
 
@@ -84,8 +99,35 @@ def test_graphql_not_called_when_updated_at_unchanged(mocker):
     except KeyboardInterrupt:
         pass
 
-    mock_get_repos.assert_not_called()
+    # 件数チェック用の GraphQL は呼ばれる
+    mock_get_repos.assert_called_once()
+    # 件数が変わっていないので get_pr_details_batch は呼ばれない
     mock_get_prs.assert_not_called()
+
+
+def test_pr_count_changed_triggers_phase12(mocker):
+    """updatedAt不変でも open PR 件数が変わっていたら Phase 1/2 を強制実行する。"""
+    pr = _make_mock_pr()
+    # キャッシュは 1 件
+    snapshot = ([pr], [{"name": "repo1", "owner": "testuser", "openPRCount": 1}])
+    # GraphQL で取得した新鮮なリストは 2 件
+    fresh_repos = [{"name": "repo1", "owner": "testuser", "openPRCount": 2}]
+
+    _, mock_get_repos, mock_get_prs = _setup_mocks(
+        mocker, changed_repos=set(), snapshot=snapshot, fresh_repos_with_prs=fresh_repos
+    )
+
+    from src.gh_pr_phase_monitor.main import main
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
+
+    # 件数チェック用の GraphQL は呼ばれる
+    mock_get_repos.assert_called_once()
+    # 件数が変わったので get_pr_details_batch も呼ばれる
+    mock_get_prs.assert_called_once()
 
 
 def test_baseline_reset_when_snapshot_is_none(mocker):

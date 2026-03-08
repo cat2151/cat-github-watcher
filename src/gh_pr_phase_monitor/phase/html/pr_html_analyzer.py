@@ -8,6 +8,7 @@ statusを算出するための元データをJSONに出力する。
 ステータスの判定（PHASE1A〜PHASE3A への分類）は呼び出し側の責務。
 """
 
+import html as html_lib
 import json
 import re
 from pathlib import Path
@@ -56,6 +57,12 @@ _NO_INLINE_COMMENTS_PATTERN = re.compile(r"generated\s+(?:no|0)\s+comments?", re
 # Lookahead that splits HTML at the start of each TimelineItem-body div boundary.
 _TIMELINE_ITEM_BODY_SPLIT_PATTERN = re.compile(r"(?=<div[^>]*TimelineItem-body[^>]*>)", re.IGNORECASE)
 
+# Pattern to extract PR title from the HTML <title> tag.
+# GitHub PR page title format: "PR Title · Pull Request #N · owner/repo · GitHub"
+_HTML_TITLE_TAG_PATTERN = re.compile(r"<title>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+# Separator between PR title and " · Pull Request #N ..." in GitHub's <title> tag.
+_PR_TITLE_SEPARATOR = " \u00b7 Pull Request "  # " · Pull Request "
+
 
 def _is_draft_from_html(html: str) -> bool:
     """HTMLからdraft状態を検出する。"""
@@ -63,6 +70,32 @@ def _is_draft_from_html(html: str) -> bool:
         if pattern.search(html):
             return True
     return False
+
+
+def _extract_title_from_html(html: str) -> Optional[str]:
+    """PR HTMLの<title>タグからPRタイトルを抽出する。
+
+    GitHub PR HTMLの<title>タグ形式:
+    "PR Title · Pull Request #N · owner/repo · GitHub"
+
+    Args:
+        html: HTML文字列
+
+    Returns:
+        PRタイトル文字列。抽出失敗時はNone
+    """
+    title_match = _HTML_TITLE_TAG_PATTERN.search(html)
+    if not title_match:
+        return None
+
+    title_text = title_match.group(1)
+    if _PR_TITLE_SEPARATOR not in title_text:
+        return None
+
+    title = title_text.split(_PR_TITLE_SEPARATOR)[0].strip()
+    title = html_lib.unescape(title)
+
+    return title if title else None
 
 
 def _copilot_review_has_no_inline_comments(html: str) -> bool:
@@ -173,6 +206,7 @@ def analyze_pr_html(html: str, pr_url: str = "") -> dict[str, Any]:
             "is_draft": bool,
             "llm_statuses": list[str],  # 時系列順の "started work" / "finished work" / "reviewing" 等
             "status": str,              # PHASE1A〜PHASE3Aのいずれか
+            "title": str,               # PRタイトル（HTMLから抽出できた場合のみ）
         }
     """
     html_markdown = _html_to_simple_markdown(html)
@@ -185,12 +219,18 @@ def analyze_pr_html(html: str, pr_url: str = "") -> dict[str, Any]:
     if status == PHASE2A_REVIEW_COMPLETED and _copilot_review_has_no_inline_comments(html):
         status = PHASE3A_LLM_FEEDBACK_FINISHED_WORK
 
-    return {
+    result = {
         "pr_url": pr_url,
         "is_draft": is_draft,
         "llm_statuses": llm_statuses,
         "status": status,
     }
+
+    title = _extract_title_from_html(html)
+    if title is not None:
+        result["title"] = title
+
+    return result
 
 
 def save_analysis_json(analysis: dict[str, Any], html_path: Path) -> Path:

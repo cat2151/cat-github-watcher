@@ -51,6 +51,22 @@ def _is_draft_from_html(html: str) -> bool:
     return False
 
 
+def _copilot_review_has_no_inline_comments(html: str) -> bool:
+    """Return True when the Copilot reviewer's review body explicitly states no inline comments.
+
+    GitHub Copilot's review body contains text like
+    "generated no comments" or "generated 0 comments" when the review found no issues
+    and left no inline code comments.
+
+    Returns False when the pattern is absent — this preserves the default PHASE2A
+    behaviour for cases where the review body format is unknown or different.
+    """
+    if not html:
+        return False
+    pattern = re.compile(r"generated\s+(?:no|0)\s+comments?", re.IGNORECASE)
+    return bool(pattern.search(html))
+
+
 def _is_review_still_in_progress(llm_statuses: list[str]) -> bool:
     """Return True when the last reviewing event is 'started reviewing' without a subsequent completed review.
 
@@ -138,6 +154,11 @@ def analyze_pr_html(html: str, pr_url: str = "") -> dict[str, Any]:
     llm_statuses = _extract_llm_statuses(html, html_markdown)
     is_draft = _is_draft_from_html(html)
     status = _determine_html_status(llm_statuses, is_draft)
+
+    # When review is completed with no inline comments (e.g. "generated no comments" in the
+    # review body), there is nothing for Copilot to address → upgrade directly to PHASE3A.
+    if status == PHASE2A_REVIEW_COMPLETED and _copilot_review_has_no_inline_comments(html):
+        status = PHASE3A_LLM_FEEDBACK_FINISHED_WORK
 
     return {
         "pr_url": pr_url,

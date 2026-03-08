@@ -68,14 +68,13 @@ def log_error_to_file(message: str, exc: Exception | None = None, base_dir: Path
 
 def _process_open_prs(
     all_prs: list,
-    pr_phases: list,
     phase3_repo_names: list,
     config: dict,
 ) -> None:
     """HTML取得・phase判定・PR処理を全openなPRに対して実行する。
 
     all_prs の各PRに対して fetch_and_analyze_pr_html → determine_phase → process_pr を実行し、
-    結果を pr_phases および phase3_repo_names に追記する。
+    結果を pr["phase"] に書き込み、phase3_repo_names に追記する。
     """
     for pr in all_prs:
         try:
@@ -92,7 +91,7 @@ def _process_open_prs(
             # pr["llm_statuses"] が更新された後にphaseを判定する
             phase = determine_phase(pr)
 
-            pr_phases.append(phase)
+            pr["phase"] = phase
             process_pr(pr, config, phase)
 
             # phase3検知時: 該当リポジトリをpullable検査の対象に登録
@@ -105,7 +104,7 @@ def _process_open_prs(
                 f"Failed to process PR {pr.get('url', 'unknown') or pr.get('title', 'unknown')}",
                 pr_error,
             )
-            pr_phases.append(PHASE_LLM_WORKING)
+            pr["phase"] = PHASE_LLM_WORKING
 
 
 def main():
@@ -190,7 +189,6 @@ def main():
 
         # Initialize variables to track status for summary
         all_prs = []
-        pr_phases = []
         repos_with_prs = []
         phase3_repo_names: list[str] = []
         skip_pr_check = False
@@ -249,18 +247,18 @@ def main():
                     print(f"{'=' * 50}")
 
                     # Track phases to detect if all PRs are in "LLM working"
-                    _process_open_prs(all_prs, pr_phases, phase3_repo_names, config)
+                    _process_open_prs(all_prs, phase3_repo_names, config)
 
                 # Save PR snapshot for display on subsequent skip-check iterations.
                 # Done after Phase 1/2 (including the empty case) so the cache is always
                 # up-to-date and never shows stale PRs when there are actually none.
-                set_last_pr_snapshot(all_prs, pr_phases, repos_with_prs)
+                set_last_pr_snapshot(all_prs, repos_with_prs)
 
                 if all_prs:
                     # Count how many PRs are in "LLM working" phase
                     # This count is used for rate limit protection - when too many PRs are being
                     # worked on simultaneously, we pause auto-assignment to prevent API rate limits
-                    llm_working_count = sum(1 for phase in pr_phases if phase == PHASE_LLM_WORKING)
+                    llm_working_count = sum(1 for pr in all_prs if pr.get("phase") == PHASE_LLM_WORKING)
                     max_llm_working_parallel = config.get("max_llm_working_parallel", DEFAULT_MAX_LLM_WORKING_PARALLEL)
                     llm_working_below_cap = llm_working_count < max_llm_working_parallel
 
@@ -269,9 +267,9 @@ def main():
                     # 2. PR count is less than 3 (few PRs, so we can look for more work)
                     # The llm_working_count throttles assignment when parallel work is too high
                     total_pr_count = len(all_prs)
-                    all_llm_working = bool(pr_phases) and all(phase == PHASE_LLM_WORKING for phase in pr_phases)
-                    all_phase3 = bool(pr_phases) and all(phase == PHASE_3 for phase in pr_phases)
-                    active_parallel_prs = sum(1 for phase in pr_phases if phase != PHASE_3)
+                    all_llm_working = bool(all_prs) and all(pr.get("phase") == PHASE_LLM_WORKING for pr in all_prs)
+                    all_phase3 = bool(all_prs) and all(pr.get("phase") == PHASE_3 for pr in all_prs)
+                    active_parallel_prs = sum(1 for pr in all_prs if pr.get("phase") != PHASE_3)
 
                     if llm_working_below_cap or all_llm_working or active_parallel_prs < 3:
                         if all_llm_working and total_pr_count >= 3:
@@ -303,12 +301,12 @@ def main():
                 # (updatedAt はPRのphase変化では更新されないため、HTMLフェッチが必須)
                 snapshot = get_last_pr_snapshot()
                 if snapshot is not None and snapshot[0]:
-                    cached_prs, _, cached_repos = snapshot
+                    cached_prs, cached_repos = snapshot
                     print("\n  open PR のHTML再取得 (updatedAt 不変でもphase変化を検知するため / Refetching HTML for open PRs to detect phase changes)...")
                     all_prs = cached_prs
                     repos_with_prs = cached_repos
-                    _process_open_prs(all_prs, pr_phases, phase3_repo_names, config)
-                    set_last_pr_snapshot(all_prs, pr_phases, repos_with_prs)
+                    _process_open_prs(all_prs, phase3_repo_names, config)
+                    set_last_pr_snapshot(all_prs, repos_with_prs)
                     # skip_pr_check を False にリセット: 今イテレーションの表示セクション (display_status_summary)
                     # でスナップショットではなく最新のHTML取得結果を使うため
                     skip_pr_check = False
@@ -416,20 +414,20 @@ def main():
             throttled_interval = normal_interval_seconds
 
         try:
-            display_prs, display_phases, display_repos = all_prs, pr_phases, repos_with_prs
+            display_prs, display_repos = all_prs, repos_with_prs
             no_change = False
             if skip_pr_check:
                 snapshot = get_last_pr_snapshot()
                 if snapshot is not None:
-                    display_prs, display_phases, display_repos = snapshot
+                    display_prs, display_repos = snapshot
                     no_change = True
-            display_status_summary(display_prs, display_phases, display_repos, config, no_change=no_change)
+            display_status_summary(display_prs, display_repos, config, no_change=no_change)
         except Exception as summary_error:
             log_error_to_file("Failed to display status summary", summary_error)
 
         # Check if PR state has not changed for too long and switch to reduced frequency mode
         try:
-            use_reduced_frequency = check_no_state_change_timeout(all_prs, pr_phases, config)
+            use_reduced_frequency = check_no_state_change_timeout(all_prs, config)
         except Exception as timeout_error:
             log_error_to_file("Failed to evaluate reduced frequency interval", timeout_error)
             use_reduced_frequency = False

@@ -17,7 +17,7 @@ class TestDisplayStatusSummary:
     def test_display_status_summary_with_no_prs(self, mocker):
         """Test that display_status_summary correctly handles empty PR list"""
         mock_print = mocker.patch("builtins.print")
-        display_status_summary([], [], [])
+        display_status_summary([], [])
 
         # Verify that a "No open PRs" message is displayed
         calls = [str(call) for call in mock_print.call_args_list]
@@ -30,13 +30,13 @@ class TestDisplayStatusSummary:
                 "title": "Existing PR",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_1,
             }
         ]
-        pr_phases = [PHASE_1]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs, no_change=True)
+        display_status_summary(all_prs, repos_with_prs, no_change=True)
 
         calls = [str(call) for call in mock_print.call_args_list]
         output = " ".join(calls)
@@ -56,31 +56,33 @@ class TestDisplayStatusSummary:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_1,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_2,
             },
             {
                 "title": "PR 3",
                 "url": "https://github.com/owner/repo2/pulls/3",
                 "repository": {"name": "repo2", "owner": "owner"},
+                "phase": PHASE_2,
             },
             {
                 "title": "PR 4",
                 "url": "https://github.com/owner/repo2/pulls/4",
                 "repository": {"name": "repo2", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 5",
                 "url": "https://github.com/owner/repo3/pulls/5",
                 "repository": {"name": "repo3", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             },
         ]
-
-        # Mixed phases: 1 phase1, 2 phase2, 1 phase3, 1 LLM working
-        pr_phases = [PHASE_1, PHASE_2, PHASE_2, PHASE_3, PHASE_LLM_WORKING]
 
         repos_with_prs = [
             {"name": "repo1", "owner": "owner", "openPRCount": 2},
@@ -89,7 +91,7 @@ class TestDisplayStatusSummary:
         ]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Extract all printed messages
         calls = [str(call) for call in mock_print.call_args_list]
@@ -113,21 +115,20 @@ class TestDisplayStatusSummary:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             },
         ]
-
-        # All PRs are in LLM working state
-        pr_phases = [PHASE_LLM_WORKING, PHASE_LLM_WORKING]
 
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 2}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Extract all printed messages
         calls = [str(call) for call in mock_print.call_args_list]
@@ -146,26 +147,27 @@ class TestDisplayStatusSummary:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 3",
                 "url": "https://github.com/owner/repo1/pulls/3",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
         ]
 
         # All PRs are in phase 3
-        pr_phases = [PHASE_3, PHASE_3, PHASE_3]
-
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 3}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Extract all printed messages
         calls = [str(call) for call in mock_print.call_args_list]
@@ -184,13 +186,13 @@ class TestDisplayStatusSummary:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_1,
             }
         ]
-        pr_phases = [PHASE_1]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Extract all printed messages
         calls = [str(call) for call in mock_print.call_args_list]
@@ -207,13 +209,13 @@ class TestDisplayStatusSummary:
                 "url": "https://github.com/owner/repo1/pulls/9",
                 "author": {"login": "phase1-author"},
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_1,
             }
         ]
-        pr_phases = [PHASE_1]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         calls = [str(call) for call in mock_print.call_args_list]
         output = " ".join(calls)
@@ -228,31 +230,34 @@ class TestDisplayStatusSummary:
                 "url": "https://github.com/owner/repo1/pulls/9",
                 "author": {"login": "phase1-author"},
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_1,
             },
             {
                 "title": "Phase2 PR",
                 "url": "https://github.com/owner/repo1/pulls/10",
                 "author": {"login": "phase2-author"},
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_2,
             },
             {
                 "title": "Phase3 PR",
                 "url": "https://github.com/owner/repo1/pulls/11",
                 "author": {"login": "phase3-author"},
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "LLM PR",
                 "url": "https://github.com/owner/repo1/pulls/12",
                 "author": {"login": "llm-author"},
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             },
         ]
-        pr_phases = [PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 4}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs, {"display_pr_author": True})
+        display_status_summary(all_prs, repos_with_prs, {"display_pr_author": True})
 
         calls = [str(call) for call in mock_print.call_args_list]
         output = " ".join(calls)
@@ -271,6 +276,7 @@ class TestDisplayStatusSummary:
                 "isDraft": True,
                 "reviewRequests": [],
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             },
             {
                 "title": "Ready PR",
@@ -279,6 +285,7 @@ class TestDisplayStatusSummary:
                 "reviews": [],
                 "latestReviews": [],
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             },
             {
                 "title": "Changes Requested PR",
@@ -296,6 +303,7 @@ class TestDisplayStatusSummary:
                 ],
                 "repository": {"name": "repo1", "owner": "owner"},
                 "llm_statuses": ["Copilot started reviewing"],
+                "phase": PHASE_LLM_WORKING,
             },
             {
                 "title": "Reviewed PR",
@@ -313,14 +321,14 @@ class TestDisplayStatusSummary:
                 ],
                 "repository": {"name": "repo1", "owner": "owner"},
                 "llm_statuses": ["Copilot started reviewing", "Copilot started work", "Copilot finished work"],
+                "phase": PHASE_LLM_WORKING,
             },
         ]
 
-        pr_phases = [PHASE_LLM_WORKING, PHASE_LLM_WORKING, PHASE_LLM_WORKING, PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 4}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         output = " ".join(str(call) for call in mock_print.call_args_list)
 
@@ -337,14 +345,14 @@ class TestDisplayStatusSummary:
                 "url": "https://github.com/owner/repo1/pulls/5",
                 "repository": {"name": "repo1", "owner": "owner"},
                 "llm_statuses": ["started work", "finished work items"],
+                "phase": PHASE_LLM_WORKING,
             },
         ]
 
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         output = " ".join(str(call) for call in mock_print.call_args_list)
 

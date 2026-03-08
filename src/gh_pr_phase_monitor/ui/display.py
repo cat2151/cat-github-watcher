@@ -42,7 +42,6 @@ def display_cached_top_issues() -> None:
 
 def display_status_summary(
     all_prs: List[Dict[str, Any]],
-    pr_phases: List[str],
     repos_with_prs: List[Dict[str, Any]],
     config: Optional[Dict[str, Any]] = None,
     no_change: bool = False,
@@ -54,8 +53,7 @@ def display_status_summary(
     Uses the same format as process_pr() for consistency.
 
     Args:
-        all_prs: List of all PRs
-        pr_phases: List of phase strings corresponding to all_prs
+        all_prs: List of all PRs. Each PR dict must have pr["phase"] set to its computed phase.
         repos_with_prs: List of repositories with open PRs
         config: Optional configuration dict (uses display_pr_author when true)
         no_change: When True, indicates PR check was skipped because no changes were
@@ -75,7 +73,8 @@ def display_status_summary(
 
     # Display each PR using the same format as process_pr()
     display_pr_author = bool((config or {}).get("display_pr_author", False))
-    for pr, phase in zip(all_prs, pr_phases):
+    for pr in all_prs:
+        phase = pr.get("phase", PHASE_LLM_WORKING)
         repo_info = pr.get("repository", {})
         repo_name = repo_info.get("name", "Unknown")
         title = pr.get("title", "Unknown")

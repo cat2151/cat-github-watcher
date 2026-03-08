@@ -24,19 +24,20 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
         ]
-        pr_phases = [PHASE_3, PHASE_3]
         config = {}
 
         # Should not exit immediately (30m default timeout)
         # First call initializes the state
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
         # Verify state was initialized (not None)
         assert state_tracker.get_last_state() is not None
@@ -48,18 +49,19 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
         ]
-        pr_phases = [PHASE_3, PHASE_3]
         config = {"no_change_timeout": ""}
 
         # Should not exit
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
         # State should remain None when disabled
         assert state_tracker.get_last_state() is None
@@ -71,25 +73,26 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_2,
             },
         ]
-        pr_phases = [PHASE_3, PHASE_2]
         config = {"no_change_timeout": "1s"}  # Very short timeout for testing
 
         # First call: initialize the state
-        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        result = check_no_state_change_timeout(all_prs, config)
         assert result is False  # Not in reduced frequency mode yet
 
         # Wait for timeout to elapse
         time.sleep(1.5)
 
         # Second call with same state: should switch to reduced frequency mode
-        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        result = check_no_state_change_timeout(all_prs, config)
         assert result is True  # Now in reduced frequency mode
 
     def test_timer_reset_when_phase_changes(self):
@@ -99,31 +102,32 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_2,
             },
         ]
         config = {"no_change_timeout": "2s"}
 
         # First call: start with phase3 and phase2
-        pr_phases = [PHASE_3, PHASE_2]
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
         # Wait for some time but not full timeout
         time.sleep(1)
 
         # Second call: change phase of one PR, should reset timer
-        pr_phases = [PHASE_3, PHASE_3]
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        all_prs[1]["phase"] = PHASE_3
+        check_no_state_change_timeout(all_prs, config)
 
         # Wait less than timeout
         time.sleep(1)
 
         # Should not exit because timer was reset
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
     def test_timer_reset_when_pr_added(self):
         """Test that timer resets when a PR is added"""
@@ -135,15 +139,16 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_2,
             },
         ]
-        pr_phases = [PHASE_3, PHASE_2]
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
         # Wait for some time but not full timeout
         time.sleep(1)
@@ -154,16 +159,16 @@ class TestNoChangeTimeout:
                 "title": "PR 3",
                 "url": "https://github.com/owner/repo1/pulls/3",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_1,
             }
         )
-        pr_phases = [PHASE_3, PHASE_2, PHASE_1]
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
         # Wait less than timeout
         time.sleep(1)
 
         # Should not exit because timer was reset
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
     def test_timer_reset_when_pr_removed(self):
         """Test that timer resets when a PR is removed"""
@@ -175,20 +180,22 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_2,
             },
             {
                 "title": "PR 3",
                 "url": "https://github.com/owner/repo1/pulls/3",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_1,
             },
         ]
-        pr_phases = [PHASE_3, PHASE_2, PHASE_1]
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
         # Wait for some time but not full timeout
         time.sleep(1)
@@ -199,21 +206,22 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_2,
             },
         ]
-        pr_phases = [PHASE_3, PHASE_2]
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
         # Wait less than timeout
         time.sleep(1)
 
         # Should not exit because timer was reset
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
     def test_invalid_timeout_format(self, mocker):
         """Test that invalid timeout format is handled gracefully"""
@@ -222,14 +230,14 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
         ]
-        pr_phases = [PHASE_3]
         config = {"no_change_timeout": "invalid"}
 
         # Should print warning and not exit
         mock_print = mocker.patch("builtins.print")
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
         # Check that warning was printed
         calls = [str(call) for call in mock_print.call_args_list]
@@ -238,11 +246,10 @@ class TestNoChangeTimeout:
     def test_empty_pr_list(self):
         """Test that empty PR list doesn't cause issues"""
         all_prs = []
-        pr_phases = []
         config = {"no_change_timeout": "30m"}
 
         # Should not exit
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
     def test_timeout_message_in_japanese(self, mocker):
         """Test that mode switch message is displayed in Japanese"""
@@ -251,20 +258,20 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
         ]
-        pr_phases = [PHASE_3]
         config = {"no_change_timeout": "1s"}
 
         # First call: initialize the state
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
         # Wait for timeout to elapse
         time.sleep(1.5)
 
         # Second call: should switch to reduced frequency mode with Japanese message
         mock_print = mocker.patch("builtins.print")
-        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        result = check_no_state_change_timeout(all_prs, config)
         assert result is True
 
         # Check that Japanese message was printed
@@ -274,25 +281,26 @@ class TestNoChangeTimeout:
         assert "API利用の浪費を防止" in output
         assert "監視間隔を" in output  # Check for the interval change message without hardcoding the interval
 
-    def test_mismatched_list_lengths(self):
-        """Test that mismatched all_prs and pr_phases lengths are handled correctly"""
+    def test_prs_without_phase_key(self):
+        """Test that PRs without a 'phase' key are handled gracefully (phase defaults to empty string)"""
         all_prs = [
             {
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                # no "phase" key - will default to "" in check
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                # no "phase" key - will default to "" in check
             },
         ]
-        pr_phases = [PHASE_3]  # Only one phase for two PRs - mismatched!
         config = {"no_change_timeout": "1s"}
 
         # Should not exit or crash, just handle gracefully
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
     def test_same_phases_different_prs_triggers_reset(self):
         """Test that changing PR URLs (even with same phases) resets the timer"""
@@ -304,15 +312,16 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_2,
             },
         ]
-        pr_phases = [PHASE_3, PHASE_2]
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
         # Wait for some time but not full timeout
         time.sleep(1)
@@ -323,21 +332,22 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
             {
                 "title": "PR 3",
                 "url": "https://github.com/owner/repo1/pulls/3",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_2,
             },
         ]
-        pr_phases = [PHASE_3, PHASE_2]
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
         # Wait less than timeout
         time.sleep(1)
 
         # Should not exit because timer was reset
-        check_no_state_change_timeout(all_prs, pr_phases, config)
+        check_no_state_change_timeout(all_prs, config)
 
     def test_no_timeout_with_frequent_phase_changes(self):
         """Test that timeout doesn't occur if state keeps changing"""
@@ -346,6 +356,7 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_1,
             },
         ]
         config = {"no_change_timeout": "2s"}
@@ -354,8 +365,8 @@ class TestNoChangeTimeout:
         phases_sequence = [PHASE_1, PHASE_2, PHASE_3, PHASE_LLM_WORKING, PHASE_2]
 
         for phase in phases_sequence:
-            pr_phases = [phase]
-            result = check_no_state_change_timeout(all_prs, pr_phases, config)
+            all_prs[0]["phase"] = phase
+            result = check_no_state_change_timeout(all_prs, config)
             assert result is False  # Should never enter reduced frequency mode
             time.sleep(0.5)  # Wait between changes but not enough to timeout
 
@@ -369,26 +380,26 @@ class TestNoChangeTimeout:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             },
         ]
         config = {"no_change_timeout": "1s"}
 
         # First call: start with phase3
-        pr_phases = [PHASE_3]
-        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        result = check_no_state_change_timeout(all_prs, config)
         assert result is False
 
         # Wait for timeout to elapse
         time.sleep(1.5)
 
         # Second call: should enter reduced frequency mode
-        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        result = check_no_state_change_timeout(all_prs, config)
         assert result is True
 
         # Third call: change phase, should return to normal mode
-        pr_phases = [PHASE_2]
+        all_prs[0]["phase"] = PHASE_2
         mock_print = mocker.patch("builtins.print")
-        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        result = check_no_state_change_timeout(all_prs, config)
         assert result is False
 
         # Check that return-to-normal message was printed

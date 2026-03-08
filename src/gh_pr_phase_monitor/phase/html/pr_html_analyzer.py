@@ -53,13 +53,6 @@ _DRAFT_PATTERNS = [
 
 # Matches GitHub Copilot's review summary when it left no inline code comments.
 _NO_INLINE_COMMENTS_PATTERN = re.compile(r"generated\s+(?:no|0)\s+comments?", re.IGNORECASE)
-# Matches the "Implement suggestion(s)" button that appears when a review has inline code suggestions.
-# Anchored to actual HTML button elements or aria-label attributes to avoid false positives from
-# quoted text in PR comments/bodies that happen to contain the same phrase.
-_IMPLEMENT_SUGGESTIONS_PATTERNS = [
-    re.compile(r"<button[^>]*>\s*Implement (?:all )?suggestions?\s*</button>", re.IGNORECASE),
-    re.compile(r'aria-label="[^"]*Implement (?:all )?suggestions?[^"]*"', re.IGNORECASE),
-]
 # Lookahead that splits HTML at the start of each TimelineItem-body div boundary.
 _TIMELINE_ITEM_BODY_SPLIT_PATTERN = re.compile(r"(?=<div[^>]*TimelineItem-body[^>]*>)", re.IGNORECASE)
 
@@ -70,22 +63,6 @@ def _is_draft_from_html(html: str) -> bool:
         if pattern.search(html):
             return True
     return False
-
-
-def has_implement_suggestions_button(html: str) -> bool:
-    """Return True when the HTML contains an "Implement suggestion(s)" or "Implement all suggestions" button.
-
-    This button is shown by GitHub when a review has inline code suggestions.
-    Its presence is used as a safety check before posting the PHASE2A comment:
-    if the button is absent, PHASE2A detection may be a false positive and the
-    comment should not be sent.
-
-    Detection is anchored to actual HTML button elements or aria-label attributes
-    to avoid false positives from quoted text in PR comment bodies.
-    """
-    if not html:
-        return False
-    return any(pattern.search(html) for pattern in _IMPLEMENT_SUGGESTIONS_PATTERNS)
 
 
 def _copilot_review_has_no_inline_comments(html: str) -> bool:
@@ -196,7 +173,6 @@ def analyze_pr_html(html: str, pr_url: str = "") -> dict[str, Any]:
             "is_draft": bool,
             "llm_statuses": list[str],  # 時系列順の "started work" / "finished work" / "reviewing" 等
             "status": str,              # PHASE1A〜PHASE3Aのいずれか
-            "has_implement_suggestions_button": bool,  # 安全装置：レビューにインラインsuggestionがあるか
         }
     """
     html_markdown = _html_to_simple_markdown(html)
@@ -214,7 +190,6 @@ def analyze_pr_html(html: str, pr_url: str = "") -> dict[str, Any]:
         "is_draft": is_draft,
         "llm_statuses": llm_statuses,
         "status": status,
-        "has_implement_suggestions_button": has_implement_suggestions_button(html),
     }
 
 

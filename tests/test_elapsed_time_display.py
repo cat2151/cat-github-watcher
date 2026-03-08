@@ -391,6 +391,16 @@ class TestGetLatestStartedTimestamp:
         statuses = ["Copilot finished work on behalf of user"]
         assert get_latest_started_timestamp(statuses) is None
 
+    def test_returns_none_for_started_reviewing(self):
+        """'started reviewing' must NOT be treated as a 'started work' event."""
+        dt = datetime.now(timezone.utc) - timedelta(seconds=120)
+        month_name = dt.strftime("%B")
+        reviewing_status = (
+            f"Copilot started reviewing on behalf of cat2151 "
+            f"{month_name} {dt.day}, {dt.year} {dt.strftime('%H:%M')}"
+        )
+        assert get_latest_started_timestamp([reviewing_status]) is None
+
     def test_returns_none_when_started_has_no_timestamp(self):
         """If 'started' entries lack a date, return None"""
         assert get_latest_started_timestamp(["started work"]) is None

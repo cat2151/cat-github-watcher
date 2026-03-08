@@ -330,26 +330,76 @@ class TestSaveAnalysisJson:
 class TestCopilotReviewHasNoInlineComments:
     """Tests for _copilot_review_has_no_inline_comments helper."""
 
+    # Minimal TimelineItem-body block that represents the Copilot reviewer with no inline comments.
+    _REVIEWER_BLOCK_NO_COMMENTS = (
+        '<div class="TimelineItem-body">'
+        '<a data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer">Copilot</a>'
+        " reviewed"
+        "<p>Copilot reviewed 3 out of 3 changed files and generated no comments.</p>"
+        "</div>"
+    )
+
     def test_returns_true_for_generated_no_comments(self):
-        html = "<p>Copilot reviewed 3 out of 3 changed files and generated no comments.</p>"
-        assert _copilot_review_has_no_inline_comments(html) is True
+        assert _copilot_review_has_no_inline_comments(self._REVIEWER_BLOCK_NO_COMMENTS) is True
 
     def test_returns_true_for_generated_zero_comments(self):
-        html = "<p>Copilot reviewed files and generated 0 comments.</p>"
+        html = (
+            '<div class="TimelineItem-body">'
+            '<a data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer">Copilot</a>'
+            " reviewed"
+            "<p>Copilot reviewed files and generated 0 comments.</p>"
+            "</div>"
+        )
         assert _copilot_review_has_no_inline_comments(html) is True
 
     def test_returns_true_case_insensitive(self):
-        html = "<p>Copilot reviewed files and Generated No Comments.</p>"
+        html = (
+            '<div class="TimelineItem-body">'
+            '<a data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer">Copilot</a>'
+            " reviewed"
+            "<p>Generated No Comments.</p>"
+            "</div>"
+        )
         assert _copilot_review_has_no_inline_comments(html) is True
 
     def test_returns_false_for_generated_n_comments(self):
         """When there are actual inline review comments, return False."""
-        html = "<p>Copilot reviewed 2 files and generated 3 comments.</p>"
+        html = (
+            '<div class="TimelineItem-body">'
+            '<a data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer">Copilot</a>'
+            " reviewed"
+            "<p>Copilot reviewed 2 files and generated 3 comments.</p>"
+            "</div>"
+        )
+        assert _copilot_review_has_no_inline_comments(html) is False
+
+    def test_returns_false_when_phrase_in_separate_unrelated_block(self):
+        """'generated no comments' in a non-reviewer block must not trigger True.
+
+        This is the key false-positive guard: a user comment quoting the phrase must
+        NOT cause a PHASE2A → PHASE3A upgrade.
+        """
+        html = (
+            # Copilot reviewer block — no "generated no comments" here
+            '<div class="TimelineItem-body">'
+            '<a data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer">Copilot</a>'
+            " reviewed"
+            "</div>"
+            # Unrelated user comment that happens to contain the phrase
+            '<div class="TimelineItem-body">'
+            "<p>The CI pipeline generated no comments from the linter.</p>"
+            "</div>"
+        )
         assert _copilot_review_has_no_inline_comments(html) is False
 
     def test_returns_false_when_pattern_absent(self):
         """When the pattern is not found at all, return False (conservative default)."""
-        html = "<div>Copilot reviewed</div>"
+        html = (
+            '<div class="TimelineItem-body">'
+            '<a data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer">Copilot</a>'
+            " reviewed"
+            "</div>"
+        )
         assert _copilot_review_has_no_inline_comments(html) is False
 
     def test_returns_false_for_empty_html(self):
@@ -372,6 +422,25 @@ class TestCopilotReviewedExtraction:
             </div>
           </div>
     """
+
+    # Reviewer block that includes the "generated no comments" summary inside the same
+    # TimelineItem-body div — matching the actual GitHub PR HTML structure.
+    _REVIEWED_HTML_NO_COMMENTS = (
+        '<div class="TimelineItem-body d-flex flex-column flex-md-row flex-justify-start">'
+        '<div class="flex-auto flex-md-self-center">'
+        "<strong>"
+        '<a class="author Link--primary text-bold css-overflow-wrap-anywhere"'
+        ' data-hovercard-type="copilot"'
+        ' data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer"'
+        ' href="/apps/copilot-pull-request-reviewer">Copilot</a>'
+        '<span class="Label Label--secondary">AI</span>'
+        "</strong>"
+        "reviewed"
+        "<p>Copilot reviewed 3 out of 3 changed files in this pull request"
+        " and generated no comments.</p>"
+        "</div>"
+        "</div>"
+    )
 
     def test_copilot_reviewed_extracted_from_html(self):
         """Bug fix: 'Copilot reviewed' should be extracted from TimelineItem-body blocks
@@ -397,28 +466,45 @@ class TestCopilotReviewedExtraction:
         Real-world example: PR #386 had a review body containing
         'Copilot reviewed 3 out of 3 changed files in this pull request and generated no comments.'
         The PR was incorrectly classified as PHASE2A instead of PHASE3A.
+
+        The "generated no comments" text must appear inside the same TimelineItem-body block
+        as the copilot-pull-request-reviewer marker.
         """
-        html = (
-            self._REVIEWED_HTML
-            + "<p>Copilot reviewed 3 out of 3 changed files in this pull request"
-            " and generated no comments.</p>"
-        )
-        result = analyze_pr_html(html, "https://github.com/owner/repo/pull/386")
+        result = analyze_pr_html(self._REVIEWED_HTML_NO_COMMENTS, "https://github.com/owner/repo/pull/386")
         assert result["status"] == PHASE3A_LLM_FEEDBACK_FINISHED_WORK
 
     def test_copilot_reviewed_with_generated_zero_comments_yields_phase3a(self):
-        """'generated 0 comments' is also treated as no inline review comments → PHASE3A."""
-        html = self._REVIEWED_HTML + "<p>Copilot reviewed files and generated 0 comments.</p>"
+        """'generated 0 comments' inside the reviewer block is also treated as no inline comments → PHASE3A."""
+        html = self._REVIEWED_HTML_NO_COMMENTS.replace(
+            "generated no comments", "generated 0 comments"
+        )
         result = analyze_pr_html(html, "https://github.com/owner/repo/pull/1")
         assert result["status"] == PHASE3A_LLM_FEEDBACK_FINISHED_WORK
 
     def test_copilot_reviewed_with_generated_inline_comments_stays_phase2a(self):
         """When the review body says 'generated N comments' (N >= 1), inline review
         comments exist and Copilot must address them → PHASE2A."""
-        html = (
-            self._REVIEWED_HTML
-            + "<p>Copilot reviewed 2 out of 2 changed files and generated 3 comments.</p>"
+        html = self._REVIEWED_HTML_NO_COMMENTS.replace(
+            "generated no comments", "generated 3 comments"
         )
+        result = analyze_pr_html(html, "https://github.com/owner/repo/pull/1")
+        assert result["status"] == PHASE2A_REVIEW_COMPLETED
+
+    def test_no_comments_phrase_in_unrelated_user_comment_does_not_upgrade_to_phase3a(self):
+        """'generated no comments' in an unrelated user comment must NOT trigger PHASE3A.
+
+        This guards against the false-positive: a user quoting the phrase or a CI bot
+        posting a message like 'the linter generated no comments' must not be mistaken
+        for the Copilot reviewer's own review body.
+        """
+        # _REVIEWED_HTML contains the copilot reviewer block (no "generated no comments").
+        # The unrelated comment block below contains the phrase but is a different TimelineItem-body.
+        user_comment_with_phrase = (
+            '<div class="TimelineItem-body">'
+            "<p>The CI pipeline generated no comments from the linter.</p>"
+            "</div>"
+        )
+        html = self._REVIEWED_HTML + user_comment_with_phrase
         result = analyze_pr_html(html, "https://github.com/owner/repo/pull/1")
         assert result["status"] == PHASE2A_REVIEW_COMPLETED
 

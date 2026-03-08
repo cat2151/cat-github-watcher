@@ -42,6 +42,11 @@ _DRAFT_PATTERNS = [
     re.compile(r"octicon-git-pull-request-draft", re.IGNORECASE),
 ]
 
+# Matches GitHub Copilot's review summary when it left no inline code comments.
+_NO_INLINE_COMMENTS_PATTERN = re.compile(r"generated\s+(?:no|0)\s+comments?", re.IGNORECASE)
+# Lookahead that splits HTML at the start of each TimelineItem-body div boundary.
+_TIMELINE_ITEM_BODY_SPLIT_PATTERN = re.compile(r"(?=<div[^>]*TimelineItem-body[^>]*>)", re.IGNORECASE)
+
 
 def _is_draft_from_html(html: str) -> bool:
     """HTMLからdraft状態を検出する。"""
@@ -52,7 +57,11 @@ def _is_draft_from_html(html: str) -> bool:
 
 
 def _copilot_review_has_no_inline_comments(html: str) -> bool:
-    """Return True when the Copilot reviewer's review body explicitly states no inline comments.
+    """Return True when the Copilot PR reviewer's review body explicitly states no inline comments.
+
+    Scopes the search to HTML blocks that contain the copilot-pull-request-reviewer marker
+    (i.e. the TimelineItem-body div for the Copilot reviewer's event) to prevent false
+    positives from arbitrary PR comment text that happens to quote the phrase.
 
     GitHub Copilot's review body contains text like
     "generated no comments" or "generated 0 comments" when the review found no issues
@@ -63,8 +72,15 @@ def _copilot_review_has_no_inline_comments(html: str) -> bool:
     """
     if not html:
         return False
-    pattern = re.compile(r"generated\s+(?:no|0)\s+comments?", re.IGNORECASE)
-    return bool(pattern.search(html))
+    # Split at TimelineItem-body boundaries so the "generated no/0 comments" phrase is only
+    # matched within the same reviewer block as the copilot-pull-request-reviewer marker.
+    # This prevents a user comment that quotes the phrase from triggering a false-positive
+    # PHASE2A → PHASE3A upgrade.
+    blocks = _TIMELINE_ITEM_BODY_SPLIT_PATTERN.split(html)
+    return any(
+        "copilot-pull-request-reviewer" in block and _NO_INLINE_COMMENTS_PATTERN.search(block)
+        for block in blocks
+    )
 
 
 def _is_review_still_in_progress(llm_statuses: list[str]) -> bool:

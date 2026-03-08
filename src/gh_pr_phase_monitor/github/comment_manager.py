@@ -80,6 +80,15 @@ def post_phase2_comment(
     if not pr_url:
         return False
 
+    # Safety check: if HTML was analyzed and the "Implement suggestion(s)" button is absent,
+    # the PHASE2A detection may be a false positive. Block the comment to prevent erroneous sends.
+    if "has_implement_suggestions_button" in pr and not pr["has_implement_suggestions_button"]:
+        print(
+            '    Safety check failed: "Implement suggestion(s)" button not found in HTML.'
+            " Skipping comment to prevent false positive."
+        )
+        return False
+
     agent_mention = _get_agent_mention(pr, config)
 
     # Check if we already posted a comment for this agent

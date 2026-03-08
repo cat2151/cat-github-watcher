@@ -44,5 +44,6 @@ def fetch_and_analyze_pr_html(pr: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     # phase判定・表示用にpr辞書を更新
     pr["llm_statuses"] = analysis.get("llm_statuses", [])
     pr["html_status"] = analysis.get("status", "")
+    pr["has_implement_suggestions_button"] = analysis.get("has_implement_suggestions_button", False)
 
     return analysis

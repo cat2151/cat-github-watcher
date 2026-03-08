@@ -6,11 +6,32 @@ import json
 import re
 from typing import Any, Dict, List, Optional, Union
 
-# Phase constants
+# Phase constants (legacy: used as fallback when html_status is unavailable)
 PHASE_LLM_WORKING = "LLM working"
 PHASE_1 = "phase1"
 PHASE_2 = "phase2"
 PHASE_3 = "phase3"
+
+# 1A~3A html_status constants (authoritative when html_status is available)
+PHASE1A_DRAFT_LLM_WORKING = "PHASE1A_DRAFT_LLM_WORKING"
+PHASE1B_DRAFT_LLM_FINISHED_WORK = "PHASE1B_DRAFT_LLM_FINISHED_WORK"
+PHASE1B_LLM_FINISHED_WORK = "PHASE1B_LLM_FINISHED_WORK"
+PHASE1C_REVIEW_IN_PROGRESS = "PHASE1C_REVIEW_IN_PROGRESS"
+PHASE2A_REVIEW_COMPLETED = "PHASE2A_REVIEW_COMPLETED"
+PHASE2B_LLM_ADDRESSING_FEEDBACK = "PHASE2B_LLM_ADDRESSING_FEEDBACK"
+PHASE3A_LLM_FEEDBACK_FINISHED_WORK = "PHASE3A_LLM_FEEDBACK_FINISHED_WORK"
+
+# html_statuses that represent "LLM is actively working":
+# - PHASE1A: draft PR, LLM still working (started work, no finished work yet)
+# - PHASE1C: review in progress (LLM/Copilot actively reviewing or non-draft with ambiguous working state)
+# - PHASE2B: non-draft, post-review, LLM addressing feedback (started work after reviewing, no finished work)
+_LLM_WORKING_HTML_STATUSES = frozenset(
+    {
+        PHASE1A_DRAFT_LLM_WORKING,
+        PHASE1C_REVIEW_IN_PROGRESS,
+        PHASE2B_LLM_ADDRESSING_FEEDBACK,
+    }
+)
 
 # Tracks comment reaction signatures that were confirmed as "finished" via HTML snapshot analysis.
 _finished_reaction_signatures: Dict[str, str] = {}
@@ -316,6 +337,25 @@ def _determine_phase_without_comment_reactions(pr: Dict[str, Any]) -> str:
 
     # reviewingイベントなし = LLM working
     return PHASE_LLM_WORKING
+
+
+def is_llm_working(pr: Dict[str, Any]) -> bool:
+    """Return True when the PR is currently in LLM working state.
+
+    Checks html_status (1A~3A) when available, otherwise falls back to the
+    legacy phase field.  This replaces bare ``phase == PHASE_LLM_WORKING``
+    comparisons so callers do not need to know which constant system is active.
+
+    Args:
+        pr: PR data dictionary
+
+    Returns:
+        True if the PR is in an LLM-working state, False otherwise
+    """
+    html_status = pr.get("html_status")
+    if html_status:
+        return html_status in _LLM_WORKING_HTML_STATUSES
+    return pr.get("phase") == PHASE_LLM_WORKING
 
 
 def determine_phase(pr: Dict[str, Any]) -> str:

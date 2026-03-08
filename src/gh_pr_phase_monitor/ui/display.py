@@ -7,18 +7,18 @@ import traceback
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from ..github import github_client
 from ..core.colors import colorize_phase, colorize_url
 from ..core.config import (
     DEFAULT_MAX_LLM_WORKING_PARALLEL,
     get_assign_to_copilot_config,
     resolve_execution_config_for_repo,
 )
-from ..github.github_client import assign_issue_to_copilot, get_issues_from_repositories
-from ..phase.phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label
-from ..phase.html.llm_status_extractor import get_latest_activity_timestamp
-from ..monitor.state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from ..core.time_utils import format_elapsed_time
+from ..github import github_client
+from ..github.github_client import assign_issue_to_copilot, get_issues_from_repositories
+from ..monitor.state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
+from ..phase.html.llm_status_extractor import get_latest_activity_timestamp
+from ..phase.phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label, is_llm_working
 
 # Module-level cache for the most recently fetched top issues
 _cached_top_issues: List[Dict[str, Any]] = []
@@ -121,7 +121,7 @@ def display_status_summary(
         # types (started work, started reviewing, finished work, etc.).
         # Fallback: when no parseable timestamp exists in any status entry, use
         # the PR's createdAt field with the original 30-minute threshold.
-        if phase == PHASE_LLM_WORKING:
+        if is_llm_working(pr):
             latest_activity_ts = get_latest_activity_timestamp(llm_statuses)
             if latest_activity_ts is not None:
                 if current_time - latest_activity_ts >= 3600:

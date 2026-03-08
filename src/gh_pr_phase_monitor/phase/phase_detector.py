@@ -23,8 +23,15 @@ PHASE3A_LLM_FEEDBACK_FINISHED_WORK = "PHASE3A_LLM_FEEDBACK_FINISHED_WORK"
 
 # html_statuses that represent "LLM is actively working":
 # - PHASE1A: draft PR, LLM still working (started work, no finished work yet)
+# - PHASE1C: review in progress (LLM/Copilot actively reviewing or non-draft with ambiguous working state)
 # - PHASE2B: non-draft, post-review, LLM addressing feedback (started work after reviewing, no finished work)
-_LLM_WORKING_HTML_STATUSES = frozenset({PHASE1A_DRAFT_LLM_WORKING, PHASE2B_LLM_ADDRESSING_FEEDBACK})
+_LLM_WORKING_HTML_STATUSES = frozenset(
+    {
+        PHASE1A_DRAFT_LLM_WORKING,
+        PHASE1C_REVIEW_IN_PROGRESS,
+        PHASE2B_LLM_ADDRESSING_FEEDBACK,
+    }
+)
 
 # Tracks comment reaction signatures that were confirmed as "finished" via HTML snapshot analysis.
 _finished_reaction_signatures: Dict[str, str] = {}

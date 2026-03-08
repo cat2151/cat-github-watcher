@@ -19,6 +19,25 @@ from ..phase.phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_l
 from ..monitor.state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from ..core.time_utils import format_elapsed_time
 
+# Module-level cache for the most recently fetched top issues
+_cached_top_issues: List[Dict[str, Any]] = []
+
+
+def display_cached_top_issues() -> None:
+    """Display top issues from the in-memory cache without making any API calls.
+
+    This is used when no repository changes are detected (skip_pr_check=True) to show
+    the last-known issue list without consuming API tokens.
+    """
+    if not _cached_top_issues:
+        return
+    print(f"\n{'=' * 50}")
+    print(f"  Top {len(_cached_top_issues)} issues (sorted by last update, descending, from cache):\n")
+    for idx, issue in enumerate(_cached_top_issues, 1):
+        print(f"  {idx}. #{issue['number']}: {issue['title']}")
+        print(f"     URL: {colorize_url(issue['url'])}")
+        print()
+
 
 def display_status_summary(
     all_prs: List[Dict[str, Any]],
@@ -176,6 +195,10 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
             # Fetch top issues early to detect assigned work and reuse for display
             issue_limit = config.get("issue_display_limit", 10) if config else 10
             top_issues = get_issues_from_repositories(repos_with_issues, limit=issue_limit)
+
+            # Cache the fetched issues so they can be displayed without re-fetching on no-change iterations
+            _cached_top_issues.clear()
+            _cached_top_issues.extend(top_issues)
 
             assigned_issue_count = sum(1 for issue in top_issues if issue.get("assignees"))
             effective_llm_working_count = llm_working_count + assigned_issue_count

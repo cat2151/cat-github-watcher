@@ -384,6 +384,61 @@ def test_display_issues_with_assign_lowest_number(mocker):
     mock_assign.assert_called_once()
 
 
+def test_display_cached_top_issues_empty(mocker, capsys):
+    """display_cached_top_issues outputs nothing when cache is empty"""
+    import src.gh_pr_phase_monitor.ui.display as display_module
+
+    mocker.patch.object(display_module, "_cached_top_issues", [])
+    from src.gh_pr_phase_monitor.ui.display import display_cached_top_issues
+    display_cached_top_issues()
+    out = capsys.readouterr().out
+    assert out == ""
+
+
+def test_display_cached_top_issues_shows_cached_data(mocker, capsys):
+    """display_cached_top_issues displays the cached issues without calling get_issues_from_repositories"""
+    import src.gh_pr_phase_monitor.ui.display as display_module
+
+    mocker.patch.object(display_module, "_cached_top_issues", [
+        {
+            "title": "Cached Issue 1",
+            "url": "https://github.com/testuser/test-repo/issues/10",
+            "number": 10,
+        },
+        {
+            "title": "Cached Issue 2",
+            "url": "https://github.com/testuser/test-repo/issues/20",
+            "number": 20,
+        },
+    ])
+    mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    from src.gh_pr_phase_monitor.ui.display import display_cached_top_issues
+    display_cached_top_issues()
+    out = capsys.readouterr().out
+    assert "Cached Issue 1" in out
+    assert "Cached Issue 2" in out
+    assert "#10" in out
+    assert "#20" in out
+    # Confirm no API calls were made
+    mock_get_issues.assert_not_called()
+
+
+def test_display_issues_populates_cache(mocker):
+    """display_issues_from_repos_without_prs populates _cached_top_issues after fetching"""
+    import src.gh_pr_phase_monitor.ui.display as display_module
+
+    mocker.patch.object(display_module, "_cached_top_issues", [])
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues")
+    mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    mock_get_repos.return_value = [{"name": "test-repo", "owner": "testuser", "openIssueCount": 1}]
+    fetched_issues = [
+        {"title": "Issue A", "url": "https://github.com/testuser/test-repo/issues/1", "number": 1},
+    ]
+    mock_get_issues.return_value = fetched_issues
+    display_issues_from_repos_without_prs(None)
+    assert list(display_module._cached_top_issues) == fetched_issues
+
+
 if __name__ == "__main__":
     test_display_issues_when_no_repos_with_prs()
     print("✓ Test 1 passed: display_issues_when_no_repos_with_prs")

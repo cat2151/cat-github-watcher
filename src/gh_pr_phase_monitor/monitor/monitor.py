@@ -8,10 +8,11 @@ from typing import Any, Dict, List, Optional
 from ..core.config import parse_interval
 from .state_tracker import get_last_state, is_reduced_frequency_mode, set_last_state, set_reduced_frequency_mode
 from ..core.time_utils import format_elapsed_time
+from ..phase.phase_detector import PHASE_LLM_WORKING
 
 
 def check_no_state_change_timeout(
-    all_prs: List[Dict[str, Any]], pr_phases: List[str], config: Optional[Dict[str, Any]] = None
+    all_prs: List[Dict[str, Any]], config: Optional[Dict[str, Any]] = None
 ) -> bool:
     """Check if the overall PR state has not changed for too long and switch to reduced frequency mode
 
@@ -21,8 +22,7 @@ def check_no_state_change_timeout(
     When changes are detected, monitoring returns to normal frequency mode.
 
     Args:
-        all_prs: List of all PRs
-        pr_phases: List of phase strings corresponding to all_prs
+        all_prs: List of all PRs. Each PR dict must have pr["phase"] set to its computed phase.
         config: Configuration dictionary (optional)
 
     Returns:
@@ -52,10 +52,9 @@ def check_no_state_change_timeout(
     current_time = time.time()
 
     # Create a snapshot of current state
-    # Validate that all_prs and pr_phases have the same length
-    if all_prs and pr_phases and len(all_prs) == len(pr_phases):
-        # Create frozenset of (url, phase) tuples to represent current state
-        current_state = frozenset((pr.get("url", ""), phase) for pr, phase in zip(all_prs, pr_phases))
+    # Build frozenset of (url, phase) tuples from the phase embedded in each PR dict
+    if all_prs:
+        current_state = frozenset((pr.get("url", ""), pr.get("phase", PHASE_LLM_WORKING)) for pr in all_prs)
     else:
         # Invalid or empty state
         current_state = frozenset()

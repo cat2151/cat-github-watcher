@@ -18,8 +18,9 @@ _last_state: Optional[Tuple[frozenset, float]] = None
 _reduced_frequency_mode: bool = False
 
 # Cache the last known PR snapshot for display when skipping PR check
-# Stores (all_prs, pr_phases, repos_with_prs) from the most recent successful fetch
-_last_pr_snapshot: Optional[Tuple[List[Dict[str, Any]], List[str], List[Dict[str, Any]]]] = None
+# Stores (all_prs, repos_with_prs) from the most recent successful fetch.
+# Each PR dict in all_prs carries its computed phase in pr["phase"].
+_last_pr_snapshot: Optional[Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]] = None
 
 
 def cleanup_old_pr_states(current_prs_with_phases: List[Tuple[str, str]]) -> None:
@@ -97,27 +98,27 @@ def set_reduced_frequency_mode(enabled: bool) -> None:
     _reduced_frequency_mode = enabled
 
 
-def get_last_pr_snapshot() -> Optional[Tuple[List[Dict[str, Any]], List[str], List[Dict[str, Any]]]]:
-    """Get the last known PR snapshot (all_prs, pr_phases, repos_with_prs)
+def get_last_pr_snapshot() -> Optional[Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]]:
+    """Get the last known PR snapshot (all_prs, repos_with_prs)
 
     Returns:
-        Tuple of (all_prs, pr_phases, repos_with_prs) from the last successful fetch,
-        or None if no snapshot has been stored yet
+        Tuple of (all_prs, repos_with_prs) from the last successful fetch,
+        or None if no snapshot has been stored yet.
+        Each PR dict in all_prs carries its computed phase in pr["phase"].
     """
     return _last_pr_snapshot
 
 
 def set_last_pr_snapshot(
     all_prs: List[Dict[str, Any]],
-    pr_phases: List[str],
     repos_with_prs: List[Dict[str, Any]],
 ) -> None:
     """Store the PR snapshot from the most recent successful fetch
 
     Args:
-        all_prs: List of all PRs from the last fetch
-        pr_phases: List of phase strings corresponding to all_prs
+        all_prs: List of all PRs from the last fetch.
+                 Each PR dict must have pr["phase"] set to its computed phase.
         repos_with_prs: List of repositories with open PRs
     """
     global _last_pr_snapshot
-    _last_pr_snapshot = (all_prs, pr_phases, repos_with_prs)
+    _last_pr_snapshot = (all_prs, repos_with_prs)

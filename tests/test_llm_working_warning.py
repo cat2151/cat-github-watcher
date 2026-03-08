@@ -33,13 +33,13 @@ class TestLLMWorkingCreatedAtWarning:
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
                 "createdAt": self._make_created_at(1801),  # 30 min 1 sec ago
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         calls = [str(call) for call in mock_print.call_args_list]
         output = " ".join(calls)
@@ -55,13 +55,13 @@ class TestLLMWorkingCreatedAtWarning:
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
                 "createdAt": self._make_created_at(1799),  # 29 min 59 sec ago
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         calls = [str(call) for call in mock_print.call_args_list]
         output = " ".join(calls)
@@ -77,13 +77,13 @@ class TestLLMWorkingCreatedAtWarning:
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
                 "createdAt": self._make_created_at(3600),  # 1 hour ago
+                "phase": PHASE_1,
             }
         ]
-        pr_phases = [PHASE_1]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         calls = [str(call) for call in mock_print.call_args_list]
         output = " ".join(calls)
@@ -99,13 +99,13 @@ class TestLLMWorkingCreatedAtWarning:
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
                 # no createdAt field
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         calls = [str(call) for call in mock_print.call_args_list]
         output = " ".join(calls)
@@ -120,13 +120,13 @@ class TestLLMWorkingCreatedAtWarning:
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
                 "createdAt": self._make_created_at(1800),  # exactly 30 minutes ago
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         calls = [str(call) for call in mock_print.call_args_list]
         output = " ".join(calls)
@@ -163,13 +163,13 @@ class TestLLMWorkingLatestActivityWarning:
                 "repository": {"name": "repo1", "owner": "owner"},
                 "createdAt": self._make_created_at(86401),  # > 24 hours ago
                 "llm_statuses": [started_status],
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         output = " ".join(str(c) for c in mock_print.call_args_list)
         assert "バグって" not in output
@@ -185,13 +185,13 @@ class TestLLMWorkingLatestActivityWarning:
                 "repository": {"name": "repo1", "owner": "owner"},
                 "createdAt": self._make_created_at(86401),  # > 24 hours ago
                 "llm_statuses": [reviewing_status],
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         output = " ".join(str(c) for c in mock_print.call_args_list)
         assert "バグって" not in output
@@ -208,13 +208,13 @@ class TestLLMWorkingLatestActivityWarning:
                 "repository": {"name": "repo1", "owner": "owner"},
                 "createdAt": self._make_created_at(7200),  # 2 hours ago
                 "llm_statuses": [started_status],
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         output = " ".join(str(c) for c in mock_print.call_args_list)
         assert "バグって、実はLLMがwork finishedなのに、workingと判定されている可能性があります" in output
@@ -235,13 +235,13 @@ class TestLLMWorkingLatestActivityWarning:
                 "repository": {"name": "repo1", "owner": "owner"},
                 "createdAt": self._make_created_at(7200),
                 "llm_statuses": [started_status],
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         output = " ".join(str(c) for c in mock_print.call_args_list)
         assert "バグって" not in output
@@ -258,13 +258,13 @@ class TestLLMWorkingLatestActivityWarning:
                 "repository": {"name": "repo1", "owner": "owner"},
                 "createdAt": self._make_created_at(3600),  # 1 hour ago
                 "llm_statuses": [started_status],
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         output = " ".join(str(c) for c in mock_print.call_args_list)
         assert "バグって" not in output

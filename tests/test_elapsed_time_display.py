@@ -42,13 +42,13 @@ class TestElapsedTimeDisplay:
                 "title": "New PR",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Extract all printed messages
         calls = [str(call) for call in mock_print.call_args_list]
@@ -66,14 +66,14 @@ class TestElapsedTimeDisplay:
                 "title": "Old PR",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         # First call to set the initial detection time
         mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Manually adjust the detection time to simulate 200 seconds elapsed
         state_key = ("https://github.com/owner/repo1/pulls/1", PHASE_LLM_WORKING)
@@ -81,7 +81,7 @@ class TestElapsedTimeDisplay:
 
         # Second call should show elapsed time
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Extract all printed messages
         calls = [str(call) for call in mock_print.call_args_list]
@@ -100,24 +100,23 @@ class TestElapsedTimeDisplay:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             }
         ]
 
-        # First call with PHASE_LLM_WORKING
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Verify that state was tracked
         state_key_1 = ("https://github.com/owner/repo1/pulls/1", PHASE_LLM_WORKING)
         assert state_key_1 in _pr_state_times
 
-        # Simulate phase change by calling with a different phase
-        pr_phases = [PHASE_1]
+        # Simulate phase change by updating the phase in the PR dict
+        all_prs[0]["phase"] = PHASE_1
         mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Verify that old state was cleaned up and new state was tracked
         state_key_2 = ("https://github.com/owner/repo1/pulls/1", PHASE_1)
@@ -132,19 +131,20 @@ class TestElapsedTimeDisplay:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             },
         ]
-        pr_phases = [PHASE_LLM_WORKING, PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 2}]
 
         # First call to track both PRs
         mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Verify both PRs are tracked
         assert len(_pr_state_times) == 2
@@ -155,12 +155,12 @@ class TestElapsedTimeDisplay:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
 
         mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Verify only one PR is now tracked (cleanup removed the other)
         assert len(_pr_state_times) == 1
@@ -174,14 +174,14 @@ class TestElapsedTimeDisplay:
                 "title": "PR at boundary",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_LLM_WORKING,
             }
         ]
-        pr_phases = [PHASE_LLM_WORKING]
         repos_with_prs = [{"name": "repo1", "owner": "owner", "openPRCount": 1}]
 
         # First call to set the initial detection time
         mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Manually adjust the detection time to simulate exactly 60 seconds elapsed
         state_key = ("https://github.com/owner/repo1/pulls/1", PHASE_LLM_WORKING)
@@ -189,7 +189,7 @@ class TestElapsedTimeDisplay:
 
         # Second call should show elapsed time since it's >= 60
         mock_print = mocker.patch("builtins.print")
-        display_status_summary(all_prs, pr_phases, repos_with_prs)
+        display_status_summary(all_prs, repos_with_prs)
 
         # Extract all printed messages
         calls = [str(call) for call in mock_print.call_args_list]

@@ -52,7 +52,7 @@ def _setup_mocks(mocker, *, changed_repos, snapshot):
 def test_html_refetched_for_cached_prs_when_updated_at_unchanged(mocker):
     """updatedAt不変 + キャッシュPRあり: GraphQLスキップ、HTMLは再取得される。"""
     pr = _make_mock_pr()
-    snapshot = ([pr], ["LLM working"], [{"name": "repo1", "owner": "testuser", "openPRCount": 1}])
+    snapshot = ([pr], [{"name": "repo1", "owner": "testuser", "openPRCount": 1}])
 
     mock_fetch_html, mock_get_repos, mock_get_prs = _setup_mocks(mocker, changed_repos=set(), snapshot=snapshot)
 
@@ -73,7 +73,7 @@ def test_html_refetched_for_cached_prs_when_updated_at_unchanged(mocker):
 def test_graphql_not_called_when_updated_at_unchanged(mocker):
     """updatedAt不変のとき、get_repositories_with_open_prs と get_pr_details_batch は呼ばれない。"""
     pr = _make_mock_pr()
-    snapshot = ([pr], ["LLM working"], [{"name": "repo1", "owner": "testuser", "openPRCount": 1}])
+    snapshot = ([pr], [{"name": "repo1", "owner": "testuser", "openPRCount": 1}])
 
     _, mock_get_repos, mock_get_prs = _setup_mocks(mocker, changed_repos=set(), snapshot=snapshot)
 
@@ -106,7 +106,7 @@ def test_baseline_reset_when_snapshot_is_none(mocker):
 
 def test_baseline_reset_when_snapshot_prs_empty(mocker):
     """updatedAt不変 + キャッシュPRが空のスナップショット: ベースラインをリセットして次イテレーションでフルチェックを強制する。"""
-    snapshot = ([], [], [])  # empty PRs
+    snapshot = ([], [])  # empty PRs
 
     _, _, _ = _setup_mocks(mocker, changed_repos=set(), snapshot=snapshot)
     mock_reset = mocker.patch("src.gh_pr_phase_monitor.main.reset_repos_updated_at_baseline")

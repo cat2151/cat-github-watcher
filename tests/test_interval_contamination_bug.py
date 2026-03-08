@@ -45,6 +45,7 @@ class TestIntervalContaminationBug:
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
+                "phase": PHASE_3,
             }
         ]
 
@@ -56,21 +57,20 @@ class TestIntervalContaminationBug:
         }
 
         # First call: initialize state with phase3
-        pr_phases = [PHASE_3]
-        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        result = check_no_state_change_timeout(all_prs, config)
         assert result is False  # Normal mode initially
 
         # Wait for timeout to elapse
         time.sleep(1.5)
 
         # Second call: should enter reduced frequency mode
-        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        result = check_no_state_change_timeout(all_prs, config)
         assert result is True  # Now in reduced frequency mode
 
         # Third call: change phase to trigger state change
-        pr_phases = [PHASE_2]
+        all_prs[0]["phase"] = PHASE_2
         mock_print = mocker.patch("builtins.print")
-        result = check_no_state_change_timeout(all_prs, pr_phases, config)
+        result = check_no_state_change_timeout(all_prs, config)
         assert result is False  # Should return to normal mode
 
         # Verify that return-to-normal message was printed

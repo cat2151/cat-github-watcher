@@ -23,7 +23,7 @@ from .issue_fetcher import assign_issue_to_copilot, get_issues_from_repositories
 from ..monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
 
 # Re-export PR functions
-from .pr_fetcher import get_pr_data, get_pr_details_batch
+from .pr_fetcher import get_pr_details_batch
 
 # Re-export repository functions
 from .repository_fetcher import (
@@ -44,7 +44,6 @@ __all__ = [
     "reset_repos_updated_at_baseline",
     "get_repositories_with_no_prs_and_open_issues",
     "get_pr_details_batch",
-    "get_pr_data",
     "get_issues_from_repositories",
     "assign_issue_to_copilot",
     "get_existing_comments",

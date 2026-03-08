@@ -4,7 +4,7 @@ GitHub PR Phase Monitor
 Monitors PR phases and opens browser for actionable phases
 """
 
-from .actions.pr_actions import mark_pr_ready, open_browser, process_pr, process_repository
+from .actions.pr_actions import mark_pr_ready, open_browser, process_pr
 from .core.colors import Colors, colorize_phase
 from .core.config import (
     get_assign_to_copilot_config,
@@ -23,7 +23,6 @@ from .github.comment_manager import (
 from .github.github_client import (
     get_current_user,
     get_existing_comments,
-    get_pr_data,
     get_pr_details_batch,
     get_repositories_with_open_prs,
 )
@@ -66,7 +65,6 @@ __all__ = [
     "get_current_user",
     "get_repositories_with_open_prs",
     "get_pr_details_batch",
-    "get_pr_data",
     "get_existing_comments",
     # Phase Detector
     "determine_phase",
@@ -83,7 +81,6 @@ __all__ = [
     "mark_pr_ready",
     "open_browser",
     "process_pr",
-    "process_repository",
     # Display
     "display_status_summary",
     "display_issues_from_repos_without_prs",

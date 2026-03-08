@@ -282,19 +282,19 @@ class TestNoChangeTimeout:
         assert "監視間隔を" in output  # Check for the interval change message without hardcoding the interval
 
     def test_prs_without_phase_key(self):
-        """Test that PRs without a 'phase' key are handled gracefully (phase defaults to empty string)"""
+        """Test that PRs without a 'phase' key are handled gracefully (phase defaults to PHASE_LLM_WORKING)"""
         all_prs = [
             {
                 "title": "PR 1",
                 "url": "https://github.com/owner/repo1/pulls/1",
                 "repository": {"name": "repo1", "owner": "owner"},
-                # no "phase" key - will default to "" in check
+                # no "phase" key - will default to PHASE_LLM_WORKING
             },
             {
                 "title": "PR 2",
                 "url": "https://github.com/owner/repo1/pulls/2",
                 "repository": {"name": "repo1", "owner": "owner"},
-                # no "phase" key - will default to "" in check
+                # no "phase" key - will default to PHASE_LLM_WORKING
             },
         ]
         config = {"no_change_timeout": "1s"}

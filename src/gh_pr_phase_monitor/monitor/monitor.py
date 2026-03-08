@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from ..core.config import parse_interval
 from .state_tracker import get_last_state, is_reduced_frequency_mode, set_last_state, set_reduced_frequency_mode
 from ..core.time_utils import format_elapsed_time
+from ..phase.phase_detector import PHASE_LLM_WORKING
 
 
 def check_no_state_change_timeout(
@@ -53,7 +54,7 @@ def check_no_state_change_timeout(
     # Create a snapshot of current state
     # Build frozenset of (url, phase) tuples from the phase embedded in each PR dict
     if all_prs:
-        current_state = frozenset((pr.get("url", ""), pr.get("phase", "")) for pr in all_prs)
+        current_state = frozenset((pr.get("url", ""), pr.get("phase", PHASE_LLM_WORKING)) for pr in all_prs)
     else:
         # Invalid or empty state
         current_state = frozenset()

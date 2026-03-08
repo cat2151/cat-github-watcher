@@ -3,8 +3,6 @@ PR fetching module for GitHub pull requests
 """
 
 import json
-import subprocess
-from pathlib import Path
 from typing import Any, Dict, List
 
 from .graphql_client import execute_graphql_query
@@ -61,23 +59,6 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                   author {{
                     login
                   }}
-                  reviews(last: 50) {{
-                    nodes {{
-                      author {{
-                        login
-                      }}
-                      state
-                      body
-                    }}
-                  }}
-                  latestReviews(first: 50) {{
-                    nodes {{
-                      author {{
-                        login
-                      }}
-                      state
-                    }}
-                  }}
                   reviewRequests(first: 10) {{
                     nodes {{
                       requestedReviewer {{
@@ -91,7 +72,6 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     }}
                   }}
                   comments(last: 10) {{
-                    totalCount
                     nodes {{
                       reactionGroups {{
                         content
@@ -109,15 +89,6 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                       isOutdated
                     }}
                   }}
-                  commits(last: 1) {{
-                    totalCount
-                  }}
-                  autoMergeRequest {{
-                    enabledAt
-                  }}
-                  mergeable
-                  reviewDecision
-                  state
                 }}
               }}
             }}
@@ -152,30 +123,6 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
                 # Transform GraphQL data to match expected format
                 for pr in prs:
-                    # Transform reviews - handle null authors
-                    reviews = []
-                    for review in pr.get("reviews", {}).get("nodes", []):
-                        author_data = review.get("author")
-                        if author_data is None:
-                            # Deleted account - use placeholder
-                            author = {"login": "[deleted]"}
-                        else:
-                            author = {"login": author_data.get("login", "")}
-                        reviews.append(
-                            {"author": author, "state": review.get("state", ""), "body": review.get("body", "")}
-                        )
-
-                    # Transform latestReviews - handle null authors
-                    latest_reviews = []
-                    for review in pr.get("latestReviews", {}).get("nodes", []):
-                        author_data = review.get("author")
-                        if author_data is None:
-                            # Deleted account - use placeholder
-                            author = {"login": "[deleted]"}
-                        else:
-                            author = {"login": author_data.get("login", "")}
-                        latest_reviews.append({"author": author, "state": review.get("state", "")})
-
                     # Transform reviewRequests
                     review_requests = []
                     for req in pr.get("reviewRequests", {}).get("nodes", []):
@@ -193,12 +140,10 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                         author = {"login": author_data.get("login", "")}
 
                     # Extract comment nodes with reactionGroups
-                    comments_data = pr.get("comments", {})
-                    comment_nodes = comments_data.get("nodes", [])
+                    comment_nodes = pr.get("comments", {}).get("nodes", [])
 
                     # Extract review threads
-                    review_threads_data = pr.get("reviewThreads", {})
-                    review_threads = review_threads_data.get("nodes", [])
+                    review_threads = pr.get("reviewThreads", {}).get("nodes", [])
 
                     # Add repository info to PR
                     pr_with_repo = {
@@ -207,46 +152,11 @@ def get_pr_details_batch(repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                         "isDraft": pr.get("isDraft", False),
                         "createdAt": pr.get("createdAt", ""),
                         "author": author,
-                        "reviews": reviews,
-                        "latestReviews": latest_reviews,
                         "reviewRequests": review_requests,
-                        "comments": comments_data.get("totalCount", 0),
                         "commentNodes": comment_nodes,
                         "reviewThreads": review_threads,
-                        "commits": pr.get("commits", {}).get("totalCount", 0),
-                        "autoMergeRequest": pr.get("autoMergeRequest"),
-                        "mergeable": pr.get("mergeable", ""),
-                        "reviewDecision": pr.get("reviewDecision"),
-                        "state": pr.get("state", ""),
                         "repository": {"name": repo_name, "owner": owner},
                     }
                     all_prs.append(pr_with_repo)
 
     return all_prs
-
-
-def get_pr_data(repo_dir: Path) -> List[Dict[str, Any]]:
-    """Get PR data from GitHub CLI (Legacy function - kept for compatibility)
-
-    This function is no longer used in the main flow but kept for potential
-    backwards compatibility or testing purposes.
-
-    Args:
-        repo_dir: Repository directory path
-
-    Returns:
-        List of PR data dictionaries
-    """
-    cmd = [
-        "gh",
-        "pr",
-        "list",
-        "--json",
-        "author,autoMergeRequest,comments,commits,isDraft,latestReviews,mergeable,reviewDecision,reviewRequests,reviews,state,statusCheckRollup,title,url",
-    ]
-
-    result = subprocess.run(
-        cmd, cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
-    )
-
-    return json.loads(result.stdout)

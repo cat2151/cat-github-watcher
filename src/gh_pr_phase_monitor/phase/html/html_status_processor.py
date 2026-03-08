@@ -44,5 +44,8 @@ def fetch_and_analyze_pr_html(pr: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     # phase判定・表示用にpr辞書を更新
     pr["llm_statuses"] = analysis.get("llm_statuses", [])
     pr["html_status"] = analysis.get("status", "")
+    # HTMLから最新のPRタイトルを取得して更新（キャッシュされた古いタイトルを上書き）
+    if "title" in analysis:
+        pr["title"] = analysis["title"]
 
     return analysis

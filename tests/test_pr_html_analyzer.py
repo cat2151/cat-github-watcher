@@ -16,6 +16,7 @@ from src.gh_pr_phase_monitor.phase.html.pr_html_analyzer import (
     PHASE2B_LLM_ADDRESSING_FEEDBACK,
     PHASE3A_LLM_FEEDBACK_FINISHED_WORK,
     _determine_html_status,
+    _extract_title_from_html,
     _is_draft_from_html,
     _is_review_still_in_progress,
     analyze_pr_html,
@@ -326,4 +327,46 @@ class TestSaveAnalysisJson:
         json_path = tmp_path / "repo_5.json"
         # Should not raise
         json.loads(json_path.read_text(encoding="utf-8"))
+
+
+class TestExtractTitleFromHtml:
+    def test_extracts_title_from_github_pr_page(self):
+        html = "<html><head><title>Fix: remove WIP prefix \u00b7 Pull Request #123 \u00b7 owner/repo \u00b7 GitHub</title></head></html>"
+        assert _extract_title_from_html(html) == "Fix: remove WIP prefix"
+
+    def test_extracts_title_with_wip_prefix(self):
+        html = "<html><head><title>WIP: fix something \u00b7 Pull Request #42 \u00b7 owner/repo</title></head></html>"
+        assert _extract_title_from_html(html) == "WIP: fix something"
+
+    def test_decodes_html_entities_in_title(self):
+        html = "<html><head><title>Fix &amp; improve &lt;something&gt; \u00b7 Pull Request #1 \u00b7 owner/repo</title></head></html>"
+        assert _extract_title_from_html(html) == "Fix & improve <something>"
+
+    def test_returns_none_when_no_title_tag(self):
+        html = "<html><body>No title tag here</body></html>"
+        assert _extract_title_from_html(html) is None
+
+    def test_returns_none_when_title_has_no_pr_separator(self):
+        html = "<html><head><title>Just a plain title without separator</title></head></html>"
+        assert _extract_title_from_html(html) is None
+
+    def test_returns_none_for_empty_html(self):
+        assert _extract_title_from_html("") is None
+
+    def test_title_with_dot_in_pr_title(self):
+        """PR titles containing version numbers (dots, numbers) extract correctly."""
+        html = "<html><head><title>feat: update v1.2 \u00b7 Pull Request #99 \u00b7 owner/repo</title></head></html>"
+        assert _extract_title_from_html(html) == "feat: update v1.2"
+
+
+class TestAnalyzePrHtmlTitle:
+    def test_includes_title_in_result_when_extractable(self):
+        html = "<html><head><title>My PR Title \u00b7 Pull Request #1 \u00b7 owner/repo</title></head></html>"
+        result = analyze_pr_html(html, "https://github.com/owner/repo/pull/1")
+        assert result.get("title") == "My PR Title"
+
+    def test_does_not_include_title_when_not_extractable(self):
+        html = "<html><body>No title tag or separator</body></html>"
+        result = analyze_pr_html(html, "https://github.com/owner/repo/pull/1")
+        assert "title" not in result
 

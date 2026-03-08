@@ -132,3 +132,51 @@ def test_fetch_and_analyze_pr_html_updates_llm_statuses_for_phase_detection(mock
     from src.gh_pr_phase_monitor.phase.phase_detector import PHASE_3
     assert pr["llm_statuses"] == statuses_for_phase3
     assert determine_phase(pr) == PHASE_3
+
+
+def test_fetch_and_analyze_pr_html_updates_pr_title_from_html(mocker):
+    """HTML取得成功時: analysisにtitleが含まれる場合、pr["title"]を更新する。"""
+    pr = {"url": "https://github.com/owner/repo/pull/1", "title": "WIP: old title"}
+    mock_html = "<html><body>PR content</body></html>"
+    mock_analysis = {
+        "pr_url": pr["url"],
+        "is_draft": False,
+        "llm_statuses": [],
+        "status": "PHASE1C_REVIEW_IN_PROGRESS",
+        "title": "New title without WIP",
+    }
+
+    mock_fetch = mocker.patch("src.gh_pr_phase_monitor.phase.html.html_status_processor._fetch_pr_html")
+    mock_analyze = mocker.patch("src.gh_pr_phase_monitor.phase.html.html_status_processor.analyze_pr_html")
+    mocker.patch("src.gh_pr_phase_monitor.phase.html.html_status_processor.save_html_to_logs")
+    mock_fetch.return_value = mock_html
+    mock_analyze.return_value = mock_analysis
+
+    fetch_and_analyze_pr_html(pr)
+
+    # pr["title"]がHTMLから取得した最新タイトルで更新されること
+    assert pr["title"] == "New title without WIP"
+
+
+def test_fetch_and_analyze_pr_html_does_not_update_title_when_not_in_analysis(mocker):
+    """HTML取得成功時: analysisにtitleが含まれない場合、pr["title"]は変更しない。"""
+    pr = {"url": "https://github.com/owner/repo/pull/1", "title": "Original title"}
+    mock_html = "<html><body>PR content</body></html>"
+    mock_analysis = {
+        "pr_url": pr["url"],
+        "is_draft": False,
+        "llm_statuses": [],
+        "status": "PHASE1C_REVIEW_IN_PROGRESS",
+        # "title" key absent - title extraction failed
+    }
+
+    mock_fetch = mocker.patch("src.gh_pr_phase_monitor.phase.html.html_status_processor._fetch_pr_html")
+    mock_analyze = mocker.patch("src.gh_pr_phase_monitor.phase.html.html_status_processor.analyze_pr_html")
+    mocker.patch("src.gh_pr_phase_monitor.phase.html.html_status_processor.save_html_to_logs")
+    mock_fetch.return_value = mock_html
+    mock_analyze.return_value = mock_analysis
+
+    fetch_and_analyze_pr_html(pr)
+
+    # titleがanalysisにない場合、pr["title"]は変更されないこと
+    assert pr["title"] == "Original title"

@@ -1,4 +1,4 @@
-Last updated: 2026-03-09
+Last updated: 2026-03-10
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -552,9 +552,12 @@ MIT License - 詳細はLICENSEファイルを参照してください
     📁 monitor/
       📄 __init__.py
       📄 auto_updater.py
+      📄 error_logger.py
+      📄 iteration_runner.py
       📄 local_repo_watcher.py
       📄 monitor.py
       📄 pages_watcher.py
+      📄 pr_processor.py
       📄 snapshot_path_utils.py
       📄 state_tracker.py
     📁 phase/
@@ -661,4 +664,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-03-09 07:01:14 JST
+Generated at: 2026-03-10 07:03:29 JST

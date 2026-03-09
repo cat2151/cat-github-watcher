@@ -1,4 +1,4 @@
-Last updated: 2026-03-09
+Last updated: 2026-03-10
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -261,9 +261,12 @@ Last updated: 2026-03-09
 - src/gh_pr_phase_monitor/main.py
 - src/gh_pr_phase_monitor/monitor/__init__.py
 - src/gh_pr_phase_monitor/monitor/auto_updater.py
+- src/gh_pr_phase_monitor/monitor/error_logger.py
+- src/gh_pr_phase_monitor/monitor/iteration_runner.py
 - src/gh_pr_phase_monitor/monitor/local_repo_watcher.py
 - src/gh_pr_phase_monitor/monitor/monitor.py
 - src/gh_pr_phase_monitor/monitor/pages_watcher.py
+- src/gh_pr_phase_monitor/monitor/pr_processor.py
 - src/gh_pr_phase_monitor/monitor/snapshot_path_utils.py
 - src/gh_pr_phase_monitor/monitor/state_tracker.py
 - src/gh_pr_phase_monitor/phase/__init__.py
@@ -343,610 +346,632 @@ Last updated: 2026-03-09
 - tests/test_wait_handler_callback.py
 
 ## 現在のオープンIssues
-## [Issue #406](../issue-notes/406.md): 大きなファイルの検出: 1個のファイルが500行を超えています
-以下のファイルが500行を超えています。リファクタリングを検討してください。
+## [Issue #411](../issue-notes/411.md): phase3A後PRクローズ時にauto pullが実行されない問題を修正
+- [x] Understand the issue: when a repo's PR was in phase3A and the user merges/closes it, the open PR count drops to 0, so `notify_phase3_detected` is never called and auto-pull never happens
+- [x] Add `_repos_awaiting_post_phase3_check: Set[str]` tracking in `local_repo_watcher.py`
+- [x] Modify `n...
+ラベル: 
+--- issue-notes/411.md の内容 ---
 
-## 検出されたファイル
+```markdown
 
-| ファイル | 行数 | 超過行数 |
-|---------|------|----------|
-| `src/gh_pr_phase_monitor/main.py` | 532 | +32 |
+```
 
-## テスト実施のお願い
+## [Issue #410](../issue-notes/410.md): PRをcloseし、pullすべき状態のリポジトリになったのに、opened PRが0になったためか自動pullがされていなかった
 
-- リファクタリング前後にテストを実行し、それぞれのテスト失敗件数を報告してください
-- リファクタリング前後のどちらかでテストがredの場合、まず別issueでtest greenにしてからリファクタリングしてください
-
-## 推奨事項
-
-1. 単一責任の原...
-ラベル: refactoring, code-quality, automated
---- issue-notes/406.md の内容 ---
+ラベル: 
+--- issue-notes/410.md の内容 ---
 
 ```markdown
 
 ```
 
 ## ドキュメントで言及されているファイルの内容
-### src/gh_pr_phase_monitor/main.py
+### .github/actions-tmp/issue-notes/10.md
+```md
+{% raw %}
+# issue callgraph を他projectから使いやすくする #10
+[issues #10](https://github.com/cat2151/github-actions/issues/10)
+
+# ブレインストーミング
+- 洗い出し
+    - 他projectから使う場合の問題を洗い出す、今見えている範囲で、手早く、このnoteに可視化する
+    - 洗い出したものは、一部は別issueに切り分ける
+- close条件
+    - [x] まずは4つそれぞれを個別のdirに切り分けてtest greenとなること、とするつもり
+        - 別issueに切り分けるつもり
+- 切り分け
+    - 別dirに切り分ける
+        - [x] 課題、`codeql-queries/` が `.github/` 配下にある。対策、`.github_automation/callgraph/codeql-queries/` とする
+        - [x] 課題、scriptも、`.github/`配下にある。対策、移動する
+        - 方法、agentを試し、ハルシネーションで時間が取られるなら人力に切り替える
+- test
+    - local WSL + act でtestする
+- 名前
+    - [x] 課題、名前 enhanced が不要。対策、名前から enhanced を削除してymlなどもそれぞれ同期して修正すべし
+- docs
+    - [x] call導入手順を書く
+
+# 状況
+- 実際に他project tonejs-mml-to-json リポジトリにて使うことができている
+    - その際に発生した運用ミスは、
+        - call導入手順のメンテを行ったので、改善された、と判断する
+
+# closeとする
+
+{% endraw %}
+```
+
+### .github/actions-tmp/issue-notes/11.md
+```md
+{% raw %}
+# issue translate を他projectから使いやすくする #11
+[issues #11](https://github.com/cat2151/github-actions/issues/11)
+
+# ブレインストーミング
+- 課題、個別dirへの移動が必要。
+    - scripts
+- 課題、promptをハードコーディングでなく、promptsに切り出す。
+    - さらに、呼び出し元ymlから任意のpromptsを指定できるようにする。
+- 済、課題、README以外のtranslateも可能にするか検討する
+    - 対策、シンプル優先でREADME決め打ちにする
+        - 理由、README以外の用途となると、複数ファイルをどうGemini APIにわたすか？等、仕様が爆発的にふくらんでいくリスクがある
+        - README以外の用途が明確でないうちは、README決め打ちにするほうがよい
+- docs
+    - call導入手順を書く
+
+# 状況
+- 上記のうち、別dirへの切り分け等は実施済みのはず
+- どうする？
+    - それをここに可視化する。
+
+{% endraw %}
+```
+
+### src/gh_pr_phase_monitor/monitor/local_repo_watcher.py
 ```py
 {% raw %}
 """
-Main execution module for GitHub PR Phase Monitor
+Local repository monitoring module
+
+Scans the parent directory of the current working directory for local git
+repositories owned by the current GitHub user, checks if they have pullable
+changes (upstream commits not yet merged), and optionally auto-pulls them.
+
+Inspired by cat-repo-auditor/github_local_checker.py.
 """
 
-import signal
-import sys
+from __future__ import annotations
+
+import os
+import subprocess
+import threading
 import time
-import traceback
-from datetime import UTC, datetime
 from pathlib import Path
+from typing import Dict, List, Optional
 
-from .actions.pr_actions import process_pr
-from .core.config import (
-    DEFAULT_ENABLE_AUTO_UPDATE,
-    DEFAULT_MAX_LLM_WORKING_PARALLEL,
-    get_config_mtime,
-    load_config,
-    parse_interval,
-    print_config,
-    validate_phase3_merge_config_required,
-)
-from .core.time_utils import format_elapsed_time
-from .github.github_auth import get_current_user
-from .github.github_client import (
-    get_pr_details_batch,
-    get_repos_changed_since_last_check,
-    get_repositories_with_open_prs,
-    reset_repos_updated_at_baseline,
-)
-from .github.graphql_client import GitHubRateLimitError, get_rate_limit_info
-from .github.rate_limit_handler import (
-    _check_rate_limit_throttle,
-    _display_rate_limit_usage,
-    _format_rate_limit_reset,
-)
-from .monitor.auto_updater import (
-    UPDATE_CHECK_INTERVAL_SECONDS,
-    maybe_self_update,
-    run_startup_self_update_foreground,
-)
-from .monitor.local_repo_watcher import (
-    display_pending_local_repo_results,
-    notify_phase3_detected,
-    start_local_repo_monitoring,
-)
-from .monitor.monitor import check_no_state_change_timeout
-from .monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
-from .monitor.state_tracker import get_last_pr_snapshot, set_last_pr_snapshot
-from .phase.html.html_status_processor import fetch_and_analyze_pr_html
-from .phase.phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase, is_llm_working
-from .ui.display import display_cached_top_issues, display_issues_from_repos_without_prs, display_status_summary
-from .ui.wait_handler import wait_with_countdown
+from .auto_updater import REPO_ROOT, restart_application
+from ..core.colors import Colors
 
-LOG_DIR = Path("logs")
+# Status constants (same classification as cat-repo-auditor)
+STATUS_PULLABLE = "pullable"  # behind > 0, ahead == 0, not dirty → can pull now
+STATUS_DIVERGED = "diverged"  # behind > 0 and ahead > 0 → needs manual merge
+STATUS_UP_TO_DATE = "up_to_date"  # behind == 0 → already latest
+STATUS_UNKNOWN = "unknown"  # fetch failed or dirty with behind > 0
+
+# Throttle repeated git-fetch cycles to avoid excessive network calls
+LOCAL_REPO_CHECK_INTERVAL_SECONDS = 300  # 5 minutes
+
+_last_local_check_time: float = 0.0
+
+# Per-repo state constants for background check tracking
+REPO_STATE_STARTUP_CHECKING = "startup_checking"  # 起動時検査中
+REPO_STATE_DONE = "done"  # 起動後検査完了
+REPO_STATE_NEEDS_CHECK = "needs_check"  # 起動後検査が必要（phase3検知）
+REPO_STATE_CHECKING = "checking"  # 起動後検査中
+
+# Module-level state for background monitoring
+_repo_states: Dict[str, str] = {}  # repo_name -> state
+_pending_lines: List[str] = []  # 表示待ち行（次のintervalで一括表示）
+_pending_needs_restart: bool = False  # 自己更新による再起動フラグ
+_state_lock = threading.Lock()
+_startup_started: bool = False  # 起動時検査を開始済みか
 
 
-def log_error_to_file(message: str, exc: Exception | None = None, base_dir: Path | str | None = None) -> None:
-    """Append an error entry to logs/error.log without interrupting execution"""
-    try:
-        log_dir = Path(base_dir) if base_dir else LOG_DIR
-        log_dir.mkdir(parents=True, exist_ok=True)
-        log_path = log_dir / "error.log"
-        timestamp = datetime.now(UTC).isoformat(timespec="seconds")
-        with log_path.open("a", encoding="utf-8") as log_file:
-            log_file.write(f"[{timestamp} UTC] {message}\n")
-            if exc:
-                log_file.writelines(traceback.format_exception(type(exc), exc, exc.__traceback__))
-            log_file.write("\n")
-    except Exception:
-        # Avoid any logging-related failures impacting the main loop
-        pass
+def _run_git(args: list[str], cwd: str) -> tuple[int, str, str]:
+    """Run a git command and return (returncode, stdout, stderr)."""
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"  # Prevent credential prompts from blocking
+    result = subprocess.run(
+        ["git"] + args,
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=30,
+        env=env,
+    )
+    return result.returncode, result.stdout.strip(), result.stderr.strip()
 
 
-def _process_open_prs(
-    all_prs: list,
-    phase3_repo_names: list,
-    config: dict,
-) -> None:
-    """HTML取得・phase判定・PR処理を全openなPRに対して実行する。
+def _is_git_repo(path: str) -> bool:
+    """Return True if the directory is a git repository."""
+    rc, _, _ = _run_git(["rev-parse", "--git-dir"], path)
+    return rc == 0
 
-    all_prs の各PRに対して fetch_and_analyze_pr_html → determine_phase → process_pr を実行し、
-    結果を pr["phase"] に書き込み、phase3_repo_names に追記する。
+
+def _get_remote_url(path: str) -> Optional[str]:
+    """Return the URL of the 'origin' remote, or None."""
+    rc, out, _ = _run_git(["remote", "get-url", "origin"], path)
+    return out if rc == 0 and out else None
+
+
+def _is_target_repo(remote_url: str, github_username: str) -> bool:
+    """Return True if the remote URL belongs to the given GitHub user.
+
+    Supports both HTTPS (https://github.com/<user>/...)
+    and SSH (git@github.com:<user>/...) URL formats.
+    Uses strict host matching to avoid false positives from URLs like
+    'github.com.evil.com' or 'notgithub.com'.
     """
-    for pr in all_prs:
-        try:
-            # HTMLを取得・解析・保存（メインフロー: phaseに関わらず全PRに対して実行）
-            try:
-                fetch_and_analyze_pr_html(pr)
-            except Exception as html_error:
-                print(f"    Failed to fetch/analyze HTML for PR: {html_error}")
-                log_error_to_file(
-                    f"Failed to fetch/analyze HTML for {pr.get('url', 'unknown')}",
-                    html_error,
-                )
+    user_low = github_username.lower()
+    stripped = remote_url.strip().lower()
 
-            # pr["llm_statuses"] が更新された後にphaseを判定する
-            phase = determine_phase(pr)
+    # SSH format: git@github.com:<user>/...
+    if stripped.startswith("git@github.com:"):
+        rest = stripped[len("git@github.com:") :]
+        return rest.startswith(f"{user_low}/")
 
-            pr["phase"] = phase
-            process_pr(pr, config, phase)
+    # HTTPS format: https://github.com/<user>/...
+    for prefix in ("https://github.com/", "http://github.com/"):
+        if stripped.startswith(prefix):
+            rest = stripped[len(prefix) :]
+            return rest.startswith(f"{user_low}/")
 
-            # phase3検知時: 該当リポジトリをpullable検査の対象に登録
-            if phase == PHASE_3:
-                repo_name = pr.get("repository", {}).get("name", "")
-                if repo_name and repo_name not in phase3_repo_names:
-                    phase3_repo_names.append(repo_name)
-        except Exception as pr_error:
-            log_error_to_file(
-                f"Failed to process PR {pr.get('url', 'unknown') or pr.get('title', 'unknown')}",
-                pr_error,
-            )
-            pr["phase"] = PHASE_LLM_WORKING
+    return False
 
 
-def main():
-    """Main execution function"""
-    # --fetch-pr-html <URL> オプション: PR HTMLを取得してlogs/pr/に保存して終了
-    if len(sys.argv) >= 3 and sys.argv[1] == "--fetch-pr-html":
-        from .phase.html.pr_html_saver import save_pr_html
+def _is_dirty(path: str) -> bool:
+    """Return True if the working tree has uncommitted changes."""
+    rc, out, _ = _run_git(["status", "--porcelain"], path)
+    return bool(out) if rc == 0 else True
 
-        result = save_pr_html(sys.argv[2])
-        sys.exit(0 if result else 1)
 
-    config_path = "config.toml"
+def _get_current_branch(path: str) -> Optional[str]:
+    """Return the current branch name, or None on failure."""
+    rc, out, _ = _run_git(["rev-parse", "--abbrev-ref", "HEAD"], path)
+    return out if rc == 0 else None
 
-    if len(sys.argv) > 1:
-        config_path = sys.argv[1]
 
-    # Load config if it exists, otherwise use defaults
-    config = {}
-    config_mtime = 0.0
-    try:
-        config = load_config(config_path)
-        config_mtime = get_config_mtime(config_path)
-    except FileNotFoundError:
-        print(f"Warning: Config file '{config_path}' not found, using defaults")
-        print("You can create a config.toml file to customize settings")
-        print("Expected format:")
-        print('interval = "1m"  # Check interval (e.g., "30s", "1m", "5m")')
-        print()
+def _fetch_remote(path: str) -> tuple[bool, Optional[str]]:
+    """Fetch from origin. Returns (success, error_message_or_None)."""
+    rc, _, err = _run_git(["fetch", "origin", "--quiet"], path)
+    if rc != 0:
+        msg = f"git fetch 失敗: {err}" if err else "git fetch 失敗"
+        return False, msg
+    return True, None
 
-    # Get interval
-    normal_interval_str = config.get("interval", "1m")
-    try:
-        normal_interval_seconds = parse_interval(normal_interval_str)
-    except ValueError as e:
-        print(f"Error: {e}")
-        sys.exit(1)
 
-    print("GitHub PR Phase Monitor")
-    print("=" * 50)
-    print(f"Monitoring interval: {normal_interval_str} ({normal_interval_seconds} seconds)")
-    print("Monitoring all repositories for the current GitHub user")
-    print("Press CTRL+C to stop monitoring")
-    print("=" * 50)
+def _get_behind_ahead(path: str, branch: str) -> tuple[int, int]:
+    """Return (behind, ahead) relative to origin/<branch>, or (-1, -1) on failure."""
+    tracking = f"origin/{branch}"
+    rc, out, _ = _run_git(
+        ["rev-list", "--left-right", "--count", f"{tracking}...HEAD"],
+        path,
+    )
+    if rc != 0:
+        return -1, -1
+    parts = out.split()
+    if len(parts) != 2:
+        return -1, -1
+    return int(parts[0]), int(parts[1])
 
-    # Print configuration if verbose mode is enabled
-    if config.get("verbose", False):
-        print_config(config)
 
-    # Set up signal handler for graceful interruption
-    def signal_handler(_signum, _frame):
-        print("\n\nMonitoring interrupted by user (CTRL+C)")
-        print("Exiting...")
-        sys.exit(0)
+def _pull_repo(path: str) -> tuple[bool, str]:
+    """Execute git pull --ff-only. Returns (success, message).
 
-    signal.signal(signal.SIGINT, signal_handler)
+    Should only be called for repos classified as pullable
+    (dirty=False, ahead==0, behind>0).
+    """
+    rc, out, err = _run_git(["pull", "--ff-only"], path)
+    if rc != 0:
+        return False, err or "git pull 失敗"
+    return True, out or "Already up to date."
 
-    # 起動直後に自己リポジトリのアップデートチェックを実行（常に実行）
-    run_startup_self_update_foreground()
 
-    # Infinite monitoring loop
-    iteration = 0
-    consecutive_failures = 0
-    while True:
-        iteration += 1
+def _check_repo(path: str, github_username: str) -> dict:
+    """Fetch and classify a single repository.
 
-        if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE):
-            try:
-                maybe_self_update()
-            except Exception as update_error:
-                log_error_to_file("Auto-update check failed", update_error)
+    Returns a dict with keys:
+        name, path, remote_url, branch, dirty, behind, ahead, status, error, is_target
+    """
+    p = Path(path)
+    result: dict = {
+        "name": p.name,
+        "path": path,
+        "remote_url": None,
+        "branch": None,
+        "dirty": False,
+        "behind": None,
+        "ahead": None,
+        "status": STATUS_UNKNOWN,
+        "error": None,
+        "is_target": False,
+    }
 
-        print(f"\n{'=' * 50}")
-        print(f"Check #{iteration} - {time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"{'=' * 50}")
+    if not _is_git_repo(path):
+        return result
 
-        # Capture rate limit before API calls for per-iteration consumption tracking
-        try:
-            before_rate_limit = get_rate_limit_info()
-        except Exception as rate_limit_error:
-            log_error_to_file("Failed to fetch pre-iteration rate limit info", rate_limit_error)
-            before_rate_limit = None
+    remote_url = _get_remote_url(path)
+    result["remote_url"] = remote_url
+    if not remote_url:
+        return result
 
-        # Initialize variables to track status for summary
-        all_prs = []
-        repos_with_prs = []
-        phase3_repo_names: list[str] = []
-        skip_pr_check = False
+    if not _is_target_repo(remote_url, github_username):
+        return result
 
-        try:
-            # updatedAt pre-check: determine which repos (if any) changed since last iteration.
-            # On the first call this stores the baseline and returns None (run full check).
-            # On subsequent calls this compares the baseline and returns the set of changed repos.
-            # If the set is empty, nothing changed and we can skip Phase 1 + Phase 2 entirely.
-            try:
-                changed_repos = get_repos_changed_since_last_check()
-                if changed_repos is None:
-                    print("  updatedAt ベースライン記録済み (初回チェック)")
-                elif not changed_repos:
-                    print("  リポジトリに変化なし (updatedAt 不変)。Phase 1/2 をスキップします。")
-                    skip_pr_check = True
-                else:
-                    print(f"  {len(changed_repos)} リポジトリで変化を検知 → Phase 1/2 実行")
-            except Exception as updated_at_error:
-                log_error_to_file("updatedAt check failed, running full check", updated_at_error)
+    result["is_target"] = True
 
-            if not skip_pr_check:
-                # Phase 1: Get all repositories with open PRs (lightweight query)
-                print("\nPhase 1: Fetching repositories with open PRs...")
-                repos_with_prs = get_repositories_with_open_prs()
+    fetch_ok, fetch_err = _fetch_remote(path)
+    if not fetch_ok:
+        result["error"] = fetch_err
+        return result
 
-                if not repos_with_prs:
-                    print("  No repositories with open PRs found")
-                    # Display issues when no repositories with open PRs are found
-                    # No PRs means llm_working_count = 0
-                    display_issues_from_repos_without_prs(config, llm_working_count=0)
-                else:
-                    print(f"  Found {len(repos_with_prs)} repositories with open PRs:")
-                    for repo in repos_with_prs:
-                        print(f"    - {repo['name']}: {repo['openPRCount']} open PR(s)")
+    branch = _get_current_branch(path)
+    result["branch"] = branch
+    if not branch:
+        result["error"] = "ブランチ取得失敗"
+        return result
 
-                # Validate phase3_merge configuration for all repositories
-                # This must be done before processing PRs to fail fast
-                print("\nValidating phase3_merge configuration...")
-                for repo in repos_with_prs:
-                    repo_owner = repo.get("owner", "")
-                    repo_name = repo.get("name", "")
-                    if repo_owner and repo_name:
-                        validate_phase3_merge_config_required(config, repo_owner, repo_name)
+    dirty = _is_dirty(path)
+    result["dirty"] = dirty
 
-                # Phase 2: Get PR details for repositories with open PRs (detailed query)
-                print(f"\nPhase 2: Fetching PR details for {len(repos_with_prs)} repositories...")
-                all_prs = get_pr_details_batch(repos_with_prs)
+    behind, ahead = _get_behind_ahead(path, branch)
+    if behind == -1:
+        result["error"] = f"origin/{branch} との比較失敗"
+        return result
 
-                if not all_prs:
-                    print("  No PRs found")
-                else:
-                    print(f"\n  Found {len(all_prs)} open PR(s) total")
-                    print(f"\n{'=' * 50}")
-                    print("Processing PRs:")
-                    print(f"{'=' * 50}")
+    result["behind"] = behind
+    result["ahead"] = ahead
 
-                    # Track phases to detect if all PRs are in "LLM working"
-                    _process_open_prs(all_prs, phase3_repo_names, config)
-
-                # Save PR snapshot for display on subsequent skip-check iterations.
-                # Done after Phase 1/2 (including the empty case) so the cache is always
-                # up-to-date and never shows stale PRs when there are actually none.
-                set_last_pr_snapshot(all_prs, repos_with_prs)
-
-                if all_prs:
-                    # Count how many PRs are in "LLM working" phase
-                    # This count is used for rate limit protection - when too many PRs are being
-                    # worked on simultaneously, we pause auto-assignment to prevent API rate limits
-                    llm_working_count = sum(1 for pr in all_prs if is_llm_working(pr))
-                    max_llm_working_parallel = config.get("max_llm_working_parallel", DEFAULT_MAX_LLM_WORKING_PARALLEL)
-                    llm_working_below_cap = llm_working_count < max_llm_working_parallel
-
-                    # Look for new issues to assign when:
-                    # 1. All PRs are in "LLM working" phase (existing work is in progress), OR
-                    # 2. PR count is less than 3 (few PRs, so we can look for more work)
-                    # The llm_working_count throttles assignment when parallel work is too high
-                    total_pr_count = len(all_prs)
-                    all_llm_working = bool(all_prs) and all(is_llm_working(pr) for pr in all_prs)
-                    all_phase3 = bool(all_prs) and all(pr.get("phase") == PHASE_3 for pr in all_prs)
-                    active_parallel_prs = sum(1 for pr in all_prs if pr.get("phase") != PHASE_3)
-
-                    if llm_working_below_cap or all_llm_working or active_parallel_prs < 3:
-                        if all_llm_working and total_pr_count >= 3:
-                            print(f"\n{'=' * 50}")
-                            print("All PRs are in 'LLM working' phase")
-                            print(f"{'=' * 50}")
-                        elif all_phase3 and total_pr_count >= 3:
-                            print(f"\n{'=' * 50}")
-                            print("All PRs are in 'phase3' (ready for human review); treating parallel count as 0")
-                            print(f"{'=' * 50}")
-                        elif llm_working_below_cap:
-                            print(f"\n{'=' * 50}")
-                            print(
-                                f"LLM working PRs below limit: {llm_working_count}/{max_llm_working_parallel} "
-                                "(showing available work)"
-                            )
-                            print(f"{'=' * 50}")
-                        elif active_parallel_prs < 3:
-                            print(f"\n{'=' * 50}")
-                            print(f"Active PR count (excluding phase3) is {active_parallel_prs} (less than 3)")
-                            print(f"{'=' * 50}")
-                        # Display issues and potentially auto-assign new work
-                        # Throttling is applied inside the function based on llm_working_count
-                        display_issues_from_repos_without_prs(config, llm_working_count=llm_working_count)
-
-            elif skip_pr_check:
-                # updatedAt 不変: GraphQL Phase 1/2 はスキップ
-                # しかし、open PR のphase変化（1A→1B, 1B→2A等）を検知するため、HTMLを毎回再取得する
-                # (updatedAt はPRのphase変化では更新されないため、HTMLフェッチが必須)
-                snapshot = get_last_pr_snapshot()
-                if snapshot is not None and snapshot[0]:
-                    cached_prs, cached_repos = snapshot
-
-                    # open PR 件数を毎回 GraphQL で再取得し、変化があれば Phase 1/2 を強制実行する
-                    # (updatedAt は PR の新規作成を反映しないことがあるため、件数の乖離が生じうる)
-                    # リポジトリごとの件数を辞書で比較することで、「1件クローズ+1件新規」のように
-                    # 合計が変わらない場合でも変化を検知できる。
-                    print("\n  open PR 件数を再確認中 (GraphQL)...")
-                    fresh_repos_with_prs = get_repositories_with_open_prs()
-                    cached_count_map = {
-                        (r.get("owner", ""), r.get("name", "")): r.get("openPRCount", 0) for r in cached_repos
-                    }
-                    fresh_count_map = {
-                        (r.get("owner", ""), r.get("name", "")): r.get("openPRCount", 0)
-                        for r in fresh_repos_with_prs
-                    }
-
-                    if fresh_count_map != cached_count_map:
-                        # リポジトリごとの PR 件数が変化 → Phase 1/2 を強制実行して最新の PR 一覧を取得する
-                        print("  open PR 件数/構成が変化。Phase 1/2 を強制実行します。")
-                        repos_with_prs = fresh_repos_with_prs
-
-                        # validate phase3_merge configuration (same as normal Phase 1 flow)
-                        print("\nValidating phase3_merge configuration...")
-                        for repo in repos_with_prs:
-                            repo_owner = repo.get("owner", "")
-                            repo_name = repo.get("name", "")
-                            if repo_owner and repo_name:
-                                validate_phase3_merge_config_required(config, repo_owner, repo_name)
-
-                        all_prs = get_pr_details_batch(repos_with_prs)
-                        if all_prs:
-                            print(f"\n  Found {len(all_prs)} open PR(s) total")
-                            _process_open_prs(all_prs, phase3_repo_names, config)
-                        set_last_pr_snapshot(all_prs, repos_with_prs)
-                    else:
-                        # PR 件数は変化なし → HTML のみ再取得 (phase 変化を検知するため)
-                        print("\n  open PR のHTML再取得 (updatedAt 不変でもphase変化を検知するため / Refetching HTML for open PRs to detect phase changes)...")
-                        all_prs = cached_prs
-                        repos_with_prs = cached_repos
-                        _process_open_prs(all_prs, phase3_repo_names, config)
-                        set_last_pr_snapshot(all_prs, repos_with_prs)
-
-                    # skip_pr_check を False にリセット: 今イテレーションの表示セクション (display_status_summary)
-                    # でスナップショットではなく最新のHTML取得結果を使うため
-                    skip_pr_check = False
-                else:
-                    # スナップショット未作成またはPRなし: 次イテレーションでフルチェックを強制する
-                    # (updatedAt ベースラインをリセットすることで、次回の get_repos_changed_since_last_check が
-                    #  None を返し、通常の Phase 1/2 チェックが実行される)
-                    log_error_to_file(
-                        "skip_pr_check=True but no cached PR snapshot; resetting updatedAt baseline for full check next iteration",
-                        None,
-                    )
-                    reset_repos_updated_at_baseline()
-
-                # 変化なし: キャッシュからTop 10 issuesを表示 (GraphQLクエリ不要)
-                display_cached_top_issues()
-
-            # Check GitHub Pages deployment status for configured repos
-            # This runs regardless of whether there are open PRs (covers post-merge case)
-            try:
-                current_user = get_current_user()
-                pages_repos = get_pages_repos_from_config(config, current_user)
-                if pages_repos:
-                    print(f"\n{'=' * 50}")
-                    print("GitHub Pages deployment check:")
-                    print(f"{'=' * 50}")
-                    check_pages_deployments_for_repos(pages_repos, config)
-            except Exception as pages_error:
-                log_error_to_file("Failed to check Pages deployment", pages_error)
-                current_user = None
-
-            # Local repository pullable check (background-based)
-            # 初回イテレーション: 全リポジトリをバックグラウンドで検査開始
-            # phase3検知リポジトリ: バックグラウンドでpullable検査をトリガー
-            # 蓄積された検査結果を表示（1秒ごとの逐次表示は廃止、次のintervalで一括表示）
-            try:
-                if current_user is None:
-                    current_user = get_current_user()
-                if iteration == 1:
-                    start_local_repo_monitoring(config, current_user)
-                else:
-                    for repo_name in phase3_repo_names:
-                        notify_phase3_detected(repo_name, config, current_user)
-                display_pending_local_repo_results()
-            except Exception as local_repo_error:
-                log_error_to_file("Failed to check local repos", local_repo_error)
-
-            # Reset consecutive-failure counter on a successful iteration
-            consecutive_failures = 0
-
-        except GitHubRateLimitError as e:
-            print(f"\nError: {e}")
-            rate_limit_info = getattr(e, "rate_limit_info", None)
-            if isinstance(rate_limit_info, dict):
-                used = rate_limit_info.get("used", "unknown")
-                remaining = rate_limit_info.get("remaining", "unknown")
-                limit = rate_limit_info.get("limit", "unknown")
-                reset = rate_limit_info.get("reset")
-                reset_display, reset_in_display = _format_rate_limit_reset(reset)
-                print(
-                    f"GraphQL API利用状況: used={used}, remaining={remaining}, limit={limit}, "
-                    f"reset={reset_display}, reset_in={reset_in_display}"
-                )
-            print("GitHub APIのレート制限に達しています。リセット後に再実行してください。")
-            print("確認コマンド: gh api rate_limit")
-            log_error_to_file("GitHub API rate limit exceeded during monitoring loop", e)
-            consecutive_failures += 1
-        except RuntimeError as e:
-            print(f"\nError: {e}")
-            print("Please ensure you are authenticated with gh CLI")
-            log_error_to_file("Runtime error during monitoring loop", e)
-            consecutive_failures += 1
-        except Exception as e:
-            print(f"\nUnexpected error: {e}")
-            traceback.print_exc()
-            log_error_to_file("Unexpected error during monitoring loop", e)
-
-            # Track consecutive unexpected failures to avoid infinite error loops
-            consecutive_failures += 1
-
-            if consecutive_failures >= 3:
-                print("\nEncountered 3 consecutive unexpected errors; continuing monitoring with error counter capped.")
-                consecutive_failures = 3
-
-        # Display status summary before waiting
-        # This helps users understand the current state at a glance,
-        # especially on terminals with limited display lines.
-        # Note: If an error occurred during data collection, the summary will show
-        # incomplete or empty data, which is acceptable as it reflects the actual
-        # state that was successfully retrieved before the error.
-        try:
-            after_rate_limit = get_rate_limit_info()
-            _display_rate_limit_usage(before_rate_limit, after_rate_limit)
-        except Exception as rate_limit_display_error:
-            log_error_to_file("Failed to display rate limit usage", rate_limit_display_error)
-            after_rate_limit = None
-
-        # Check if current consumption rate would exhaust the rate limit before reset
-        try:
-            should_throttle, throttled_interval = _check_rate_limit_throttle(
-                before_rate_limit, after_rate_limit, normal_interval_seconds
-            )
-        except Exception as throttle_error:
-            log_error_to_file("Failed to check rate limit throttle", throttle_error)
-            should_throttle = False
-            throttled_interval = normal_interval_seconds
-
-        try:
-            display_prs, display_repos = all_prs, repos_with_prs
-            no_change = False
-            if skip_pr_check:
-                snapshot = get_last_pr_snapshot()
-                if snapshot is not None:
-                    display_prs, display_repos = snapshot
-                    no_change = True
-            display_status_summary(display_prs, display_repos, config, no_change=no_change)
-        except Exception as summary_error:
-            log_error_to_file("Failed to display status summary", summary_error)
-
-        # Check if PR state has not changed for too long and switch to reduced frequency mode
-        try:
-            use_reduced_frequency = check_no_state_change_timeout(all_prs, config)
-        except Exception as timeout_error:
-            log_error_to_file("Failed to evaluate reduced frequency interval", timeout_error)
-            use_reduced_frequency = False
-
-        # Determine which interval to use
-        if use_reduced_frequency:
-            # Use reduced frequency interval (default: 1h)
-            reduced_interval_str = (config or {}).get("reduced_frequency_interval", "1h")
-            try:
-                reduced_interval_seconds = parse_interval(reduced_interval_str)
-                current_interval_seconds = reduced_interval_seconds
-                current_interval_str = reduced_interval_str
-            except ValueError as e:
-                print(f"Error: Invalid reduced_frequency_interval format: {e}")
-                sys.exit(1)
-        elif should_throttle:
-            # Rate limit throttling: slow down to avoid exhausting the quota before reset
-            current_interval_seconds = throttled_interval
-            current_interval_str = format_elapsed_time(throttled_interval)
-            print(f"\n{'=' * 50}")
-            print("現在の消費ペースでは、レートリミットがリセットされる前に使い切る可能性があります。")
-            print(f"監視間隔を{current_interval_str}に延長します。")
-            print(f"{'=' * 50}")
+    # Classify status (same logic as cat-repo-auditor)
+    if behind == 0:
+        result["status"] = STATUS_UP_TO_DATE
+    elif behind > 0 and ahead > 0:
+        result["status"] = STATUS_DIVERGED
+    elif behind > 0 and ahead == 0:
+        if dirty:
+            result["status"] = STATUS_UNKNOWN  # want to pull but dirty
         else:
-            # Use normal interval (preserved separately to avoid contamination)
-            current_interval_seconds = normal_interval_seconds
-            current_interval_str = normal_interval_str
+            result["status"] = STATUS_PULLABLE
+    else:
+        # Fallback for any unexpected combination not covered above
+        # (e.g. if _get_behind_ahead returns values outside [0, +inf)).
+        # Treat conservatively as unknown rather than risking incorrect action.
+        result["status"] = STATUS_UNKNOWN
 
-        # Wait with countdown display and check for config changes
+    return result
+
+
+def check_local_repos(config: dict, github_username: str) -> None:
+    """Scan local repos in the base directory, display pullable ones, and optionally pull.
+
+    By default (dry-run), pullable repos are displayed but not pulled.
+    Set ``auto_git_pull = true`` in config.toml to enable auto-pull.
+
+    Args:
+        config: Configuration dictionary loaded from TOML.
+        github_username: The current GitHub user's login name.
+    """
+    global _last_local_check_time
+
+    now = time.time()
+    if _last_local_check_time and now - _last_local_check_time < LOCAL_REPO_CHECK_INTERVAL_SECONDS:
+        return
+    _last_local_check_time = now
+
+    base_dir_str = config.get("local_repo_watcher_base_dir", None)
+    if base_dir_str:
+        base_dir = Path(base_dir_str)
+    else:
+        base_dir = Path.cwd().parent
+
+    if not base_dir.exists() or not base_dir.is_dir():
+        return
+
+    enable_pull = config.get("auto_git_pull", False)
+
+    # Collect candidate directories (siblings in the base dir)
+    try:
+        candidates = [str(d) for d in sorted(base_dir.iterdir()) if d.is_dir() and not d.name.startswith(".")]
+    except PermissionError:
+        return
+
+    if not candidates:
+        return
+
+    # Check each candidate with live progress display (same style as wait countdown)
+    total = len(candidates)
+    results = []
+    max_msg_len = 0
+    for i, d in enumerate(candidates):
+        repo_name = Path(d).name
+        msg = f"[{i + 1}/{total}] リポジトリ確認中: {repo_name}..."
+        if len(msg) > max_msg_len:
+            max_msg_len = len(msg)
+        padding = max_msg_len - len(msg)
+        print(f"\r{msg}{' ' * padding}", end="", flush=True)
+        results.append(_check_repo(d, github_username))
+    if candidates:
+        print(f"\r{' ' * max_msg_len}\r", end="", flush=True)
+    target_results = [r for r in results if r["is_target"]]
+
+    pullable = [r for r in target_results if r["status"] == STATUS_PULLABLE]
+    diverged = [r for r in target_results if r["status"] == STATUS_DIVERGED]
+
+    if not pullable and not diverged:
+        return
+
+    print(f"\n{'=' * 50}")
+    print("ローカルリポジトリ状態:")
+    print(f"{'=' * 50}")
+
+    for r in pullable:
+        detail = f"behind {r['behind']}"
+        print(f"  {Colors.GREEN}[PULLABLE]{Colors.RESET} {r['name']}  ({detail})")
+        if enable_pull:
+            ok, msg = _pull_repo(r["path"])
+            if ok:
+                print(f"    ✓ pull 完了: {r['name']}")
+                if Path(r["path"]).resolve() == REPO_ROOT:
+                    print("    自分自身が更新されました。アプリケーションを再起動します...")
+                    restart_application()
+            else:
+                print(f"    ✗ pull 失敗: {r['name']}: {msg}")
+        else:
+            print(f"    [DRY-RUN] Would pull {r['name']} (auto_git_pull=false)")
+
+    for r in diverged:
+        detail = f"behind {r['behind']}, ahead {r['ahead']}"
+        print(f"  {Colors.YELLOW}[DIVERGED]{Colors.RESET} {r['name']}  ({detail}) ⚠ 手動マージが必要")
+
+
+def _get_base_dir(config: dict) -> Optional[Path]:
+    """Return the base directory for local repo scanning, or None if not valid."""
+    base_dir_str = config.get("local_repo_watcher_base_dir", None)
+    base_dir = Path(base_dir_str) if base_dir_str else Path.cwd().parent
+    if not base_dir.exists() or not base_dir.is_dir():
+        return None
+    return base_dir
+
+
+def _accumulate_result(result: dict, enable_pull: bool) -> None:
+    """Process a single repo check result: pull if needed, accumulate display lines.
+
+    Must be called with _state_lock NOT held (since _pull_repo may block).
+    Acquires _state_lock to append to _pending_lines / set _pending_needs_restart.
+    """
+    global _pending_needs_restart
+
+    if not result["is_target"]:
+        return
+    if result["status"] not in (STATUS_PULLABLE, STATUS_DIVERGED):
+        return
+
+    lines: List[str] = []
+    needs_restart = False
+
+    if result["status"] == STATUS_PULLABLE:
+        detail = f"behind {result['behind']}"
+        lines.append(f"  {Colors.GREEN}[PULLABLE]{Colors.RESET} {result['name']}  ({detail})")
+        if enable_pull:
+            ok, msg = _pull_repo(result["path"])
+            if ok:
+                lines.append(f"    ✓ pull 完了: {result['name']}")
+                if Path(result["path"]).resolve() == REPO_ROOT:
+                    lines.append("    自分自身が更新されました。アプリケーションを再起動します...")
+                    needs_restart = True
+            else:
+                lines.append(f"    ✗ pull 失敗: {result['name']}: {msg}")
+        else:
+            lines.append(f"    [DRY-RUN] Would pull {result['name']} (auto_git_pull=false)")
+    else:  # STATUS_DIVERGED
+        detail = f"behind {result['behind']}, ahead {result['ahead']}"
+        lines.append(f"  {Colors.YELLOW}[DIVERGED]{Colors.RESET} {result['name']}  ({detail}) ⚠ 手動マージが必要")
+
+    with _state_lock:
+        _pending_lines.extend(lines)
+        if needs_restart:
+            _pending_needs_restart = True
+
+
+def _background_startup_check(config: dict, github_username: str) -> None:
+    """Background thread: check all repos in base_dir and accumulate results.
+
+    各リポジトリの状態を STARTUP_CHECKING → DONE に更新しながら順次検査する。
+    """
+    base_dir = _get_base_dir(config)
+    if base_dir is None:
+        return
+
+    enable_pull = config.get("auto_git_pull", False)
+
+    try:
+        candidates = [str(d) for d in sorted(base_dir.iterdir()) if d.is_dir() and not d.name.startswith(".")]
+    except PermissionError:
+        return
+
+    if not candidates:
+        return
+
+    # Mark all candidates as STARTUP_CHECKING before any check begins
+    with _state_lock:
+        for d in candidates:
+            _repo_states[Path(d).name] = REPO_STATE_STARTUP_CHECKING
+
+    for d in candidates:
+        repo_name = Path(d).name
         try:
-            new_config, new_interval_seconds, new_interval_str, new_config_mtime = wait_with_countdown(
-                current_interval_seconds,
-                current_interval_str,
-                config_path,
-                config_mtime,
-                self_update_callback=maybe_self_update
-                if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE)
-                else None,
-                self_update_interval_seconds=UPDATE_CHECK_INTERVAL_SECONDS,
-            )
-        except Exception as wait_error:
-            log_error_to_file("wait_with_countdown failed; falling back to sleep", wait_error)
-            time.sleep(current_interval_seconds)
-            continue
-
-        # Update config and interval based on what was returned from wait
-        # Config will be non-empty only if successfully reloaded during wait
-        config_reloaded = new_config_mtime != config_mtime
-        if config_reloaded and new_config:
-            config = new_config
-            # Update normal interval only on hot reload (config change).
-            # This prevents the normal interval from being contaminated by reduced frequency
-            # interval values that may be returned from wait_with_countdown().
-            normal_interval_seconds = new_interval_seconds
-            normal_interval_str = new_interval_str
-        # Always update mtime
-        config_mtime = new_config_mtime
+            result = _check_repo(d, github_username)
+            _accumulate_result(result, enable_pull)
+        except Exception:
+            pass
+        finally:
+            with _state_lock:
+                _repo_states[repo_name] = REPO_STATE_DONE
 
 
-if __name__ == "__main__":
-    main()
+def _background_single_repo_check(repo_path: str, repo_name: str, github_username: str, enable_pull: bool) -> None:
+    """Background thread: check a single repo and accumulate result.
+
+    phase3検知時に呼び出される。検査後に状態を DONE に更新する。
+    """
+    try:
+        result = _check_repo(repo_path, github_username)
+        _accumulate_result(result, enable_pull)
+    except Exception:
+        pass
+    finally:
+        with _state_lock:
+            _repo_states[repo_name] = REPO_STATE_DONE
+
+
+def start_local_repo_monitoring(config: dict, github_username: str) -> None:
+    """アプリ起動時に全リポジトリ検査をバックグラウンドで開始する。
+
+    1回のみ実行される。メインループをブロックしない。
+    検査結果は次のintervalで display_pending_local_repo_results() により表示される。
+
+    Args:
+        config: Configuration dictionary loaded from TOML.
+        github_username: The current GitHub user's login name.
+    """
+    global _startup_started
+    with _state_lock:
+        if _startup_started:
+            return
+        _startup_started = True
+
+    t = threading.Thread(
+        target=_background_startup_check,
+        args=(config, github_username),
+        daemon=True,
+    )
+    t.start()
+
+
+def notify_phase3_detected(repo_name: str, config: dict, github_username: str) -> None:
+    """phase3を検知したリポジトリのpullable検査をバックグラウンドで開始する。
+
+    既に検査中・待機中のリポジトリは重複して開始しない。
+    検査結果は次のintervalで display_pending_local_repo_results() により表示される。
+
+    Args:
+        repo_name: GitHub リポジトリ名（ローカルディレクトリ名と一致）。
+        config: Configuration dictionary loaded from TOML.
+        github_username: The current GitHub user's login name.
+    """
+    with _state_lock:
+        current_state = _repo_states.get(repo_name)
+        if current_state in (REPO_STATE_STARTUP_CHECKING, REPO_STATE_NEEDS_CHECK, REPO_STATE_CHECKING, REPO_STATE_DONE):
+            return  # 既に検査済み・検査中または待機中
+        _repo_states[repo_name] = REPO_STATE_NEEDS_CHECK
+
+    base_dir = _get_base_dir(config)
+    if base_dir is None:
+        with _state_lock:
+            _repo_states[repo_name] = REPO_STATE_DONE
+        return
+
+    repo_path = str(base_dir / repo_name)
+    if not Path(repo_path).is_dir():
+        with _state_lock:
+            _repo_states[repo_name] = REPO_STATE_DONE
+        return
+
+    enable_pull = config.get("auto_git_pull", False)
+
+    with _state_lock:
+        _repo_states[repo_name] = REPO_STATE_CHECKING
+
+    t = threading.Thread(
+        target=_background_single_repo_check,
+        args=(repo_path, repo_name, github_username, enable_pull),
+        daemon=True,
+    )
+    t.start()
+
+
+def display_pending_local_repo_results() -> None:
+    """バックグラウンド検査の蓄積結果を表示し、クリアする。
+
+    メインループの各イテレーションで呼び出す。
+    表示するものがなければ何も出力しない。
+    自己更新（REPO_ROOT の pull 完了）が検出された場合はアプリを再起動する。
+    """
+    global _pending_needs_restart
+
+    with _state_lock:
+        lines = list(_pending_lines)
+        _pending_lines.clear()
+        needs_restart = _pending_needs_restart
+        _pending_needs_restart = False
+
+    if not lines:
+        return
+
+    print(f"\n{'=' * 50}")
+    print("ローカルリポジトリ状態:")
+    print(f"{'=' * 50}")
+    for line in lines:
+        print(line)
+
+    if needs_restart:
+        restart_application()
 
 {% endraw %}
 ```
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
+2cbe5bb Merge pull request #409 from cat2151/copilot/refactor-main-py-for-orchestration
+3a933be Address review comments: fix comment, add missing mocks for get_current_user/pages/local-repo
+d3e887a Refactor main.py into thin orchestration layer (iteration_runner, determine_current_interval)
+3873011 Initial plan
+2fe17ec Merge pull request #407 from cat2151/copilot/refactor-large-file-in-main-py
+434cdd4 fix: pr_processor.pyのインポートをsiblingインポートに修正
+f23fa0f リファクタリング: main.pyを532行→470行に削減 (error_logger.py, pr_processor.py分離)
+f7e50e2 Initial plan
+f3c1aaf Update project summaries (overview & development status) [auto]
 ce7295e Merge pull request #405 from cat2151/copilot/evaluate-window-close-confusion
-b3443cc 対策D+A: autoraiseデフォルトFalse（バックグラウンド開封）＋誤クローズ時の案内メッセージ出力
-65722a2 Initial plan
-997a5be Merge pull request #404 from cat2151/copilot/evaluate-fetching-strategy
-e26d835 Remove unused GraphQL fields and dead legacy code from PR fetching
-87a3a10 Initial plan
-4c2e03f Merge pull request #403 from cat2151/copilot/fix-open-pr-count-display
-5720d97 fix: per-repo count map comparison and add validation in forced Phase 1/2 branch
-592b56e fix: re-fetch open PR count via GraphQL every iteration to prevent stale display
-1d3bf3b Initial plan
 
 ### 変更されたファイル:
+generated-docs/development-status-generated-prompt.md
+generated-docs/development-status.md
+generated-docs/project-overview-generated-prompt.md
+generated-docs/project-overview.md
 src/gh_pr_phase_monitor/__init__.py
 src/gh_pr_phase_monitor/actions/pr_actions.py
 src/gh_pr_phase_monitor/browser/browser_automation.py
-src/gh_pr_phase_monitor/github/comment_manager.py
 src/gh_pr_phase_monitor/github/github_client.py
 src/gh_pr_phase_monitor/github/pr_fetcher.py
 src/gh_pr_phase_monitor/main.py
+src/gh_pr_phase_monitor/monitor/error_logger.py
+src/gh_pr_phase_monitor/monitor/iteration_runner.py
 src/gh_pr_phase_monitor/monitor/monitor.py
+src/gh_pr_phase_monitor/monitor/pr_processor.py
 src/gh_pr_phase_monitor/monitor/snapshot_markdown.py
-src/gh_pr_phase_monitor/monitor/state_tracker.py
 src/gh_pr_phase_monitor/phase/html/html_status_processor.py
 src/gh_pr_phase_monitor/phase/html/pr_html_analyzer.py
-src/gh_pr_phase_monitor/phase/phase_detector.py
-src/gh_pr_phase_monitor/ui/display.py
+src/gh_pr_phase_monitor/ui/wait_handler.py
 tests/test_check_process_before_autoraise.py
-tests/test_elapsed_time_display.py
+tests/test_error_logging.py
 tests/test_html_status_processor.py
-tests/test_interval_contamination_bug.py
-tests/test_is_llm_working.py
-tests/test_llm_working_warning.py
-tests/test_no_change_timeout.py
-tests/test_post_comment.py
 tests/test_pr_html_analyzer.py
+tests/test_show_issues_when_pr_count_less_than_3.py
 tests/test_skip_pr_check_html_refetch.py
-tests/test_status_summary.py
 
 
 ---
-Generated at: 2026-03-09 07:01:14 JST
+Generated at: 2026-03-10 07:03:29 JST

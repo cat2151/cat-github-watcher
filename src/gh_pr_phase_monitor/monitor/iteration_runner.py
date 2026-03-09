@@ -12,6 +12,7 @@ from ..monitor.error_logger import log_error_to_file
 from ..monitor.local_repo_watcher import (
     display_pending_local_repo_results,
     notify_phase3_detected,
+    notify_repos_updated_after_phase3,
     start_local_repo_monitoring,
 )
 from ..monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
@@ -149,6 +150,9 @@ def run_one_iteration(config: dict, iteration: int) -> tuple[list, list, bool]:
         else:
             for repo_name in phase3_repo_names:
                 notify_phase3_detected(repo_name, config, current_user)
+            # phase3A済みリポジトリのupdatedAt変化を検知 → PRが0件でもauto pull
+            if changed_repos:
+                notify_repos_updated_after_phase3(changed_repos, config, current_user)
         display_pending_local_repo_results()
     except Exception as local_repo_error:
         log_error_to_file("Failed to check local repos", local_repo_error)

@@ -3,9 +3,9 @@ PR processing utilities for GitHub PR Phase Monitor
 """
 
 from ..actions.pr_actions import process_pr
-from ..monitor.error_logger import log_error_to_file
 from ..phase.html.html_status_processor import fetch_and_analyze_pr_html
 from ..phase.phase_detector import PHASE_3, PHASE_LLM_WORKING, determine_phase
+from .error_logger import log_error_to_file
 
 
 def _process_open_prs(

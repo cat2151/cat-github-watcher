@@ -496,10 +496,18 @@ def notify_repos_updated_after_phase3(changed_repo_names: Set[str], config: dict
         github_username: The current GitHub user's login name.
     """
     with _state_lock:
-        repos_to_recheck = [r for r in changed_repo_names if r in _repos_awaiting_post_phase3_check]
-        # Reset DONE state to allow re-check (DONE would otherwise prevent re-check)
-        for repo_name in repos_to_recheck:
-            _repo_states.pop(repo_name, None)
+        repos_to_recheck: List[str] = []
+        for repo_name in changed_repo_names:
+            if repo_name not in _repos_awaiting_post_phase3_check:
+                continue
+            current_state = _repo_states.get(repo_name)
+            # CHECKING系状態のときは状態を消さず、再チェックもスキップする
+            if current_state in (REPO_STATE_STARTUP_CHECKING, REPO_STATE_CHECKING):
+                continue
+            # DONE のときだけ状態をリセットして再チェックを許可する
+            if current_state == REPO_STATE_DONE:
+                _repo_states.pop(repo_name, None)
+            repos_to_recheck.append(repo_name)
 
     # Call notify_phase3_detected outside the lock to avoid deadlock
     for repo_name in repos_to_recheck:

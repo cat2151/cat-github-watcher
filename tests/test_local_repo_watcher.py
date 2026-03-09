@@ -34,17 +34,21 @@ def reset_last_check_time():
 @pytest.fixture(autouse=True)
 def reset_phase3_tracking():
     """Reset phase3 post-merge tracking state before each test."""
-    local_repo_watcher._repos_awaiting_post_phase3_check.clear()
-    local_repo_watcher._repo_states.clear()
-    local_repo_watcher._pending_lines.clear()
-    local_repo_watcher._pending_needs_restart = False
-    local_repo_watcher._startup_started = False
+    # These structures are mutated by background threads in local_repo_watcher;
+    # take the module's state lock to avoid races during tests.
+    with local_repo_watcher._state_lock:
+        local_repo_watcher._repos_awaiting_post_phase3_check.clear()
+        local_repo_watcher._repo_states.clear()
+        local_repo_watcher._pending_lines.clear()
+        local_repo_watcher._pending_needs_restart = False
+        local_repo_watcher._startup_started = False
     yield
-    local_repo_watcher._repos_awaiting_post_phase3_check.clear()
-    local_repo_watcher._repo_states.clear()
-    local_repo_watcher._pending_lines.clear()
-    local_repo_watcher._pending_needs_restart = False
-    local_repo_watcher._startup_started = False
+    with local_repo_watcher._state_lock:
+        local_repo_watcher._repos_awaiting_post_phase3_check.clear()
+        local_repo_watcher._repo_states.clear()
+        local_repo_watcher._pending_lines.clear()
+        local_repo_watcher._pending_needs_restart = False
+        local_repo_watcher._startup_started = False
 
 
 class TestIsTargetRepo:

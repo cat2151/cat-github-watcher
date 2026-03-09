@@ -44,6 +44,7 @@ def run_one_iteration(config: dict, iteration: int) -> tuple[list, list, bool]:
     phase3_repo_names: list[str] = []
     skip_pr_check = False
     current_user = None
+    changed_repos: set | None = None
 
     # updatedAt pre-check: determine which repos (if any) changed since last iteration.
     try:

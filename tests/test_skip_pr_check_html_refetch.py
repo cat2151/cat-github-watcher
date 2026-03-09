@@ -37,28 +37,32 @@ def _setup_mocks(mocker, *, changed_repos, snapshot, fresh_repos_with_prs=None):
     """
     mocker.patch("src.gh_pr_phase_monitor.main.load_config", return_value={"interval": "1m"})
     mocker.patch(
-        "src.gh_pr_phase_monitor.main.get_repos_changed_since_last_check",
+        "src.gh_pr_phase_monitor.monitor.iteration_runner.get_repos_changed_since_last_check",
         return_value=changed_repos,
     )
     mocker.patch(
-        "src.gh_pr_phase_monitor.main.get_last_pr_snapshot",
+        "src.gh_pr_phase_monitor.monitor.iteration_runner.get_last_pr_snapshot",
         return_value=snapshot,
     )
-    mocker.patch("src.gh_pr_phase_monitor.main.set_last_pr_snapshot")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.set_last_pr_snapshot")
 
     # By default, fresh count matches cached repos (no count change → no forced Phase 1/2)
     if fresh_repos_with_prs is None:
         fresh_repos_with_prs = snapshot[1] if snapshot is not None else []
     mock_get_repos = mocker.patch(
-        "src.gh_pr_phase_monitor.main.get_repositories_with_open_prs",
+        "src.gh_pr_phase_monitor.monitor.iteration_runner.get_repositories_with_open_prs",
         return_value=fresh_repos_with_prs,
     )
-    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch", return_value=[])
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_pr_details_batch", return_value=[])
     mock_fetch_html = mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.fetch_and_analyze_pr_html", return_value=None)
     mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.determine_phase", return_value="LLM working")
     mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.process_pr")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_current_user", return_value="testuser")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_pages_repos_from_config", return_value=[])
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.start_local_repo_monitoring")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.display_pending_local_repo_results")
     mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
-    mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.display_issues_from_repos_without_prs")
     mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown", side_effect=KeyboardInterrupt("exit"))
     return mock_fetch_html, mock_get_repos, mock_get_prs
 
@@ -116,7 +120,7 @@ def test_pr_count_changed_triggers_phase12(mocker):
     _, mock_get_repos, mock_get_prs = _setup_mocks(
         mocker, changed_repos=set(), snapshot=snapshot, fresh_repos_with_prs=fresh_repos
     )
-    mock_validate = mocker.patch("src.gh_pr_phase_monitor.main.validate_phase3_merge_config_required")
+    mock_validate = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.validate_phase3_merge_config_required")
 
     from src.gh_pr_phase_monitor.main import main
 
@@ -167,7 +171,7 @@ def test_count_map_change_triggers_phase12_same_total(mocker):
 def test_baseline_reset_when_snapshot_is_none(mocker):
     """updatedAt不変 + スナップショットなし: updatedAtベースラインをリセットして次イテレーションでフルチェックを強制する。"""
     _, _, _ = _setup_mocks(mocker, changed_repos=set(), snapshot=None)
-    mock_reset = mocker.patch("src.gh_pr_phase_monitor.main.reset_repos_updated_at_baseline")
+    mock_reset = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.reset_repos_updated_at_baseline")
 
     from src.gh_pr_phase_monitor.main import main
 
@@ -185,7 +189,7 @@ def test_baseline_reset_when_snapshot_prs_empty(mocker):
     snapshot = ([], [])  # empty PRs
 
     _, _, _ = _setup_mocks(mocker, changed_repos=set(), snapshot=snapshot)
-    mock_reset = mocker.patch("src.gh_pr_phase_monitor.main.reset_repos_updated_at_baseline")
+    mock_reset = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.reset_repos_updated_at_baseline")
 
     from src.gh_pr_phase_monitor.main import main
 

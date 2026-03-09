@@ -120,7 +120,7 @@ def run_one_iteration(config: dict, iteration: int) -> tuple[list, list, bool]:
             )
             reset_repos_updated_at_baseline()
 
-        # 変化なし: キャッシュからTop 10 issuesを表示 (GraphQLクエリ不要)
+        # Top 10 issues の表示はキャッシュを利用するため、issue-fetch 用の GraphQL クエリは不要
         display_cached_top_issues()
 
     # Check GitHub Pages deployment status for configured repos

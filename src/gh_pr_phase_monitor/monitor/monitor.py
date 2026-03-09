@@ -2,13 +2,14 @@
 Monitoring logic for state changes and frequency adjustment
 """
 
+import sys
 import time
 from typing import Any, Dict, List, Optional
 
 from ..core.config import parse_interval
-from .state_tracker import get_last_state, is_reduced_frequency_mode, set_last_state, set_reduced_frequency_mode
 from ..core.time_utils import format_elapsed_time
 from ..phase.phase_detector import PHASE_LLM_WORKING
+from .state_tracker import get_last_state, is_reduced_frequency_mode, set_last_state, set_reduced_frequency_mode
 
 
 def check_no_state_change_timeout(
@@ -90,3 +91,37 @@ def check_no_state_change_timeout(
             set_reduced_frequency_mode(True)
 
     return is_reduced_frequency_mode()
+
+
+def determine_current_interval(
+    use_reduced_frequency: bool,
+    should_throttle: bool,
+    throttled_interval: float,
+    normal_interval_seconds: float,
+    normal_interval_str: str,
+    config: Optional[Dict[str, Any]] = None,
+) -> tuple[float, str]:
+    """Determine the monitoring interval to use for the current wait.
+
+    Precedence: reduced_frequency > throttle > normal.
+
+    Returns:
+        (interval_seconds, interval_str)
+    """
+    if use_reduced_frequency:
+        reduced_interval_str = (config or {}).get("reduced_frequency_interval", "1h")
+        try:
+            reduced_interval_seconds = parse_interval(reduced_interval_str)
+            return reduced_interval_seconds, reduced_interval_str
+        except ValueError as e:
+            print(f"Error: Invalid reduced_frequency_interval format: {e}")
+            sys.exit(1)
+    elif should_throttle:
+        current_interval_str = format_elapsed_time(throttled_interval)
+        print(f"\n{'=' * 50}")
+        print("現在の消費ペースでは、レートリミットがリセットされる前に使い切る可能性があります。")
+        print(f"監視間隔を{current_interval_str}に延長します。")
+        print(f"{'=' * 50}")
+        return throttled_interval, current_interval_str
+    else:
+        return normal_interval_seconds, normal_interval_str

@@ -9,20 +9,10 @@ import traceback
 
 from .core.config import (
     DEFAULT_ENABLE_AUTO_UPDATE,
-    DEFAULT_MAX_LLM_WORKING_PARALLEL,
     get_config_mtime,
     load_config,
     parse_interval,
     print_config,
-    validate_phase3_merge_config_required,
-)
-from .core.time_utils import format_elapsed_time
-from .github.github_auth import get_current_user
-from .github.github_client import (
-    get_pr_details_batch,
-    get_repos_changed_since_last_check,
-    get_repositories_with_open_prs,
-    reset_repos_updated_at_baseline,
 )
 from .github.graphql_client import GitHubRateLimitError, get_rate_limit_info
 from .github.rate_limit_handler import (
@@ -36,17 +26,10 @@ from .monitor.auto_updater import (
     run_startup_self_update_foreground,
 )
 from .monitor.error_logger import log_error_to_file
-from .monitor.local_repo_watcher import (
-    display_pending_local_repo_results,
-    notify_phase3_detected,
-    start_local_repo_monitoring,
-)
-from .monitor.monitor import check_no_state_change_timeout
-from .monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
-from .monitor.pr_processor import _process_open_prs
-from .monitor.state_tracker import get_last_pr_snapshot, set_last_pr_snapshot
-from .phase.phase_detector import PHASE_3, is_llm_working
-from .ui.display import display_cached_top_issues, display_issues_from_repos_without_prs, display_status_summary
+from .monitor.iteration_runner import run_one_iteration
+from .monitor.monitor import check_no_state_change_timeout, determine_current_interval
+from .monitor.state_tracker import get_last_pr_snapshot
+from .ui.display import display_status_summary
 from .ui.wait_handler import wait_with_countdown
 
 
@@ -130,211 +113,13 @@ def main():
             log_error_to_file("Failed to fetch pre-iteration rate limit info", rate_limit_error)
             before_rate_limit = None
 
-        # Initialize variables to track status for summary
-        all_prs = []
-        repos_with_prs = []
-        phase3_repo_names: list[str] = []
+        all_prs: list = []
+        repos_with_prs: list = []
         skip_pr_check = False
 
         try:
-            # updatedAt pre-check: determine which repos (if any) changed since last iteration.
-            # On the first call this stores the baseline and returns None (run full check).
-            # On subsequent calls this compares the baseline and returns the set of changed repos.
-            # If the set is empty, nothing changed and we can skip Phase 1 + Phase 2 entirely.
-            try:
-                changed_repos = get_repos_changed_since_last_check()
-                if changed_repos is None:
-                    print("  updatedAt ベースライン記録済み (初回チェック)")
-                elif not changed_repos:
-                    print("  リポジトリに変化なし (updatedAt 不変)。Phase 1/2 をスキップします。")
-                    skip_pr_check = True
-                else:
-                    print(f"  {len(changed_repos)} リポジトリで変化を検知 → Phase 1/2 実行")
-            except Exception as updated_at_error:
-                log_error_to_file("updatedAt check failed, running full check", updated_at_error)
-
-            if not skip_pr_check:
-                # Phase 1: Get all repositories with open PRs (lightweight query)
-                print("\nPhase 1: Fetching repositories with open PRs...")
-                repos_with_prs = get_repositories_with_open_prs()
-
-                if not repos_with_prs:
-                    print("  No repositories with open PRs found")
-                    # Display issues when no repositories with open PRs are found
-                    # No PRs means llm_working_count = 0
-                    display_issues_from_repos_without_prs(config, llm_working_count=0)
-                else:
-                    print(f"  Found {len(repos_with_prs)} repositories with open PRs:")
-                    for repo in repos_with_prs:
-                        print(f"    - {repo['name']}: {repo['openPRCount']} open PR(s)")
-
-                # Validate phase3_merge configuration for all repositories
-                # This must be done before processing PRs to fail fast
-                print("\nValidating phase3_merge configuration...")
-                for repo in repos_with_prs:
-                    repo_owner = repo.get("owner", "")
-                    repo_name = repo.get("name", "")
-                    if repo_owner and repo_name:
-                        validate_phase3_merge_config_required(config, repo_owner, repo_name)
-
-                # Phase 2: Get PR details for repositories with open PRs (detailed query)
-                print(f"\nPhase 2: Fetching PR details for {len(repos_with_prs)} repositories...")
-                all_prs = get_pr_details_batch(repos_with_prs)
-
-                if not all_prs:
-                    print("  No PRs found")
-                else:
-                    print(f"\n  Found {len(all_prs)} open PR(s) total")
-                    print(f"\n{'=' * 50}")
-                    print("Processing PRs:")
-                    print(f"{'=' * 50}")
-
-                    # Track phases to detect if all PRs are in "LLM working"
-                    _process_open_prs(all_prs, phase3_repo_names, config)
-
-                # Save PR snapshot for display on subsequent skip-check iterations.
-                # Done after Phase 1/2 (including the empty case) so the cache is always
-                # up-to-date and never shows stale PRs when there are actually none.
-                set_last_pr_snapshot(all_prs, repos_with_prs)
-
-                if all_prs:
-                    # Count how many PRs are in "LLM working" phase
-                    # This count is used for rate limit protection - when too many PRs are being
-                    # worked on simultaneously, we pause auto-assignment to prevent API rate limits
-                    llm_working_count = sum(1 for pr in all_prs if is_llm_working(pr))
-                    max_llm_working_parallel = config.get("max_llm_working_parallel", DEFAULT_MAX_LLM_WORKING_PARALLEL)
-                    llm_working_below_cap = llm_working_count < max_llm_working_parallel
-
-                    # Look for new issues to assign when:
-                    # 1. All PRs are in "LLM working" phase (existing work is in progress), OR
-                    # 2. PR count is less than 3 (few PRs, so we can look for more work)
-                    # The llm_working_count throttles assignment when parallel work is too high
-                    total_pr_count = len(all_prs)
-                    all_llm_working = bool(all_prs) and all(is_llm_working(pr) for pr in all_prs)
-                    all_phase3 = bool(all_prs) and all(pr.get("phase") == PHASE_3 for pr in all_prs)
-                    active_parallel_prs = sum(1 for pr in all_prs if pr.get("phase") != PHASE_3)
-
-                    if llm_working_below_cap or all_llm_working or active_parallel_prs < 3:
-                        if all_llm_working and total_pr_count >= 3:
-                            print(f"\n{'=' * 50}")
-                            print("All PRs are in 'LLM working' phase")
-                            print(f"{'=' * 50}")
-                        elif all_phase3 and total_pr_count >= 3:
-                            print(f"\n{'=' * 50}")
-                            print("All PRs are in 'phase3' (ready for human review); treating parallel count as 0")
-                            print(f"{'=' * 50}")
-                        elif llm_working_below_cap:
-                            print(f"\n{'=' * 50}")
-                            print(
-                                f"LLM working PRs below limit: {llm_working_count}/{max_llm_working_parallel} "
-                                "(showing available work)"
-                            )
-                            print(f"{'=' * 50}")
-                        elif active_parallel_prs < 3:
-                            print(f"\n{'=' * 50}")
-                            print(f"Active PR count (excluding phase3) is {active_parallel_prs} (less than 3)")
-                            print(f"{'=' * 50}")
-                        # Display issues and potentially auto-assign new work
-                        # Throttling is applied inside the function based on llm_working_count
-                        display_issues_from_repos_without_prs(config, llm_working_count=llm_working_count)
-
-            elif skip_pr_check:
-                # updatedAt 不変: GraphQL Phase 1/2 はスキップ
-                # しかし、open PR のphase変化（1A→1B, 1B→2A等）を検知するため、HTMLを毎回再取得する
-                # (updatedAt はPRのphase変化では更新されないため、HTMLフェッチが必須)
-                snapshot = get_last_pr_snapshot()
-                if snapshot is not None and snapshot[0]:
-                    cached_prs, cached_repos = snapshot
-
-                    # open PR 件数を毎回 GraphQL で再取得し、変化があれば Phase 1/2 を強制実行する
-                    # (updatedAt は PR の新規作成を反映しないことがあるため、件数の乖離が生じうる)
-                    # リポジトリごとの件数を辞書で比較することで、「1件クローズ+1件新規」のように
-                    # 合計が変わらない場合でも変化を検知できる。
-                    print("\n  open PR 件数を再確認中 (GraphQL)...")
-                    fresh_repos_with_prs = get_repositories_with_open_prs()
-                    cached_count_map = {
-                        (r.get("owner", ""), r.get("name", "")): r.get("openPRCount", 0) for r in cached_repos
-                    }
-                    fresh_count_map = {
-                        (r.get("owner", ""), r.get("name", "")): r.get("openPRCount", 0)
-                        for r in fresh_repos_with_prs
-                    }
-
-                    if fresh_count_map != cached_count_map:
-                        # リポジトリごとの PR 件数が変化 → Phase 1/2 を強制実行して最新の PR 一覧を取得する
-                        print("  open PR 件数/構成が変化。Phase 1/2 を強制実行します。")
-                        repos_with_prs = fresh_repos_with_prs
-
-                        # validate phase3_merge configuration (same as normal Phase 1 flow)
-                        print("\nValidating phase3_merge configuration...")
-                        for repo in repos_with_prs:
-                            repo_owner = repo.get("owner", "")
-                            repo_name = repo.get("name", "")
-                            if repo_owner and repo_name:
-                                validate_phase3_merge_config_required(config, repo_owner, repo_name)
-
-                        all_prs = get_pr_details_batch(repos_with_prs)
-                        if all_prs:
-                            print(f"\n  Found {len(all_prs)} open PR(s) total")
-                            _process_open_prs(all_prs, phase3_repo_names, config)
-                        set_last_pr_snapshot(all_prs, repos_with_prs)
-                    else:
-                        # PR 件数は変化なし → HTML のみ再取得 (phase 変化を検知するため)
-                        print("\n  open PR のHTML再取得 (updatedAt 不変でもphase変化を検知するため / Refetching HTML for open PRs to detect phase changes)...")
-                        all_prs = cached_prs
-                        repos_with_prs = cached_repos
-                        _process_open_prs(all_prs, phase3_repo_names, config)
-                        set_last_pr_snapshot(all_prs, repos_with_prs)
-
-                    # skip_pr_check を False にリセット: 今イテレーションの表示セクション (display_status_summary)
-                    # でスナップショットではなく最新のHTML取得結果を使うため
-                    skip_pr_check = False
-                else:
-                    # スナップショット未作成またはPRなし: 次イテレーションでフルチェックを強制する
-                    # (updatedAt ベースラインをリセットすることで、次回の get_repos_changed_since_last_check が
-                    #  None を返し、通常の Phase 1/2 チェックが実行される)
-                    log_error_to_file(
-                        "skip_pr_check=True but no cached PR snapshot; resetting updatedAt baseline for full check next iteration",
-                        None,
-                    )
-                    reset_repos_updated_at_baseline()
-
-                # 変化なし: キャッシュからTop 10 issuesを表示 (GraphQLクエリ不要)
-                display_cached_top_issues()
-
-            # Check GitHub Pages deployment status for configured repos
-            # This runs regardless of whether there are open PRs (covers post-merge case)
-            try:
-                current_user = get_current_user()
-                pages_repos = get_pages_repos_from_config(config, current_user)
-                if pages_repos:
-                    print(f"\n{'=' * 50}")
-                    print("GitHub Pages deployment check:")
-                    print(f"{'=' * 50}")
-                    check_pages_deployments_for_repos(pages_repos, config)
-            except Exception as pages_error:
-                log_error_to_file("Failed to check Pages deployment", pages_error)
-                current_user = None
-
-            # Local repository pullable check (background-based)
-            # 初回イテレーション: 全リポジトリをバックグラウンドで検査開始
-            # phase3検知リポジトリ: バックグラウンドでpullable検査をトリガー
-            # 蓄積された検査結果を表示（1秒ごとの逐次表示は廃止、次のintervalで一括表示）
-            try:
-                if current_user is None:
-                    current_user = get_current_user()
-                if iteration == 1:
-                    start_local_repo_monitoring(config, current_user)
-                else:
-                    for repo_name in phase3_repo_names:
-                        notify_phase3_detected(repo_name, config, current_user)
-                display_pending_local_repo_results()
-            except Exception as local_repo_error:
-                log_error_to_file("Failed to check local repos", local_repo_error)
-
-            # Reset consecutive-failure counter on a successful iteration
+            all_prs, repos_with_prs, skip_pr_check = run_one_iteration(config, iteration)
             consecutive_failures = 0
-
         except GitHubRateLimitError as e:
             print(f"\nError: {e}")
             rate_limit_info = getattr(e, "rate_limit_info", None)
@@ -361,10 +146,7 @@ def main():
             print(f"\nUnexpected error: {e}")
             traceback.print_exc()
             log_error_to_file("Unexpected error during monitoring loop", e)
-
-            # Track consecutive unexpected failures to avoid infinite error loops
             consecutive_failures += 1
-
             if consecutive_failures >= 3:
                 print("\nEncountered 3 consecutive unexpected errors; continuing monitoring with error counter capped.")
                 consecutive_failures = 3
@@ -412,28 +194,14 @@ def main():
             use_reduced_frequency = False
 
         # Determine which interval to use
-        if use_reduced_frequency:
-            # Use reduced frequency interval (default: 1h)
-            reduced_interval_str = (config or {}).get("reduced_frequency_interval", "1h")
-            try:
-                reduced_interval_seconds = parse_interval(reduced_interval_str)
-                current_interval_seconds = reduced_interval_seconds
-                current_interval_str = reduced_interval_str
-            except ValueError as e:
-                print(f"Error: Invalid reduced_frequency_interval format: {e}")
-                sys.exit(1)
-        elif should_throttle:
-            # Rate limit throttling: slow down to avoid exhausting the quota before reset
-            current_interval_seconds = throttled_interval
-            current_interval_str = format_elapsed_time(throttled_interval)
-            print(f"\n{'=' * 50}")
-            print("現在の消費ペースでは、レートリミットがリセットされる前に使い切る可能性があります。")
-            print(f"監視間隔を{current_interval_str}に延長します。")
-            print(f"{'=' * 50}")
-        else:
-            # Use normal interval (preserved separately to avoid contamination)
-            current_interval_seconds = normal_interval_seconds
-            current_interval_str = normal_interval_str
+        current_interval_seconds, current_interval_str = determine_current_interval(
+            use_reduced_frequency,
+            should_throttle,
+            throttled_interval,
+            normal_interval_seconds,
+            normal_interval_str,
+            config,
+        )
 
         # Wait with countdown display and check for config changes
         try:

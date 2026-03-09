@@ -55,10 +55,11 @@ def _create_mock_pr(repo_name: str, title: str, url: str, phase: str):
 
 def test_display_issues_when_two_prs_in_phase3(mocker):
     mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
-    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repos_changed_since_last_check", return_value=None)
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_pr_details_batch")
     mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.process_pr")
-    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.display_issues_from_repos_without_prs")
     mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
     mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """
@@ -104,10 +105,11 @@ def test_display_issues_when_two_prs_in_phase3(mocker):
 
 def test_display_issues_when_one_pr_in_any_phase(mocker):
     mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
-    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repos_changed_since_last_check", return_value=None)
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_pr_details_batch")
     mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.process_pr")
-    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.display_issues_from_repos_without_prs")
     mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
     mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """
@@ -143,10 +145,11 @@ def test_display_issues_when_one_pr_in_any_phase(mocker):
 
 def test_no_display_issues_when_three_or_more_prs_not_llm_working(mocker):
     mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
-    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repos_changed_since_last_check", return_value=None)
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_pr_details_batch")
     mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.process_pr")
-    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.display_issues_from_repos_without_prs")
     mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
     mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """
@@ -191,10 +194,11 @@ def test_no_display_issues_when_three_or_more_prs_not_llm_working(mocker):
 
 def test_display_issues_when_three_or_more_prs_all_llm_working(mocker):
     mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
-    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repos_changed_since_last_check", return_value=None)
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_pr_details_batch")
     mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.process_pr")
-    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.display_issues_from_repos_without_prs")
     mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
     mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """
@@ -242,10 +246,11 @@ def test_display_issues_when_three_or_more_prs_all_llm_working(mocker):
 
 def test_display_issues_when_three_or_more_prs_all_phase3(mocker):
     mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
-    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repos_changed_since_last_check", return_value=None)
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_pr_details_batch")
     mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.process_pr")
-    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.display_issues_from_repos_without_prs")
     mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
     mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """
@@ -292,10 +297,11 @@ def test_display_issues_when_three_or_more_prs_all_phase3(mocker):
 
 def test_display_issues_when_phase3_and_llm_working_mix(mocker):
     mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
-    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repos_changed_since_last_check", return_value=None)
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_pr_details_batch")
     mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.process_pr")
-    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.display_issues_from_repos_without_prs")
     mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
     mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """Phase3 PRs should not count toward the parallel cap; mixed phases still allow display."""
@@ -332,12 +338,13 @@ def test_display_issues_when_phase3_and_llm_working_mix(mocker):
 
 def test_display_issues_when_llm_working_below_cap_even_with_three_active_prs(mocker):
     mock_load_config = mocker.patch("src.gh_pr_phase_monitor.main.load_config")
-    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.main.get_repositories_with_open_prs")
-    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repos_changed_since_last_check", return_value=None)
+    mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_repositories_with_open_prs")
+    mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.get_pr_details_batch")
     mock_determine_phase = mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.determine_phase")
     mock_fetch_html = mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.fetch_and_analyze_pr_html")
     mock_process_pr = mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.process_pr")
-    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
+    mock_display_issues = mocker.patch("src.gh_pr_phase_monitor.monitor.iteration_runner.display_issues_from_repos_without_prs")
     mock_display_summary = mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
     mock_wait = mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown")
     """LLM working count below the configured cap should always trigger issue display."""

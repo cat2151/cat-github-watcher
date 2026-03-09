@@ -54,9 +54,9 @@ def _setup_mocks(mocker, *, changed_repos, snapshot, fresh_repos_with_prs=None):
         return_value=fresh_repos_with_prs,
     )
     mock_get_prs = mocker.patch("src.gh_pr_phase_monitor.main.get_pr_details_batch", return_value=[])
-    mock_fetch_html = mocker.patch("src.gh_pr_phase_monitor.main.fetch_and_analyze_pr_html", return_value=None)
-    mocker.patch("src.gh_pr_phase_monitor.main.determine_phase", return_value="LLM working")
-    mocker.patch("src.gh_pr_phase_monitor.main.process_pr")
+    mock_fetch_html = mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.fetch_and_analyze_pr_html", return_value=None)
+    mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.determine_phase", return_value="LLM working")
+    mocker.patch("src.gh_pr_phase_monitor.monitor.pr_processor.process_pr")
     mocker.patch("src.gh_pr_phase_monitor.main.display_status_summary")
     mocker.patch("src.gh_pr_phase_monitor.main.display_issues_from_repos_without_prs")
     mocker.patch("src.gh_pr_phase_monitor.main.wait_with_countdown", side_effect=KeyboardInterrupt("exit"))

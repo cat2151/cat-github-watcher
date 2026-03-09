@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from src.gh_pr_phase_monitor.main import log_error_to_file
+from src.gh_pr_phase_monitor.monitor.error_logger import log_error_to_file
 
 
 def test_log_error_to_file_writes_message_and_trace(tmp_path):

@@ -524,6 +524,35 @@ class TestNotifyReposUpdatedAfterPhase3:
         )
 
 
+class TestSummarizeCargoError:
+    """Tests for _summarize_cargo_error helper."""
+
+    def test_picks_first_error_line(self):
+        raw = "warning: some warning\nerror: could not compile `foo`\n   --> src/main.rs:1:1"
+        result = local_repo_watcher._summarize_cargo_error(raw)
+        assert result == "error: could not compile `foo`"
+
+    def test_falls_back_to_last_line_when_no_error_prefix(self):
+        raw = "compiling foo\nfinished with exit code 1"
+        result = local_repo_watcher._summarize_cargo_error(raw)
+        assert result == "finished with exit code 1"
+
+    def test_truncates_long_lines(self):
+        long_line = "error: " + "x" * 200
+        result = local_repo_watcher._summarize_cargo_error(long_line, max_len=20)
+        assert len(result) <= 21  # 20 chars + "…"
+        assert result.endswith("…")
+
+    def test_empty_input_returns_fallback(self):
+        assert local_repo_watcher._summarize_cargo_error("") == "cargo install 失敗"
+        assert local_repo_watcher._summarize_cargo_error("   \n  \n") == "cargo install 失敗"
+
+    def test_single_line_not_truncated_when_short(self):
+        raw = "error: binary `foo` already exists"
+        result = local_repo_watcher._summarize_cargo_error(raw)
+        assert result == raw
+
+
 class TestCargoInstall:
     """Tests for cargo_install_repos auto-update feature."""
 

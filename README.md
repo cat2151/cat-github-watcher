@@ -43,6 +43,7 @@ It targets user-owned repositories for authenticated GitHub users, leveraging th
 - **Issue List Display**: If all PRs are "LLM working," displays the top N issues (default: 10, changeable via `issue_display_limit`) for repositories without open PRs.
 - **Self-Update**: Checks for updates on startup and automatically pulls and restarts if updates are found. Furthermore, if `enable_auto_update = true` is set, update checks continue every minute during the monitoring loop (disabled by default).
 - **Local Repository Pull Detection**: By default, displays the pullable status of your repositories in the parent directory (Dry-run). Setting `auto_git_pull = true` will automatically pull them (refer to [cat-repo-auditor](https://github.com/cat2151/cat-repo-auditor) for reference implementation).
+- **Cargo Install Auto-Update**: For repositories managed via `cargo install`, set `cargo_install_repos = ["repo-name"]` in config to automatically run `cargo install --force` after a successful pull, keeping installed binaries up to date.
 - **Power Saving Mode**: When no state changes occur, the monitoring interval is automatically extended to reduce API usage (`no_change_timeout` and `reduced_frequency_interval` can be configured).
 - **Verbose Mode**: Displays detailed configuration information on startup and during execution to help detect configuration errors (enabled via `verbose`).
 
@@ -393,6 +394,11 @@ assign_good_first_old = true              # Auto-assign good first issue
 To enable automatic pulling of local repositories, set it at the top level (outside of rulesets):
 ```toml
 auto_git_pull = true  # Automatically git pull pullable local repositories
+```
+
+To automatically reinstall binaries after a pull for repositories managed via `cargo install`:
+```toml
+cargo_install_repos = ["voicevox-playground-tui"]  # Run cargo install --force after pull
 ```
 
 ### Stopping

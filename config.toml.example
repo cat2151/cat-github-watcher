@@ -78,6 +78,19 @@ display_llm_status_timeline = false
 # Default: false (disabled). Enable only when you need detailed snapshots for troubleshooting.
 enable_pr_phase_snapshots = false
 
+# Local repository auto-pull setting
+# Default (false): Detects and displays pullable repositories in the parent directory (Dry-run)
+# If set to true: Automatically git pull pullable repositories (executes git fetch every 5 minutes)
+# auto_git_pull = false
+
+# Cargo install auto-update (optional)
+# Repositories managed via `cargo install` are not updated by git pull alone.
+# List repository names (matching local directory names) here to automatically run
+# `cargo install --force --path <path>` after a successful pull for each listed repository.
+# Requires: cargo in PATH, auto_git_pull = true
+# Example: cargo_install_repos = ["voicevox-playground-tui", "another-rust-tool"]
+# cargo_install_repos = []
+
 # Coding agent mention override (optional)
 # Set to override the default @copilot mention when posting apply comments
 [coding_agent]

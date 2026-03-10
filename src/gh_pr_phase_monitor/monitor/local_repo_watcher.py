@@ -17,8 +17,8 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-from .auto_updater import REPO_ROOT, restart_application
 from ..core.colors import Colors
+from .auto_updater import REPO_ROOT, restart_application
 
 # Status constants (same classification as cat-repo-auditor)
 STATUS_PULLABLE = "pullable"  # behind > 0, ahead == 0, not dirty → can pull now
@@ -152,6 +152,28 @@ def _pull_repo(path: str) -> tuple[bool, str]:
     return True, out or "Already up to date."
 
 
+def _run_cargo_install(path: str) -> tuple[bool, str]:
+    """Run `cargo install --force --path <path>`. Returns (success, message)."""
+    try:
+        result = subprocess.run(
+            ["cargo", "install", "--force", "--path", path],
+            cwd=path,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=600,
+        )
+        if result.returncode != 0:
+            err = result.stderr.strip() or result.stdout.strip() or "cargo install 失敗"
+            return False, err
+        return True, result.stderr.strip() or "cargo install 完了"
+    except FileNotFoundError:
+        return False, "cargo コマンドが見つかりません (PATH を確認してください)"
+    except subprocess.TimeoutExpired:
+        return False, "cargo install がタイムアウトしました"
+
+
 def _check_repo(path: str, github_username: str) -> dict:
     """Fetch and classify a single repository.
 
@@ -253,6 +275,7 @@ def check_local_repos(config: dict, github_username: str) -> None:
         return
 
     enable_pull = config.get("auto_git_pull", False)
+    cargo_install_repos = config.get("cargo_install_repos", [])
 
     # Collect candidate directories (siblings in the base dir)
     try:
@@ -296,6 +319,12 @@ def check_local_repos(config: dict, github_username: str) -> None:
             ok, msg = _pull_repo(r["path"])
             if ok:
                 print(f"    ✓ pull 完了: {r['name']}")
+                if cargo_install_repos and r["name"] in cargo_install_repos:
+                    cargo_ok, cargo_msg = _run_cargo_install(r["path"])
+                    if cargo_ok:
+                        print(f"    ✓ cargo install 完了: {r['name']}")
+                    else:
+                        print(f"    ✗ cargo install 失敗: {r['name']}: {cargo_msg}")
                 if Path(r["path"]).resolve() == REPO_ROOT:
                     print("    自分自身が更新されました。アプリケーションを再起動します...")
                     restart_application()
@@ -303,6 +332,8 @@ def check_local_repos(config: dict, github_username: str) -> None:
                 print(f"    ✗ pull 失敗: {r['name']}: {msg}")
         else:
             print(f"    [DRY-RUN] Would pull {r['name']} (auto_git_pull=false)")
+            if cargo_install_repos and r["name"] in cargo_install_repos:
+                print(f"    [DRY-RUN] Would run cargo install --force: {r['name']} (auto_git_pull=false)")
 
     for r in diverged:
         detail = f"behind {r['behind']}, ahead {r['ahead']}"
@@ -318,7 +349,7 @@ def _get_base_dir(config: dict) -> Optional[Path]:
     return base_dir
 
 
-def _accumulate_result(result: dict, enable_pull: bool) -> None:
+def _accumulate_result(result: dict, enable_pull: bool, cargo_install_repos: List[str] | None = None) -> None:
     """Process a single repo check result: pull if needed, accumulate display lines.
 
     Must be called with _state_lock NOT held (since _pull_repo may block).
@@ -346,10 +377,18 @@ def _accumulate_result(result: dict, enable_pull: bool) -> None:
                 if Path(result["path"]).resolve() == REPO_ROOT:
                     lines.append("    自分自身が更新されました。アプリケーションを再起動します...")
                     needs_restart = True
+                if cargo_install_repos and result["name"] in cargo_install_repos:
+                    cargo_ok, cargo_msg = _run_cargo_install(result["path"])
+                    if cargo_ok:
+                        lines.append(f"    ✓ cargo install 完了: {result['name']}")
+                    else:
+                        lines.append(f"    ✗ cargo install 失敗: {result['name']}: {cargo_msg}")
             else:
                 lines.append(f"    ✗ pull 失敗: {result['name']}: {msg}")
         else:
             lines.append(f"    [DRY-RUN] Would pull {result['name']} (auto_git_pull=false)")
+            if cargo_install_repos and result["name"] in cargo_install_repos:
+                lines.append(f"    [DRY-RUN] Would run cargo install --force: {result['name']} (auto_git_pull=false)")
     else:  # STATUS_DIVERGED
         detail = f"behind {result['behind']}, ahead {result['ahead']}"
         lines.append(f"  {Colors.YELLOW}[DIVERGED]{Colors.RESET} {result['name']}  ({detail}) ⚠ 手動マージが必要")
@@ -372,6 +411,7 @@ def _background_startup_check(config: dict, github_username: str) -> None:
         return
 
     enable_pull = config.get("auto_git_pull", False)
+    cargo_install_repos = config.get("cargo_install_repos", [])
 
     try:
         candidates = [str(d) for d in sorted(base_dir.iterdir()) if d.is_dir() and not d.name.startswith(".")]
@@ -390,7 +430,7 @@ def _background_startup_check(config: dict, github_username: str) -> None:
         repo_name = Path(d).name
         try:
             result = _check_repo(d, github_username)
-            _accumulate_result(result, enable_pull)
+            _accumulate_result(result, enable_pull, cargo_install_repos)
         except Exception:
             pass
         finally:
@@ -398,14 +438,14 @@ def _background_startup_check(config: dict, github_username: str) -> None:
                 _repo_states[repo_name] = REPO_STATE_DONE
 
 
-def _background_single_repo_check(repo_path: str, repo_name: str, github_username: str, enable_pull: bool) -> None:
+def _background_single_repo_check(repo_path: str, repo_name: str, github_username: str, enable_pull: bool, cargo_install_repos: List[str] | None = None) -> None:
     """Background thread: check a single repo and accumulate result.
 
     phase3検知時に呼び出される。検査後に状態を DONE に更新する。
     """
     try:
         result = _check_repo(repo_path, github_username)
-        _accumulate_result(result, enable_pull)
+        _accumulate_result(result, enable_pull, cargo_install_repos)
     except Exception:
         pass
     finally:
@@ -469,13 +509,14 @@ def notify_phase3_detected(repo_name: str, config: dict, github_username: str) -
         return
 
     enable_pull = config.get("auto_git_pull", False)
+    cargo_install_repos = config.get("cargo_install_repos", [])
 
     with _state_lock:
         _repo_states[repo_name] = REPO_STATE_CHECKING
 
     t = threading.Thread(
         target=_background_single_repo_check,
-        args=(repo_path, repo_name, github_username, enable_pull),
+        args=(repo_path, repo_name, github_username, enable_pull, cargo_install_repos),
         daemon=True,
     )
     t.start()

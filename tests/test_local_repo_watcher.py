@@ -522,3 +522,222 @@ class TestNotifyReposUpdatedAfterPhase3:
         assert "myrepo" in local_repo_watcher._repos_awaiting_post_phase3_check, (
             "Repo should remain in tracking set when not pulled (dry-run mode)"
         )
+
+
+class TestCargoInstall:
+    """Tests for cargo_install_repos auto-update feature."""
+
+    def _make_pullable_result(self, name: str, path: str) -> dict:
+        return {
+            "name": name,
+            "path": path,
+            "remote_url": f"https://github.com/myuser/{name}.git",
+            "branch": "main",
+            "dirty": False,
+            "behind": 1,
+            "ahead": 0,
+            "status": local_repo_watcher.STATUS_PULLABLE,
+            "error": None,
+            "is_target": True,
+        }
+
+    def test_cargo_install_called_after_successful_pull(self, monkeypatch, capsys):
+        """When a repo in cargo_install_repos is successfully pulled, cargo install should run."""
+        monkeypatch.setattr(local_repo_watcher, "_last_local_check_time", 0.0)
+
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_check_repo",
+            lambda path, user: self._make_pullable_result("my-rust-tool", path),
+        )
+        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (True, "Updated."))
+
+        cargo_calls = []
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_run_cargo_install",
+            lambda path: cargo_calls.append(path) or (True, "cargo install 完了"),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_repo = pathlib.Path(tmpdir) / "my-rust-tool"
+            fake_repo.mkdir()
+            config = {
+                "local_repo_watcher_base_dir": tmpdir,
+                "auto_git_pull": True,
+                "cargo_install_repos": ["my-rust-tool"],
+            }
+            local_repo_watcher.check_local_repos(config, "myuser")
+
+        assert len(cargo_calls) == 1, "cargo install should be called once"
+        captured = capsys.readouterr()
+        assert "cargo install 完了" in captured.out
+
+    def test_cargo_install_not_called_when_repo_not_listed(self, monkeypatch, capsys):
+        """When a repo is NOT in cargo_install_repos, cargo install should not run."""
+        monkeypatch.setattr(local_repo_watcher, "_last_local_check_time", 0.0)
+
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_check_repo",
+            lambda path, user: self._make_pullable_result("other-repo", path),
+        )
+        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (True, "Updated."))
+
+        cargo_calls = []
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_run_cargo_install",
+            lambda path: cargo_calls.append(path) or (True, "cargo install 完了"),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_repo = pathlib.Path(tmpdir) / "other-repo"
+            fake_repo.mkdir()
+            config = {
+                "local_repo_watcher_base_dir": tmpdir,
+                "auto_git_pull": True,
+                "cargo_install_repos": ["my-rust-tool"],
+            }
+            local_repo_watcher.check_local_repos(config, "myuser")
+
+        assert len(cargo_calls) == 0, "cargo install should NOT be called for unlisted repos"
+
+    def test_cargo_install_not_called_when_pull_disabled(self, monkeypatch, capsys):
+        """When auto_git_pull=false (dry-run), cargo install should not run but DRY-RUN message shown."""
+        monkeypatch.setattr(local_repo_watcher, "_last_local_check_time", 0.0)
+
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_check_repo",
+            lambda path, user: self._make_pullable_result("my-rust-tool", path),
+        )
+
+        cargo_calls = []
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_run_cargo_install",
+            lambda path: cargo_calls.append(path) or (True, "cargo install 完了"),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_repo = pathlib.Path(tmpdir) / "my-rust-tool"
+            fake_repo.mkdir()
+            config = {
+                "local_repo_watcher_base_dir": tmpdir,
+                "auto_git_pull": False,
+                "cargo_install_repos": ["my-rust-tool"],
+            }
+            local_repo_watcher.check_local_repos(config, "myuser")
+
+        assert len(cargo_calls) == 0, "cargo install should NOT run in dry-run mode"
+        captured = capsys.readouterr()
+        assert "cargo install" in captured.out
+        assert "DRY-RUN" in captured.out
+
+    def test_cargo_install_failure_displayed(self, monkeypatch, capsys):
+        """When cargo install fails, the failure message should be shown."""
+        monkeypatch.setattr(local_repo_watcher, "_last_local_check_time", 0.0)
+
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_check_repo",
+            lambda path, user: self._make_pullable_result("my-rust-tool", path),
+        )
+        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (True, "Updated."))
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_run_cargo_install",
+            lambda path: (False, "error[E0001]: compilation failed"),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_repo = pathlib.Path(tmpdir) / "my-rust-tool"
+            fake_repo.mkdir()
+            config = {
+                "local_repo_watcher_base_dir": tmpdir,
+                "auto_git_pull": True,
+                "cargo_install_repos": ["my-rust-tool"],
+            }
+            local_repo_watcher.check_local_repos(config, "myuser")
+
+        captured = capsys.readouterr()
+        assert "cargo install 失敗" in captured.out
+        assert "compilation failed" in captured.out
+
+    def test_cargo_install_not_called_when_pull_fails(self, monkeypatch, capsys):
+        """When git pull fails, cargo install should not be attempted."""
+        monkeypatch.setattr(local_repo_watcher, "_last_local_check_time", 0.0)
+
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_check_repo",
+            lambda path, user: self._make_pullable_result("my-rust-tool", path),
+        )
+        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (False, "merge conflict"))
+
+        cargo_calls = []
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_run_cargo_install",
+            lambda path: cargo_calls.append(path) or (True, "ok"),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_repo = pathlib.Path(tmpdir) / "my-rust-tool"
+            fake_repo.mkdir()
+            config = {
+                "local_repo_watcher_base_dir": tmpdir,
+                "auto_git_pull": True,
+                "cargo_install_repos": ["my-rust-tool"],
+            }
+            local_repo_watcher.check_local_repos(config, "myuser")
+
+        assert len(cargo_calls) == 0, "cargo install should NOT run when pull fails"
+
+    def test_accumulate_result_calls_cargo_install(self, monkeypatch):
+        """_accumulate_result should call cargo install for listed repos after successful pull."""
+        cargo_calls = []
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_run_cargo_install",
+            lambda path: cargo_calls.append(path) or (True, "ok"),
+        )
+        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (True, "Updated."))
+        monkeypatch.setattr(local_repo_watcher, "REPO_ROOT", pathlib.Path("/some/other/path"))
+
+        result = {
+            "name": "my-rust-tool",
+            "path": "/tmp/my-rust-tool",
+            "status": local_repo_watcher.STATUS_PULLABLE,
+            "behind": 1,
+            "ahead": 0,
+            "is_target": True,
+        }
+        local_repo_watcher._accumulate_result(result, enable_pull=True, cargo_install_repos=["my-rust-tool"])
+
+        assert len(cargo_calls) == 1, "cargo install should be triggered from _accumulate_result"
+        assert cargo_calls[0] == "/tmp/my-rust-tool"
+
+    def test_accumulate_result_no_cargo_install_without_config(self, monkeypatch):
+        """_accumulate_result should not call cargo install when cargo_install_repos is empty."""
+        cargo_calls = []
+        monkeypatch.setattr(
+            local_repo_watcher,
+            "_run_cargo_install",
+            lambda path: cargo_calls.append(path) or (True, "ok"),
+        )
+        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (True, "Updated."))
+        monkeypatch.setattr(local_repo_watcher, "REPO_ROOT", pathlib.Path("/some/other/path"))
+
+        result = {
+            "name": "my-rust-tool",
+            "path": "/tmp/my-rust-tool",
+            "status": local_repo_watcher.STATUS_PULLABLE,
+            "behind": 1,
+            "ahead": 0,
+            "is_target": True,
+        }
+        local_repo_watcher._accumulate_result(result, enable_pull=True, cargo_install_repos=[])
+
+        assert len(cargo_calls) == 0

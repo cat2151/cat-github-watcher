@@ -1,4 +1,4 @@
-"""Tests for local_repo_watcher module."""
+"""Tests for local_repo_watcher orchestration (check_local_repos, self-update, phase3 tracking)."""
 
 from __future__ import annotations
 
@@ -49,65 +49,6 @@ def reset_phase3_tracking():
         local_repo_watcher._pending_lines.clear()
         local_repo_watcher._pending_needs_restart = False
         local_repo_watcher._startup_started = False
-
-
-class TestIsTargetRepo:
-    """Tests for _is_target_repo helper."""
-
-    def test_https_url_matches_correct_user(self):
-        assert local_repo_watcher._is_target_repo("https://github.com/myuser/myrepo.git", "myuser")
-
-    def test_ssh_url_matches_correct_user(self):
-        assert local_repo_watcher._is_target_repo("git@github.com:myuser/myrepo.git", "myuser")
-
-    def test_does_not_match_different_user(self):
-        assert not local_repo_watcher._is_target_repo("https://github.com/otheruser/myrepo.git", "myuser")
-
-    def test_non_github_url_not_matched(self):
-        assert not local_repo_watcher._is_target_repo("https://gitlab.com/myuser/myrepo.git", "myuser")
-
-    def test_case_insensitive_matching(self):
-        assert local_repo_watcher._is_target_repo("https://github.com/MyUser/MyRepo.git", "myuser")
-
-    def test_fake_github_domain_not_matched(self):
-        """URLs like 'github.com.evil.com' must not be accepted."""
-        assert not local_repo_watcher._is_target_repo("https://github.com.evil.com/myuser/repo.git", "myuser")
-
-    def test_notgithub_domain_not_matched(self):
-        """URLs like 'notgithub.com' must not be accepted."""
-        assert not local_repo_watcher._is_target_repo("https://notgithub.com/myuser/repo.git", "myuser")
-
-
-class TestStatusClassification:
-    """Tests for the status classification in _check_repo."""
-
-    def _make_result(self, behind: int, ahead: int, dirty: bool) -> str:
-        """Helper: run classification logic directly and return the status."""
-        # Reproduce the classification logic from _check_repo
-        status = local_repo_watcher.STATUS_UNKNOWN
-        if behind == 0:
-            status = local_repo_watcher.STATUS_UP_TO_DATE
-        elif behind > 0 and ahead > 0:
-            status = local_repo_watcher.STATUS_DIVERGED
-        elif behind > 0 and ahead == 0:
-            status = local_repo_watcher.STATUS_UNKNOWN if dirty else local_repo_watcher.STATUS_PULLABLE
-        return status
-
-    def test_behind_only_clean_is_pullable(self):
-        assert self._make_result(behind=3, ahead=0, dirty=False) == local_repo_watcher.STATUS_PULLABLE
-
-    def test_behind_only_dirty_is_unknown(self):
-        assert self._make_result(behind=3, ahead=0, dirty=True) == local_repo_watcher.STATUS_UNKNOWN
-
-    def test_ahead_only_is_up_to_date(self):
-        """ahead-only (no behind) means nothing to pull → up_to_date."""
-        assert self._make_result(behind=0, ahead=2, dirty=False) == local_repo_watcher.STATUS_UP_TO_DATE
-
-    def test_both_behind_and_ahead_is_diverged(self):
-        assert self._make_result(behind=2, ahead=1, dirty=False) == local_repo_watcher.STATUS_DIVERGED
-
-    def test_up_to_date_when_behind_zero(self):
-        assert self._make_result(behind=0, ahead=0, dirty=False) == local_repo_watcher.STATUS_UP_TO_DATE
 
 
 class TestCheckLocalRepos:
@@ -522,3 +463,4 @@ class TestNotifyReposUpdatedAfterPhase3:
         assert "myrepo" in local_repo_watcher._repos_awaiting_post_phase3_check, (
             "Repo should remain in tracking set when not pulled (dry-run mode)"
         )
+

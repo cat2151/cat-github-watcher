@@ -1,62 +1,70 @@
-Last updated: 2026-03-10
+Last updated: 2026-03-11
 
 # Development Status
 
 ## 現在のIssues
-- [Issue #411](../issue-notes/411.md) と [Issue #410](../issue-notes/410.md) は、PRクローズ後にリポジトリの自動pullが実行されないという共通の問題を指摘しています。
-- この問題は、`src/gh_pr_phase_monitor/monitor/local_repo_watcher.py` 内の `notify_phase3_detected` が、PRがクローズされてオープンPR数が0になった際に適切にリポジトリの状態更新をトリガーできていないことに起因している可能性があります。
-- 具体的には、`phase3A` 後のPRクローズ時に`notify_phase3_detected`が呼ばれないか、`_repo_states`の状態管理によって意図せずスキップされている疑いがあります。
+- [Issue #414](../issue-notes/414.md) は、`local_repo_watcher.py`とそのテストファイルが500行を超えており、リファクタリングによるコード品質改善が求められています。
+- [Issue #413](../issue-notes/413.md) は、設定されたRustリポジトリに対して`git pull`後に`cargo install --force`を自動実行する機能の実装を進めています。
+- [Issue #412](../issue-notes/412.md) は、`cargo install`を利用するリポジトリで`git pull`だけでは最新にならないUX上の課題を指摘しており、[Issue #413](../issue-notes/413.md)がその解決策を提示しています。
 
 ## 次の一手候補
-1. [Issue #411](../issue-notes/411.md) の問題再現テストのスケルトン作成
-   - 最初の小さな一歩: `tests/` ディレクトリ配下に、Issue #411 で説明されているシナリオ（phase3A後PRクローズ時にauto pullが実行されない）を再現する単体テストまたは結合テストのスケルトンを作成します。
+1. [Issue #414](../issue-notes/414.md): `local_repo_watcher.py`の巨大ファイルのリファクタリング計画
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py`と`tests/test_local_repo_watcher.py`の現状の機能と依存関係を詳細に分析し、リファクタリングが必要な具体的なセクションや関数を特定する。特に、テストのカバレッジを維持しつつ、どのように分割・抽象化できるかの初期案を検討する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `tests/test_local_repo_watcher_phase3_pull.py` (新規作成)
+     対象ファイル: `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py`, `tests/test_local_repo_watcher.py`
 
-     実行内容: `local_repo_watcher.py` の `notify_phase3_detected` が正しく機能しないシナリオを検証するテストファイルのスケルトンを作成してください。具体的には、
-     1. モックを使ってGitHub PRの状態をシミュレートし、`phase3A` に移行したと仮定する。
-     2. その後PRがクローズされたと仮定し、`notify_phase3_detected` が呼ばれる状況をシミュレートする。
-     3. `notify_phase3_detected` が `local_repo_watcher.py` 内の`_check_repo` や `_accumulate_result` を正しくトリガーするか（またはその意図しないスキップが発生するか）を検証するテスト関数を追加する。
-     テストファイルには最小限の構造（import、テストクラス、テストメソッドの定義）を含めてください。
+     実行内容: `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py`の現在のコードベース（543行）と、関連するテストファイル`tests/test_local_repo_watcher.py`（524行）について、リファクタリングの計画を提案してください。特に以下の点を考慮してください：
+     1. 役割が明確に分かれている関数やクラスの特定。
+     2. テストの変更を最小限に抑えつつ、コードをモジュール化するための戦略。
+     3. 行数を減らすための具体的なリファクタリング候補（例: 共通ユーティリティ関数の抽出、データ構造の改善）。
+     4. リファクタリング後のファイル構造の提案。
 
-     確認事項: `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py` の現在の実装、特に`_repo_states` の利用方法と`notify_phase3_detected`のロジックを把握してください。また、既存のテストファイル（`tests/test_local_repo_watcher.py`など）を参考に、モックやテストヘルパーの適切な利用方法を確認してください。
+     確認事項:
+     - `_run_git`関数など、外部コマンド実行に依存する部分の副作用の扱いに注意してください。
+     - スレッド処理 (`_background_startup_check`, `_background_single_repo_check`) の変更が並行処理の安全性に影響しないことを確認してください。
+     - 既存のテストがリファクタリング後も引き続き機能することを前提としてください。
 
-     期待する出力: `tests/test_local_repo_watcher_phase3_pull.py` という新しいファイル名で、上記実行内容を満たすPythonテストコードのスケルトンを生成してください。
+     期待する出力: `local_repo_watcher.py`のリファクタリング計画をMarkdown形式で出力してください。計画には、リファクタリング対象の具体的なコードブロック、提案される変更内容、および新しいファイル構成の概要を含めてください。
      ```
 
-2. [Issue #411](../issue-notes/411.md) の `notify_phase3_detected` ロジック修正検討
-   - 最初の小さな一歩: `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py` の `notify_phase3_detected` 関数において、`_repo_states` の状態遷移ロジックを見直し、PRクローズ後にリポジトリの再チェックが必ずトリガーされるように修正の必要箇所を特定し、コメントアウトでその意図を記述します。
+2. [Issue #413](../issue-notes/413.md): Rustリポジトリの`cargo install --force`自動実行機能のための設定追加
+   - 最初の小さな一歩: 既存の`local_repo_watcher.py`に関連する設定ファイルに`cargo_install_repos`設定オプションを追加し、指定されたリポジトリのパスを管理する基本的なメカニズムを実装する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py`
+     対象ファイル: `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py`, `src/gh_pr_phase_monitor/core/config.py`, `config.toml.example`
 
-     実行内容: `notify_phase3_detected` 関数内の`_repo_states` の状態管理ロジックを分析し、PRがクローズされた後にリポジトリの状態が `REPO_STATE_NEEDS_CHECK` に確実に遷移するか、あるいは直接 `REPO_STATE_CHECKING` に移行するかどうかを検証するための修正案をコメントで追記してください。具体的には、以下の行の変更可能性を検討し、コメントで提案を記述してください。
-         ```python
-         if current_state in (REPO_STATE_STARTUP_CHECKING, REPO_STATE_NEEDS_CHECK, REPO_STATE_CHECKING, REPO_STATE_DONE):
-             return  # 既に検査済み・検査中または待機中
-         ```
-     このreturn文を削除した場合の影響や、特定の条件（例: `current_state == REPO_STATE_DONE`の場合のみ再チェックを許可するなど）を追加する可能性をコメントで示してください。
+     実行内容:
+     1. `src/gh_pr_phase_monitor/core/config.py`に新しい設定オプション`cargo_install_repos` (リスト型) を追加してください。デフォルト値は空のリストとしてください。
+     2. `config.toml.example`に`cargo_install_repos = []`の記述を追加し、この設定の目的を説明する簡単なコメントを加えてください。
+     3. `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py`内で、`check_local_repos`関数およびバックグラウンドチェック関数（`_background_startup_check`, `_background_single_repo_check`）がこの`cargo_install_repos`設定を読み込み、処理に利用できるように準備してください。具体的には、設定を引数として受け取るか、グローバルにアクセスできるように、設定の読み込みフローを調整してください。
 
-     確認事項: `notify_phase3_detected`がどのようなライフサイクルで呼び出されるか、また`_repo_states`が全体でどのように利用されているかを理解してください。特に、PRクローズ後に再度pullableチェックが必要になる要件を満たすことを重視してください。
+     確認事項:
+     - 設定の読み込みが正しく行われ、`local_repo_watcher.py`の関連関数で利用可能になること。
+     - `cargo_install_repos`リストに含まれるリポジトリのみが`cargo install`の対象となるように、後のステップで条件分岐を容易に実装できるような準備をすること。
+     - 既存のコンフィグレーション読み込みロジックとの整合性を維持すること。
 
-     期待する出力: `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py` の更新された内容。変更箇所には具体的なコード修正案と、その理由を説明するコメントを含めてください。
+     期待する出力: 変更されたコードスニペット（`config.py`の新しい設定定義、`config.toml.example`の追加エントリ、`local_repo_watcher.py`での設定利用準備に関する部分）と、新しい設定オプションの動作説明を含むMarkdown形式の文書。
      ```
 
-3. [Issue #411](../issue-notes/411.md) の `_repos_awaiting_post_phase3_check` 導入と追跡ロジックの初期実装
-   - 最初の小さな一歩: `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py` に `_repos_awaiting_post_phase3_check: Set[str]` を追加し、`notify_phase3_detected` が呼ばれた際に該当リポジトリ名をこのセットに追加する初期実装を行います。
+3. [Issue #413](../issue-notes/413.md): `cargo install`実行と多行エラーの要約機能の実装
+   - 最初の小さな一歩: `local_repo_watcher.py`内に、`cargo install --force --path <path>`コマンドを実行するための汎用ヘルパー関数`_run_cargo`と、個別のインストール関数`_run_cargo_install`を定義する。
    - Agent実行プロンプト:
      ```
      対象ファイル: `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py`
 
      実行内容:
-     1. モジュールレベル変数として `_repos_awaiting_post_phase3_check: Set[str]` を `threading.Lock` の直後あたりに追加してください。
-     2. `notify_phase3_detected` 関数内で、PRが `phase3` に移行したと検知された際に、`_repo_states` を更新する前に、`_repos_awaiting_post_phase3_check` に該当するリポジトリ名を追加するロジックを `_state_lock` のスコープ内で実装してください。
-     3. このセットへの追加は、PRクローズ後の自動pullを保証するための追跡メカニズムの第一歩であることを示すコメントを追加してください。
+     1. `_run_git`関数を参考に、`src/gh_pr_phase_monitor/monitor/local_repo_watcher.py`に`_run_cargo(args: list[str], cwd: str) -> tuple[int, str, str]`関数を新しく追加してください。これは`cargo`コマンドを実行するための汎用ヘルパー関数であり、`git`コマンドと同様に`capture_output`や`timeout`、`encoding`を適切に処理するものとします。
+     2. その後、この`_run_cargo`関数を利用して、`_run_cargo_install(path: str) -> tuple[bool, str]`関数を実装してください。この関数は、指定されたパスのリポジトリに対して`cargo install --force --path <path>`を実行し、成功した場合は`True, "インストール成功"`、失敗した場合は`False, エラーメッセージ`を返します。エラーメッセージは、後で`_summarize_cargo_error()`で正規化される前の生のエラー出力を含んでください。
+     3. これらの関数を`local_repo_watcher.py`内の適切な位置に配置し、呼び出し元からのアクセスを考慮してください。
 
-     確認事項: `_state_lock` の適切な利用法を確認し、スレッドセーフティを確保してください。また、`notify_phase3_detected` の既存のロジックに影響を与えないよう注意してください。
+     確認事項:
+     - `_run_cargo`関数が`_run_git`と同様にタイムアウト処理やエンコーディングを適切に扱うこと。
+     - `_run_cargo_install`が`--force`オプションを正しく使用し、`path`引数を`--path`オプションとして渡すこと。
+     - `cargo`コマンド実行時に発生する可能性のある標準出力および標準エラー出力を適切にキャプチャし、エラー発生時にその詳細を返すこと。
 
-     期待する出力: `src/gh_pr_phase_monitor/monitor/local_repo_watcher.py` の更新された内容。`_repos_awaiting_post_phase3_check` の定義と、`notify_phase3_detected` 内でのその利用例を含めてください。
+     期待する出力: 変更された`local_repo_watcher.py`の該当コードスニペット（`_run_cargo`, `_run_cargo_install`の定義）と、これらの関数の利用方法、およびそれぞれの関数の役割と引数、戻り値の説明を含むMarkdown形式の文書。
+     ```
 
 ---
-Generated at: 2026-03-10 07:03:50 JST
+Generated at: 2026-03-11 07:03:02 JST

@@ -31,6 +31,26 @@ def reset_last_check_time():
     local_repo_watcher._last_local_check_time = original
 
 
+@pytest.fixture(autouse=True)
+def reset_phase3_tracking():
+    """Reset phase3 post-merge tracking state before each test."""
+    # These structures are mutated by background threads in local_repo_watcher;
+    # take the module's state lock to avoid races during tests.
+    with local_repo_watcher._state_lock:
+        local_repo_watcher._repos_awaiting_post_phase3_check.clear()
+        local_repo_watcher._repo_states.clear()
+        local_repo_watcher._pending_lines.clear()
+        local_repo_watcher._pending_needs_restart = False
+        local_repo_watcher._startup_started = False
+    yield
+    with local_repo_watcher._state_lock:
+        local_repo_watcher._repos_awaiting_post_phase3_check.clear()
+        local_repo_watcher._repo_states.clear()
+        local_repo_watcher._pending_lines.clear()
+        local_repo_watcher._pending_needs_restart = False
+        local_repo_watcher._startup_started = False
+
+
 class TestIsTargetRepo:
     """Tests for _is_target_repo helper."""
 
@@ -364,3 +384,141 @@ class TestSelfUpdateOnPull:
             local_repo_watcher.check_local_repos(config, "myuser")
 
         assert not restarted, "restart_application should NOT have been called"
+
+
+class TestNotifyPhase3Detected:
+    """Tests for notify_phase3_detected phase3 tracking."""
+
+    def test_notify_phase3_detected_registers_repo_for_post_phase3_check(self, monkeypatch):
+        """notify_phase3_detected should add the repo to _repos_awaiting_post_phase3_check."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_repo = pathlib.Path(tmpdir) / "myrepo"
+            fake_repo.mkdir()
+            config = {"local_repo_watcher_base_dir": tmpdir, "auto_git_pull": False}
+
+            monkeypatch.setattr(local_repo_watcher, "_check_repo", lambda path, user: {
+                "name": "myrepo", "path": path, "remote_url": "https://github.com/u/myrepo.git",
+                "branch": "main", "dirty": False, "behind": 0, "ahead": 0,
+                "status": local_repo_watcher.STATUS_UP_TO_DATE, "error": None, "is_target": True,
+            })
+
+            local_repo_watcher.notify_phase3_detected("myrepo", config, "myuser")
+
+        assert "myrepo" in local_repo_watcher._repos_awaiting_post_phase3_check
+
+    def test_notify_phase3_detected_already_done_still_registers(self, monkeypatch):
+        """Repos in REPO_STATE_DONE should still be registered for post-phase3 re-check."""
+        local_repo_watcher._repo_states["myrepo"] = local_repo_watcher.REPO_STATE_DONE
+
+        config = {}
+        local_repo_watcher.notify_phase3_detected("myrepo", config, "myuser")
+
+        assert "myrepo" in local_repo_watcher._repos_awaiting_post_phase3_check
+
+
+def _wait_for(condition, timeout=2.0, interval=0.05):
+    """Poll condition until it is True or timeout expires. Returns True if condition was met."""
+    import time
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if condition():
+            return True
+        time.sleep(interval)
+    return False
+
+
+class TestNotifyReposUpdatedAfterPhase3:
+    """Tests for notify_repos_updated_after_phase3."""
+
+    def test_triggers_recheck_for_phase3_repos_with_updated_at_change(self, monkeypatch):
+        """Repos in _repos_awaiting_post_phase3_check whose updatedAt changed should be re-checked."""
+        check_called = []
+
+        def fake_check_repo(path, user):
+            check_called.append(path)
+            return {
+                "name": "myrepo", "path": path,
+                "remote_url": "https://github.com/u/myrepo.git",
+                "branch": "main", "dirty": False, "behind": 2, "ahead": 0,
+                "status": local_repo_watcher.STATUS_PULLABLE, "error": None, "is_target": True,
+            }
+
+        monkeypatch.setattr(local_repo_watcher, "_check_repo", fake_check_repo)
+        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (True, "ok"))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_repo = pathlib.Path(tmpdir) / "myrepo"
+            fake_repo.mkdir()
+            config = {"local_repo_watcher_base_dir": tmpdir, "auto_git_pull": True}
+
+            # Register myrepo as phase3 detected
+            local_repo_watcher._repos_awaiting_post_phase3_check.add("myrepo")
+
+            # Simulate updatedAt change for myrepo (PR was merged)
+            local_repo_watcher.notify_repos_updated_after_phase3({"myrepo"}, config, "myuser")
+
+            assert _wait_for(lambda: len(check_called) > 0), "Background check should have been triggered for myrepo"
+
+    def test_does_not_trigger_recheck_for_repos_not_in_phase3_set(self, monkeypatch):
+        """Repos NOT in _repos_awaiting_post_phase3_check should not be re-checked."""
+        check_called = []
+        monkeypatch.setattr(local_repo_watcher, "_check_repo", lambda path, user: check_called.append(path))
+
+        config = {}
+        local_repo_watcher.notify_repos_updated_after_phase3({"other-repo"}, config, "myuser")
+
+        import time
+        time.sleep(0.1)
+        assert len(check_called) == 0, "Should NOT check repos not in _repos_awaiting_post_phase3_check"
+
+    def test_removes_from_awaiting_set_after_successful_pull(self, monkeypatch):
+        """After a successful auto-pull, the repo should be removed from the tracking set."""
+        monkeypatch.setattr(local_repo_watcher, "_check_repo", lambda path, user: {
+            "name": "myrepo", "path": path,
+            "remote_url": "https://github.com/u/myrepo.git",
+            "branch": "main", "dirty": False, "behind": 1, "ahead": 0,
+            "status": local_repo_watcher.STATUS_PULLABLE, "error": None, "is_target": True,
+        })
+        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: (True, "ok"))
+        monkeypatch.setattr(local_repo_watcher, "REPO_ROOT", pathlib.Path("/some/other/repo"))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_repo = pathlib.Path(tmpdir) / "myrepo"
+            fake_repo.mkdir()
+            config = {"local_repo_watcher_base_dir": tmpdir, "auto_git_pull": True}
+
+            local_repo_watcher._repos_awaiting_post_phase3_check.add("myrepo")
+            local_repo_watcher.notify_repos_updated_after_phase3({"myrepo"}, config, "myuser")
+
+            assert _wait_for(lambda: "myrepo" not in local_repo_watcher._repos_awaiting_post_phase3_check), (
+                "Repo should be removed from tracking set after successful pull"
+            )
+
+    def test_stays_in_awaiting_set_when_pull_disabled(self, monkeypatch):
+        """When auto_git_pull=false, the repo should stay in the tracking set (not pulled)."""
+        monkeypatch.setattr(local_repo_watcher, "_check_repo", lambda path, user: {
+            "name": "myrepo", "path": path,
+            "remote_url": "https://github.com/u/myrepo.git",
+            "branch": "main", "dirty": False, "behind": 1, "ahead": 0,
+            "status": local_repo_watcher.STATUS_PULLABLE, "error": None, "is_target": True,
+        })
+        pull_called = []
+        monkeypatch.setattr(local_repo_watcher, "_pull_repo", lambda path: pull_called.append(path) or (True, "ok"))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_repo = pathlib.Path(tmpdir) / "myrepo"
+            fake_repo.mkdir()
+            config = {"local_repo_watcher_base_dir": tmpdir, "auto_git_pull": False}
+
+            local_repo_watcher._repos_awaiting_post_phase3_check.add("myrepo")
+            local_repo_watcher.notify_repos_updated_after_phase3({"myrepo"}, config, "myuser")
+
+            # Wait for background thread to finish checking (but not pulling)
+            assert _wait_for(
+                lambda: local_repo_watcher._repo_states.get("myrepo") == local_repo_watcher.REPO_STATE_DONE
+            ), "Background check should complete"
+
+        assert len(pull_called) == 0, "Should not pull when auto_git_pull=false"
+        assert "myrepo" in local_repo_watcher._repos_awaiting_post_phase3_check, (
+            "Repo should remain in tracking set when not pulled (dry-run mode)"
+        )

@@ -1,4 +1,4 @@
-Last updated: 2026-03-12
+Last updated: 2026-03-15
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -251,9 +251,11 @@ Last updated: 2026-03-12
 - src/gh_pr_phase_monitor/github/__init__.py
 - src/gh_pr_phase_monitor/github/comment_fetcher.py
 - src/gh_pr_phase_monitor/github/comment_manager.py
+- src/gh_pr_phase_monitor/github/etag_checker.py
 - src/gh_pr_phase_monitor/github/github_auth.py
 - src/gh_pr_phase_monitor/github/github_client.py
 - src/gh_pr_phase_monitor/github/graphql_client.py
+- src/gh_pr_phase_monitor/github/issue_etag_checker.py
 - src/gh_pr_phase_monitor/github/issue_fetcher.py
 - src/gh_pr_phase_monitor/github/pr_fetcher.py
 - src/gh_pr_phase_monitor/github/rate_limit_handler.py
@@ -299,6 +301,7 @@ Last updated: 2026-03-12
 - tests/test_config_rulesets_features.py
 - tests/test_elapsed_time_display.py
 - tests/test_error_logging.py
+- tests/test_etag_checker.py
 - tests/test_fetch_pr_html.py
 - tests/test_graphql_client_rate_limit.py
 - tests/test_graphql_query_intent_display.py
@@ -312,6 +315,7 @@ Last updated: 2026-03-12
 - tests/test_interval_parsing.py
 - tests/test_is_llm_working.py
 - tests/test_issue_assignment_priority.py
+- tests/test_issue_etag_checker.py
 - tests/test_issue_fetching.py
 - tests/test_llm_status_timestamp.py
 - tests/test_llm_working_warning.py
@@ -359,16 +363,16 @@ Last updated: 2026-03-12
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
+2039648 Merge pull request #419 from cat2151/copilot/investigate-etag-usage-issues
+56c0d4c fix: address review comments on issue_etag_checker - sort URL and invalid repo handling
+e868033 feat: add ETag-based issue change detection to skip GraphQL when issues unchanged
+3a05326 Initial plan
+9952a60 Merge pull request #417 from cat2151/copilot/detect-repository-changes-with-etag
+cf4b804 fix: purge stale ETags when page count shrinks after repo deletions
+cee05dc feat: add ETag-based repository change detection (If-None-Match / 304)
+9e352d0 Initial plan
+1b6e82a Update project summaries (overview & development status) [auto]
 4c4c75e Auto-translate README.ja.md to README.md [auto]
-9e3b9e1 Merge pull request #413 from cat2151/copilot/improve-cargo-install-ux
-14681e7 Update project summaries (overview & development status) [auto]
-71a645a Split test_local_repo_watcher.py into 4 test files by Single Responsibility Principle
-82b1a49 Split local_repo_watcher.py into 4 files by Single Responsibility Principle
-53f9dbc Address reviewer feedback: revert auto-gen README.md, sanitize cargo error messages
-7264c5a Add cargo install auto-update after git pull for cargo_install_repos config
-bd3ee35 Initial plan
-b5259da Merge pull request #411 from cat2151/copilot/monitor-updatedat-check-auto-pull
-6da263d Update project summaries (overview & development status) [auto]
 
 ### 変更されたファイル:
 README.ja.md
@@ -378,24 +382,24 @@ generated-docs/development-status-generated-prompt.md
 generated-docs/development-status.md
 generated-docs/project-overview-generated-prompt.md
 generated-docs/project-overview.md
-src/gh_pr_phase_monitor/main.py
-src/gh_pr_phase_monitor/monitor/error_logger.py
+src/gh_pr_phase_monitor/github/etag_checker.py
+src/gh_pr_phase_monitor/github/github_client.py
+src/gh_pr_phase_monitor/github/issue_etag_checker.py
+src/gh_pr_phase_monitor/github/repository_fetcher.py
 src/gh_pr_phase_monitor/monitor/iteration_runner.py
 src/gh_pr_phase_monitor/monitor/local_repo_cargo.py
 src/gh_pr_phase_monitor/monitor/local_repo_checker.py
 src/gh_pr_phase_monitor/monitor/local_repo_git.py
 src/gh_pr_phase_monitor/monitor/local_repo_watcher.py
-src/gh_pr_phase_monitor/monitor/monitor.py
-src/gh_pr_phase_monitor/monitor/pr_processor.py
-src/gh_pr_phase_monitor/ui/wait_handler.py
-tests/test_error_logging.py
+src/gh_pr_phase_monitor/ui/display.py
+tests/test_etag_checker.py
+tests/test_issue_etag_checker.py
 tests/test_local_repo_cargo.py
 tests/test_local_repo_checker.py
 tests/test_local_repo_git.py
 tests/test_local_repo_watcher.py
-tests/test_show_issues_when_pr_count_less_than_3.py
-tests/test_skip_pr_check_html_refetch.py
+tests/test_updated_at_optimization.py
 
 
 ---
-Generated at: 2026-03-12 07:03:11 JST
+Generated at: 2026-03-15 07:01:43 JST

@@ -1,4 +1,4 @@
-Last updated: 2026-03-12
+Last updated: 2026-03-15
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -547,9 +547,11 @@ MIT License - 詳細はLICENSEファイルを参照してください
       📄 __init__.py
       📄 comment_fetcher.py
       📄 comment_manager.py
+      📄 etag_checker.py
       📄 github_auth.py
       📄 github_client.py
       📄 graphql_client.py
+      📄 issue_etag_checker.py
       📄 issue_fetcher.py
       📄 pr_fetcher.py
       📄 rate_limit_handler.py
@@ -600,6 +602,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_config_rulesets_features.py
   📄 test_elapsed_time_display.py
   📄 test_error_logging.py
+  📄 test_etag_checker.py
   📄 test_fetch_pr_html.py
   📄 test_graphql_client_rate_limit.py
   📄 test_graphql_query_intent_display.py
@@ -613,6 +616,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_interval_parsing.py
   📄 test_is_llm_working.py
   📄 test_issue_assignment_priority.py
+  📄 test_issue_etag_checker.py
   📄 test_issue_fetching.py
   📄 test_llm_status_timestamp.py
   📄 test_llm_working_warning.py
@@ -676,4 +680,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-03-12 07:03:11 JST
+Generated at: 2026-03-15 07:01:43 JST

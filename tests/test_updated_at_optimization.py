@@ -11,10 +11,12 @@ Verifies that:
 
 
 def _reset_module_state():
-    """Reset the module-level _last_repo_updated_at dict between tests."""
+    """Reset module-level state in repository_fetcher and etag_checker between tests."""
     import src.gh_pr_phase_monitor.github.repository_fetcher as rf
+    from src.gh_pr_phase_monitor.github.etag_checker import reset_etag_state
 
     rf._last_repo_updated_at.clear()
+    reset_etag_state()
 
 
 class TestGetReposChangedSinceLastCheck:

@@ -4,6 +4,7 @@ Repository fetching module for GitHub repositories
 
 from typing import Any, Dict, List, Optional, Set
 
+from .etag_checker import check_repos_etag_changed
 from .github_auth import get_current_user
 from .graphql_client import execute_graphql_query
 
@@ -83,19 +84,41 @@ def get_all_repos_updated_at() -> Dict[str, str]:
 
 
 def get_repos_changed_since_last_check() -> Optional[Set[str]]:
-    """Perform a lightweight updatedAt check to find repositories that changed.
+    """Perform a lightweight check to find repositories that changed since the last call.
 
-    On the first call (no stored baseline), stores the current updatedAt values
-    as the baseline and returns None.
+    Uses a two-stage strategy:
 
-    On subsequent calls, compares current updatedAt values with the stored baseline,
-    updates the baseline, and returns the set of repository names that changed.
+    1. **ETag pre-check** (REST API, ``If-None-Match``):  Pages that have not
+       changed return HTTP 304 Not Modified, which does **not** consume GitHub
+       API rate-limit points.  If every page returns 304, no repository has
+       changed and the function returns an empty set immediately — the more
+       expensive GraphQL ``updatedAt`` query is skipped entirely.
+
+    2. **GraphQL updatedAt check** (fallback): When the ETag pre-check detects
+       a change (or cannot be used), the function falls back to comparing
+       ``updatedAt`` timestamps fetched via GraphQL to identify exactly which
+       repositories changed.
+
+    On the very first call (no stored baselines) both the ETag baseline and the
+    ``updatedAt`` baseline are established, and the function returns ``None``.
 
     Returns:
-        None if no previous data exists (first call — baseline now stored).
+        None if no previous data exists (first call — baselines now stored).
         Empty set if no repositories changed since the last check.
         Non-empty set of repository names whose updatedAt changed.
     """
+    # Stage 1: ETag pre-check — free 304 responses skip the GraphQL query.
+    try:
+        etag_result = check_repos_etag_changed()
+        if etag_result is False:
+            # All pages returned 304: nothing has changed, skip GraphQL.
+            print("  ETag: 全ページ 304 Not Modified → リポジトリ変化なし (GraphQL スキップ)")
+            return set()
+    except Exception:
+        # ETag check failure is non-fatal; fall through to the updatedAt check.
+        pass
+
+    # Stage 2: GraphQL updatedAt check.
     current_map = get_all_repos_updated_at()
 
     if not _last_repo_updated_at:

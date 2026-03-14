@@ -372,6 +372,32 @@ class TestPagination:
         assert result is True
         assert ec._page_etags[2] == 'W/"p2-new"'
 
+    def test_purges_stale_etags_when_page_count_shrinks(self, mocker):
+        """When the account shrinks from 2 pages to 1, stale ETags beyond page 1 are removed."""
+        import src.gh_pr_phase_monitor.github.etag_checker as ec
+        from src.gh_pr_phase_monitor.github.etag_checker import check_repos_etag_changed
+
+        # Simulate state after a previous 2-page response
+        ec._page_etags[1] = 'W/"p1-old"'
+        ec._page_etags[2] = 'W/"p2-old"'
+        ec._last_page_count = 2
+        ec._initialized = True
+
+        # Now only one page is returned (repos were deleted, no Link: next)
+        mock_result = mocker.MagicMock()
+        mock_result.stdout = 'HTTP/2 200 \netag: W/"p1-new"\n\n[]\n'
+        mocker.patch(
+            "src.gh_pr_phase_monitor.github.etag_checker._run_repos_api",
+            return_value=mock_result,
+        )
+
+        result = check_repos_etag_changed()
+
+        assert result is True
+        assert ec._last_page_count == 1
+        assert 1 in ec._page_etags
+        assert 2 not in ec._page_etags  # stale entry purged
+
 
 # ---------------------------------------------------------------------------
 # reset_etag_state

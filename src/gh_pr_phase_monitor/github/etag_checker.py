@@ -121,6 +121,10 @@ def check_repos_etag_changed() -> Optional[bool]:
 
         if not has_next:
             _last_page_count = page
+            # Purge stale ETags for pages that no longer exist (e.g. repos were deleted).
+            for p in list(_page_etags):
+                if p > page:
+                    del _page_etags[p]
             break
         page += 1
 

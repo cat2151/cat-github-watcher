@@ -16,6 +16,7 @@ from ..core.config import (
 from ..core.time_utils import format_elapsed_time
 from ..github import github_client
 from ..github.github_client import assign_issue_to_copilot, get_issues_from_repositories
+from ..github.issue_etag_checker import check_issues_etag_changed
 from ..monitor.state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from ..phase.html.llm_status_extractor import get_latest_activity_timestamp
 from ..phase.phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label, is_llm_working
@@ -209,6 +210,14 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
 
             # Fetch top issues early to detect assigned work and reuse for display
             issue_limit = config.get("issue_display_limit", 10) if config else 10
+
+            # ETag pre-check: skip GraphQL if no issues changed (HTTP 304 Not Modified)
+            etag_result = check_issues_etag_changed(repos_with_issues)
+            if etag_result is False:
+                print("  ETag: 全リポジトリ 304 Not Modified → issue変化なし (GraphQL スキップ)")
+                display_cached_top_issues()
+                return
+
             top_issues = get_issues_from_repositories(repos_with_issues, limit=issue_limit)
 
             # Cache the fetched issues so they can be displayed without re-fetching on no-change iterations

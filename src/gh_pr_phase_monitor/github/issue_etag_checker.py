@@ -12,8 +12,14 @@ _repo_issue_etags: Dict[str, str] = {}
 
 
 def _run_issues_api(owner: str, repo: str, etag: Optional[str] = None) -> subprocess.CompletedProcess:
-    """Run gh api --include for the open issues endpoint of a repository."""
-    args = ["gh", "api", "--include", f"/repos/{owner}/{repo}/issues?state=open&per_page=100"]
+    """Run gh api --include for the open issues endpoint of a repository.
+
+    Uses ``sort=updated&direction=desc&per_page=1`` so the response always starts with
+    the most-recently-updated open issue.  Any update to any open issue changes this
+    response, which causes the ETag to change and the pre-check to return True.
+    """
+    args = ["gh", "api", "--include",
+            f"/repos/{owner}/{repo}/issues?state=open&sort=updated&direction=desc&per_page=1"]
     if etag:
         args.extend(["-H", f"If-None-Match: {etag}"])
     return subprocess.run(
@@ -89,6 +95,7 @@ def check_issues_etag_changed(repos: List[Dict[str, Any]]) -> Optional[bool]:
 
     any_first_call = False
     any_changed = False
+    any_checked = False
 
     for repo in repos:
         owner = repo.get("owner", "")
@@ -96,6 +103,7 @@ def check_issues_etag_changed(repos: List[Dict[str, Any]]) -> Optional[bool]:
         if not owner or not name:
             continue
 
+        any_checked = True
         key = f"{owner}/{name}"
         stored_etag = _repo_issue_etags.get(key)
 
@@ -115,6 +123,10 @@ def check_issues_etag_changed(repos: List[Dict[str, Any]]) -> Optional[bool]:
         if new_etag:
             _repo_issue_etags[key] = new_etag
         any_changed = True
+
+    if not any_checked:
+        # No valid repo entries were found; treat as changed to avoid silently skipping GraphQL.
+        return True
 
     if any_first_call:
         return None

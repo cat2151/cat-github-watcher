@@ -80,6 +80,33 @@ class TestCheckIssuesEtagChangedEmptyRepos:
         result = check_issues_etag_changed([])
         assert result is False
 
+    def test_all_invalid_entries_returns_true(self, mocker):
+        """When all entries are missing owner/name, treat as changed to avoid skipping GraphQL incorrectly."""
+        from src.gh_pr_phase_monitor.github.issue_etag_checker import check_issues_etag_changed
+
+        mock_run = mocker.patch("src.gh_pr_phase_monitor.github.issue_etag_checker._run_issues_api")
+
+        repos = [{"owner": "", "name": "repo1"}, {"owner": "user", "name": ""}]
+        result = check_issues_etag_changed(repos)
+
+        assert result is True
+        mock_run.assert_not_called()
+
+    def test_url_uses_sort_updated_direction_desc(self, mocker):
+        """_run_issues_api should request sort=updated&direction=desc so any update changes the ETag."""
+        import subprocess
+
+        from src.gh_pr_phase_monitor.github.issue_etag_checker import _run_issues_api
+
+        mock_run = mocker.patch("subprocess.run", return_value=mocker.MagicMock())
+
+        _run_issues_api("user", "repo1")
+
+        called_args = mock_run.call_args[0][0]
+        url_arg = next(a for a in called_args if "issues" in a)
+        assert "sort=updated" in url_arg
+        assert "direction=desc" in url_arg
+
 
 # ---------------------------------------------------------------------------
 # check_issues_etag_changed — first call

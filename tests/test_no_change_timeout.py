@@ -18,12 +18,7 @@ class TestNoChangeTimeout:
         state_tracker.set_reduced_frequency_mode(False)
 
     def test_default_timeout_when_config_not_set(self):
-        """Test that no_change_timeout is disabled by default when not configured.
-
-        ETag-based checks consume no API quota (304 Not Modified responses),
-        so the reduced-frequency mode is disabled by default to avoid unexpected
-        long waits that hurt UX.
-        """
+        """Test that no_change_timeout is disabled by default when not configured."""
         all_prs = [
             {
                 "title": "PR 1",

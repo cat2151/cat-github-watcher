@@ -29,8 +29,9 @@ def check_no_state_change_timeout(
     Returns:
         True if monitoring should switch to reduced frequency mode, False otherwise
     """
-    # Get timeout setting from config with default of "30m"
-    timeout_str = (config or {}).get("no_change_timeout", "30m")
+    # Get timeout setting from config; default is "" (disabled) because ETag-based checks
+    # consume no API quota (304 Not Modified), so there is no need to slow down polling.
+    timeout_str = (config or {}).get("no_change_timeout", "")
 
     # Get reduced frequency interval setting from config with default of "1h"
     reduced_interval_str = (config or {}).get("reduced_frequency_interval", "1h")

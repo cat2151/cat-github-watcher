@@ -30,7 +30,7 @@ def print_config(config: Dict[str, Any]) -> None:
     print("\n[Main Settings]")
     print(f"  interval: {config.get('interval', '1m')}")
     print(f"  issue_display_limit: {config.get('issue_display_limit', 10)}")
-    print(f"  no_change_timeout: {config.get('no_change_timeout', '30m')}")
+    print(f"  no_change_timeout: {config.get('no_change_timeout', '') or '(disabled)'}")
     print(f"  reduced_frequency_interval: {config.get('reduced_frequency_interval', '1h')}")
     print(f"  max_llm_working_parallel: {config.get('max_llm_working_parallel', DEFAULT_MAX_LLM_WORKING_PARALLEL)}")
     print(f"  verbose: {config.get('verbose', False)}")

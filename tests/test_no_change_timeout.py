@@ -18,7 +18,7 @@ class TestNoChangeTimeout:
         state_tracker.set_reduced_frequency_mode(False)
 
     def test_default_timeout_when_config_not_set(self):
-        """Test that default 30m timeout is used when no_change_timeout is not configured"""
+        """Test that no_change_timeout is disabled by default when not configured."""
         all_prs = [
             {
                 "title": "PR 1",
@@ -35,12 +35,11 @@ class TestNoChangeTimeout:
         ]
         config = {}
 
-        # Should not exit immediately (30m default timeout)
-        # First call initializes the state
-        check_no_state_change_timeout(all_prs, config)
+        # Feature is disabled by default (empty-string timeout), so state stays None
+        result = check_no_state_change_timeout(all_prs, config)
 
-        # Verify state was initialized (not None)
-        assert state_tracker.get_last_state() is not None
+        assert result is False
+        assert state_tracker.get_last_state() is None
 
     def test_no_timeout_when_config_is_empty_string(self):
         """Test that no timeout occurs when no_change_timeout is empty string"""

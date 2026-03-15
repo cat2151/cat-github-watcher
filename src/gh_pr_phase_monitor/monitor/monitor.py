@@ -30,10 +30,7 @@ def check_no_state_change_timeout(
         True if monitoring should switch to reduced frequency mode, False otherwise
     """
     # Get timeout setting from config; default is "" (disabled).
-    # GraphQL/REST repo checks use ETag (304 Not Modified) and consume no API quota,
-    # so the polling interval does not need to be extended just to protect that quota.
-    # Note: PR HTML is still fetched via curl each iteration (not ETag-optimized).
-    # Users who want to reduce HTML fetch frequency can set no_change_timeout explicitly.
+    # ETag-based checks consume no API quota, so polling every minute is fine by default.
     timeout_str = (config or {}).get("no_change_timeout", "")
 
     # Get reduced frequency interval setting from config with default of "1h"

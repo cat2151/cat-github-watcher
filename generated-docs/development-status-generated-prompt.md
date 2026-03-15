@@ -1,4 +1,4 @@
-Last updated: 2026-03-15
+Last updated: 2026-03-16
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -363,43 +363,36 @@ Last updated: 2026-03-15
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
+c83a1ac Auto-translate README.ja.md to README.md [auto]
+53ff282 Merge pull request #421 from cat2151/copilot/update-query-execution-timing
+6b2dbb7 README・コメントから過剰なHTML取得コスト警告を削除し、ETag→クォータ消費なし→1分ごと実施の意図を明確化
+c05cb18 レビュー指摘対応: ETagコメント修正、verbose表示改善、テストdocstring簡素化
+b6dccb5 デフォルトで省電力モードを無効化: no_change_timeout デフォルトを '' に変更
+4af44e3 Initial plan
+1bbea99 Update project summaries (overview & development status) [auto]
 2039648 Merge pull request #419 from cat2151/copilot/investigate-etag-usage-issues
 56c0d4c fix: address review comments on issue_etag_checker - sort URL and invalid repo handling
 e868033 feat: add ETag-based issue change detection to skip GraphQL when issues unchanged
-3a05326 Initial plan
-9952a60 Merge pull request #417 from cat2151/copilot/detect-repository-changes-with-etag
-cf4b804 fix: purge stale ETags when page count shrinks after repo deletions
-cee05dc feat: add ETag-based repository change detection (If-None-Match / 304)
-9e352d0 Initial plan
-1b6e82a Update project summaries (overview & development status) [auto]
-4c4c75e Auto-translate README.ja.md to README.md [auto]
 
 ### 変更されたファイル:
 README.ja.md
 README.md
-config.toml.example
 generated-docs/development-status-generated-prompt.md
 generated-docs/development-status.md
 generated-docs/project-overview-generated-prompt.md
 generated-docs/project-overview.md
+src/gh_pr_phase_monitor/core/config_printer.py
 src/gh_pr_phase_monitor/github/etag_checker.py
 src/gh_pr_phase_monitor/github/github_client.py
 src/gh_pr_phase_monitor/github/issue_etag_checker.py
 src/gh_pr_phase_monitor/github/repository_fetcher.py
-src/gh_pr_phase_monitor/monitor/iteration_runner.py
-src/gh_pr_phase_monitor/monitor/local_repo_cargo.py
-src/gh_pr_phase_monitor/monitor/local_repo_checker.py
-src/gh_pr_phase_monitor/monitor/local_repo_git.py
-src/gh_pr_phase_monitor/monitor/local_repo_watcher.py
+src/gh_pr_phase_monitor/monitor/monitor.py
 src/gh_pr_phase_monitor/ui/display.py
 tests/test_etag_checker.py
 tests/test_issue_etag_checker.py
-tests/test_local_repo_cargo.py
-tests/test_local_repo_checker.py
-tests/test_local_repo_git.py
-tests/test_local_repo_watcher.py
+tests/test_no_change_timeout.py
 tests/test_updated_at_optimization.py
 
 
 ---
-Generated at: 2026-03-15 07:01:43 JST
+Generated at: 2026-03-16 07:02:50 JST

@@ -439,6 +439,58 @@ def test_display_issues_populates_cache(mocker):
     assert list(display_module._cached_top_issues) == fetched_issues
 
 
+def test_etag_304_filters_cache_when_repo_gains_pr(mocker, capsys):
+    """Regression: ETag 304 path must not display cached issues from repos that now have open PRs.
+
+    Scenario:
+    - Cache contains issues from repo-a (no PR) and repo-b (no PR).
+    - A PR is opened for repo-a, so get_repositories_with_no_prs_and_open_issues returns only [repo-b].
+    - ETag check returns False (304, no change in repo-b's issues).
+    - Expected: only repo-b's issues are shown; repo-a's issues are excluded from the display.
+    """
+    import src.gh_pr_phase_monitor.ui.display as display_module
+
+    # Pre-populate the cache with issues from two repos (one of which will gain a PR)
+    stale_cache = [
+        {
+            "title": "Issue from repo-a",
+            "url": "https://github.com/testuser/repo-a/issues/1",
+            "number": 1,
+            "repository": {"owner": "testuser", "name": "repo-a"},
+        },
+        {
+            "title": "Issue from repo-b",
+            "url": "https://github.com/testuser/repo-b/issues/2",
+            "number": 2,
+            "repository": {"owner": "testuser", "name": "repo-b"},
+        },
+    ]
+    mocker.patch.object(display_module, "_cached_top_issues", list(stale_cache))
+
+    # repo-a now has a PR → only repo-b is in repos_with_issues
+    mock_get_repos = mocker.patch(
+        "src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues"
+    )
+    mock_get_repos.return_value = [{"name": "repo-b", "owner": "testuser", "openIssueCount": 1}]
+
+    # ETag check returns False (304 — no change in repo-b)
+    mock_etag = mocker.patch("src.gh_pr_phase_monitor.ui.display.check_issues_etag_changed")
+    mock_etag.return_value = False
+
+    mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+
+    display_issues_from_repos_without_prs(None)
+
+    out = capsys.readouterr().out
+    # repo-b's issue should appear
+    assert "Issue from repo-b" in out
+    # repo-a now has a PR — its cached issue must NOT appear
+    assert "Issue from repo-a" not in out
+    # Cache should have been updated to remove repo-a's issues and keep repo-b's
+    assert all(i.get("repository", {}).get("name") != "repo-a" for i in display_module._cached_top_issues)
+    assert any(i.get("repository", {}).get("name") == "repo-b" for i in display_module._cached_top_issues)
+
+
 if __name__ == "__main__":
     test_display_issues_when_no_repos_with_prs()
     print("✓ Test 1 passed: display_issues_when_no_repos_with_prs")

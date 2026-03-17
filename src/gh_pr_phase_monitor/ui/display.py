@@ -215,6 +215,18 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
             etag_result = check_issues_etag_changed(repos_with_issues)
             if etag_result is False:
                 print("  ETag: 全リポジトリ 304 Not Modified → issue変化なし (GraphQL スキップ)")
+                # Filter cache to exclude repos that have gained open PRs since the last fetch.
+                # repos_with_issues only contains repos with openPRCount == 0, so any cached
+                # issue whose repo is no longer in this list means that repo now has a PR.
+                valid_repo_keys = {(r.get("owner", ""), r.get("name", "")) for r in repos_with_issues}
+                filtered = [
+                    i for i in _cached_top_issues
+                    if (i.get("repository", {}).get("owner", ""), i.get("repository", {}).get("name", ""))
+                    in valid_repo_keys
+                ]
+                if len(filtered) != len(_cached_top_issues):
+                    _cached_top_issues.clear()
+                    _cached_top_issues.extend(filtered)
                 display_cached_top_issues()
                 return
 

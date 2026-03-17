@@ -477,9 +477,12 @@ def test_etag_304_filters_cache_when_repo_gains_pr(mocker, capsys):
     mock_etag = mocker.patch("src.gh_pr_phase_monitor.ui.display.check_issues_etag_changed")
     mock_etag.return_value = False
 
-    mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
 
     display_issues_from_repos_without_prs(None)
+
+    # 304 path must not make any GraphQL fetch
+    mock_get_issues.assert_not_called()
 
     out = capsys.readouterr().out
     # repo-b's issue should appear

@@ -1,4 +1,4 @@
-Last updated: 2026-03-16
+Last updated: 2026-03-19
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -535,12 +535,14 @@ MIT License - 詳細はLICENSEファイルを参照してください
       📄 browser_cooldown.py
       📄 button_clicker.py
       📄 click_config_validator.py
+      📄 issue_assigner.py
       📄 window_manager.py
     📁 core/
       📄 __init__.py
       📄 colors.py
       📄 config.py
       📄 config_printer.py
+      📄 config_ruleset.py
       📄 interval_parser.py
       📄 process_utils.py
       📄 time_utils.py
@@ -681,4 +683,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-03-16 07:02:50 JST
+Generated at: 2026-03-19 07:04:54 JST

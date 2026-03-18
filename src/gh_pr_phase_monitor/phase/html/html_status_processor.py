@@ -7,8 +7,8 @@ HTML+JSONをlogs/prに保存する。
 
 from typing import Any, Dict, Optional
 
-from .pr_html_fetcher import _fetch_pr_html
 from .pr_html_analyzer import analyze_pr_html
+from .pr_html_fetcher import _fetch_pr_html
 from .pr_html_saver import save_html_to_logs
 
 

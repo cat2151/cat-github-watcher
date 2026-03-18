@@ -13,28 +13,27 @@ The original functionality has been split into focused modules following the Sin
 
 # Re-export authentication functions
 # Re-export comment functions
+# Re-export pages functions
+from ..monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
 from .comment_fetcher import get_existing_comments
 from .github_auth import get_current_user
-
-# Re-export issue functions
-from .issue_fetcher import assign_issue_to_copilot, get_issues_from_repositories
 
 # Re-export issue ETag functions
 from .issue_etag_checker import check_issues_etag_changed, reset_issue_etag_state
 
-# Re-export pages functions
-from ..monitor.pages_watcher import check_pages_deployments_for_repos, get_pages_repos_from_config
+# Re-export issue functions
+from .issue_fetcher import assign_issue_to_copilot, get_issues_from_repositories
 
 # Re-export PR functions
 from .pr_fetcher import get_pr_details_batch
 
 # Re-export repository functions
 from .repository_fetcher import (
-    get_all_repositories,
     get_all_repos_updated_at,
+    get_all_repositories,
+    get_repos_changed_since_last_check,
     get_repositories_with_no_prs_and_open_issues,
     get_repositories_with_open_prs,
-    get_repos_changed_since_last_check,
     reset_repos_updated_at_baseline,
 )
 

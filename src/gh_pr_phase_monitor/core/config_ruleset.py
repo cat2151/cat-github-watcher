@@ -41,6 +41,7 @@ def resolve_execution_config_for_repo(config: Dict[str, Any], repo_owner: str, r
         - enable_execution_phase3_send_ntfy
         - enable_execution_phase3_to_merge
         - enable_execution_pr_title_fix_comment
+        - enable_execution_pages_open: Open browser when GitHub Pages deployment completes
         - assign_good_first_old: Assign one old "good first issue"
         - assign_ci_failure_old: Assign one old "ci-failure" issue
         - assign_deploy_pages_failure_old: Assign one old "deploy-pages-failure" issue

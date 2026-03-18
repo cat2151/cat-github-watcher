@@ -280,6 +280,7 @@ class TestAssignIssueToCopilotAutomated:
         assert mock_click.call_count == 1  # Only tried first button
 
     def test_same_issue_url_not_attempted_twice(self, mocker):
+        mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner._wait_with_cancellation", return_value=False)
         mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner._click_button_with_image")
         mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.webbrowser")
         mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.PYAUTOGUI_AVAILABLE", True)
@@ -303,9 +304,9 @@ class TestAssignIssueToCopilotAutomated:
 
     def test_issue_url_can_be_retried_after_24_hours(self, mocker):
         mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.PYAUTOGUI_AVAILABLE", True)
+        mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner._wait_with_cancellation", return_value=False)
         mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.webbrowser")
         mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner._click_button_with_image")
-        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.time.sleep")
         mock_cooldown_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
         mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.time.time")
         """Test that issue URL can be retried after 24 hours"""
@@ -338,9 +339,9 @@ class TestAssignIssueToCopilotAutomated:
 
     def test_different_issue_urls_are_tracked_separately(self, mocker):
         mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.PYAUTOGUI_AVAILABLE", True)
+        mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner._wait_with_cancellation", return_value=False)
         mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.webbrowser")
         mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner._click_button_with_image")
-        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.time.sleep")
         mock_cooldown_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
         mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.time.time")
         """Test that different issue URLs can each be attempted once"""

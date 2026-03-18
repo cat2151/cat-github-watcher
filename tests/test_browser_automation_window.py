@@ -20,7 +20,7 @@ class TestBrowserCooldown:
 
     def test_assign_respects_cooldown(self, mocker):
         mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
-        mock_sleep = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.time.sleep")
+        mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner._wait_with_cancellation", return_value=False)
         mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner._click_button_with_image")
         mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.webbrowser")
         mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.PYAUTOGUI_AVAILABLE", True)

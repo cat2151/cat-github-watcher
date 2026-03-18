@@ -80,14 +80,16 @@ class TestBrowserCooldown:
 
     def test_cooldown_applies_across_assign_and_merge(self, mocker):
         mock_time = mocker.patch("src.gh_pr_phase_monitor.browser.browser_cooldown.time.time")
+        # issue_assigner mocks handle assign_issue_to_copilot_automated (lives in issue_assigner module)
         mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.time.sleep")
         mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
         mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner._click_button_with_image", return_value=True)
         mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
-        mock_webbrowser_assign = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.webbrowser")
-        mock_webbrowser_assign.open.return_value = True
+        mock_webbrowser_issue_assigner = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.webbrowser")
+        mock_webbrowser_issue_assigner.open.return_value = True
         mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
         mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.PYAUTOGUI_AVAILABLE", True)
+        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._wait_with_cancellation", return_value=False)
         """Test that cooldown is shared between assign and merge operations"""
         # Mock click function to succeed
         mock_click.return_value = True
@@ -110,7 +112,7 @@ class TestBrowserCooldown:
         assert result3 is True
 
         # Verify browser was only opened twice (once for assign, once for merge)
-        assert mock_webbrowser_assign.open.call_count == 1  # assign opened once
+        assert mock_webbrowser_issue_assigner.open.call_count == 1  # assign opened once
         assert mock_webbrowser.open.call_count == 1  # merge opened once
 
     def test_can_open_browser_when_no_previous_open(self, mocker):

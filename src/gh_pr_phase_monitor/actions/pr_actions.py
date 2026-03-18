@@ -15,14 +15,18 @@ from ..browser.browser_automation import (
     merge_pr_automated,
 )
 from ..core.colors import colorize_phase, colorize_url
+from ..core.config import get_phase3_merge_config, print_repo_execution_config, resolve_execution_config_for_repo
 from ..github.comment_manager import (
     has_problematic_pr_title,
     post_phase2_comment,
     post_phase3_comment,
     post_pr_title_fix_comment,
 )
-from ..core.config import get_phase3_merge_config, print_repo_execution_config, resolve_execution_config_for_repo
-from ..ui.notifier import send_phase3_notification
+from ..phase.html.pr_html_analyzer import (
+    PHASE1B_DRAFT_LLM_FINISHED_WORK,
+    PHASE2A_REVIEW_COMPLETED,
+    PHASE3A_LLM_FEEDBACK_FINISHED_WORK,
+)
 from ..phase.phase_detector import (
     PHASE_1,
     PHASE_2,
@@ -31,11 +35,7 @@ from ..phase.phase_detector import (
     determine_phase,
     get_llm_working_progress_label,
 )
-from ..phase.html.pr_html_analyzer import (
-    PHASE1B_DRAFT_LLM_FINISHED_WORK,
-    PHASE2A_REVIEW_COMPLETED,
-    PHASE3A_LLM_FEEDBACK_FINISHED_WORK,
-)
+from ..ui.notifier import send_phase3_notification
 
 # Track which PRs have had their browser opened: set of (url, phase) tuples
 _browser_opened: Set[Tuple[str, str]] = set()

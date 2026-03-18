@@ -191,10 +191,10 @@ class TestBrowserAutomationIntegration:
         from src.gh_pr_phase_monitor.browser.browser_automation import assign_issue_to_copilot_automated
 
         mock_sleep = mocker.patch("time.sleep")
-        mock_is_running = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running")
-        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
-        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
-        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
+        mock_is_running = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.is_process_running")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.webbrowser")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner._click_button_with_image")
+        mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.PYAUTOGUI_AVAILABLE", True)
 
         mock_is_running.return_value = True
         mock_webbrowser.open.return_value = True
@@ -214,10 +214,10 @@ class TestBrowserAutomationIntegration:
         from src.gh_pr_phase_monitor.browser.browser_automation import assign_issue_to_copilot_automated
 
         mock_sleep = mocker.patch("time.sleep")
-        mock_is_running = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.is_process_running")
-        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.webbrowser")
-        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation._click_button_with_image")
-        mocker.patch("src.gh_pr_phase_monitor.browser.browser_automation.PYAUTOGUI_AVAILABLE", True)
+        mock_is_running = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.is_process_running")
+        mock_webbrowser = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.webbrowser")
+        mock_click = mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner._click_button_with_image")
+        mocker.patch("src.gh_pr_phase_monitor.browser.issue_assigner.PYAUTOGUI_AVAILABLE", True)
 
         mock_is_running.return_value = False
         mock_webbrowser.open.return_value = True

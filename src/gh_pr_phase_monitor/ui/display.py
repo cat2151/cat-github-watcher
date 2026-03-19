@@ -24,6 +24,12 @@ from ..phase.phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_l
 # Module-level cache for the most recently fetched top issues
 _cached_top_issues: List[Dict[str, Any]] = []
 
+# When True, the cache was cleared because a cached repo gained an open PR.
+# The ETag-304 fast path in display_issues_from_repos_without_prs must be bypassed
+# on the next call so that a full GraphQL fetch repopulates the cache.
+# Using a dict to allow mutation without a `global` statement.
+_issue_cache_state: Dict[str, bool] = {"needs_refresh": False}
+
 
 def display_cached_top_issues(repos_with_prs: Optional[List[Dict[str, Any]]] = None) -> None:
     """Display top issues from the in-memory cache without making any API calls.
@@ -50,8 +56,11 @@ def display_cached_top_issues(repos_with_prs: Optional[List[Dict[str, Any]]] = N
             not in pr_repo_keys
         ]
         if len(display_list) != len(_cached_top_issues):
-            # A cached repo gained a PR → clear cache so the next non-skip iteration re-fetches
+            # A cached repo gained a PR → clear cache and mark for re-fetch so that
+            # the ETag-304 fast path in display_issues_from_repos_without_prs does not
+            # skip the GraphQL call the next time it runs with an empty cache.
             _cached_top_issues.clear()
+            _issue_cache_state["needs_refresh"] = True
 
     if not display_list:
         return
@@ -233,9 +242,11 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
             # Fetch top issues early to detect assigned work and reuse for display
             issue_limit = config.get("issue_display_limit", 10) if config else 10
 
-            # ETag pre-check: skip GraphQL if no issues changed (HTTP 304 Not Modified)
+            # ETag pre-check: skip GraphQL if no issues changed (HTTP 304 Not Modified).
+            # Bypass this optimisation when the cache was explicitly invalidated (a cached
+            # repo gained an open PR) to avoid showing nothing indefinitely.
             etag_result = check_issues_etag_changed(repos_with_issues)
-            if etag_result is False:
+            if etag_result is False and not _issue_cache_state["needs_refresh"]:
                 print("  ETag: 全リポジトリ 304 Not Modified → issue変化なし (GraphQL スキップ)")
                 # Filter cache to exclude repos that have gained open PRs since the last fetch.
                 # repos_with_issues only contains repos with openPRCount == 0, so any cached
@@ -253,6 +264,9 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
                 return
 
             top_issues = get_issues_from_repositories(repos_with_issues, limit=issue_limit)
+
+            # Full fetch succeeded: reset the refresh flag (may have been set by cache invalidation)
+            _issue_cache_state["needs_refresh"] = False
 
             # Cache the fetched issues so they can be displayed without re-fetching on no-change iterations
             _cached_top_issues.clear()

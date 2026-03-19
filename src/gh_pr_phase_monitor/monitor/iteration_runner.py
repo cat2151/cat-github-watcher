@@ -123,7 +123,8 @@ def run_one_iteration(config: dict, iteration: int) -> tuple[list, list, bool]:
             reset_repos_updated_at_baseline()
 
         # Top 10 issues の表示はキャッシュを利用するため、issue-fetch 用の GraphQL クエリは不要
-        display_cached_top_issues()
+        # PRのあるリポジトリのissueはキャッシュから除外し、次回の非スキップイテレーションで再取得する
+        display_cached_top_issues(repos_with_prs)
 
     # Check GitHub Pages deployment status for configured repos
     # This runs regardless of whether there are open PRs (covers post-merge case)

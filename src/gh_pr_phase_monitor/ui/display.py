@@ -25,17 +25,39 @@ from ..phase.phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_l
 _cached_top_issues: List[Dict[str, Any]] = []
 
 
-def display_cached_top_issues() -> None:
+def display_cached_top_issues(repos_with_prs: Optional[List[Dict[str, Any]]] = None) -> None:
     """Display top issues from the in-memory cache without making any API calls.
 
     This is used when no repository changes are detected (skip_pr_check=True) to show
     the last-known issue list without consuming API tokens.
+
+    Args:
+        repos_with_prs: Current list of repositories with open PRs. When provided,
+            issues from these repositories are excluded from the display. If any such
+            issues were found in the cache, the cache is fully cleared so that the next
+            non-skip iteration re-fetches the issue list without those repositories.
     """
     if not _cached_top_issues:
         return
+
+    display_list = list(_cached_top_issues)
+
+    if repos_with_prs:
+        pr_repo_keys = {(r.get("owner", ""), r.get("name", "")) for r in repos_with_prs}
+        display_list = [
+            i for i in _cached_top_issues
+            if (i.get("repository", {}).get("owner", ""), i.get("repository", {}).get("name", ""))
+            not in pr_repo_keys
+        ]
+        if len(display_list) != len(_cached_top_issues):
+            # A cached repo gained a PR → clear cache so the next non-skip iteration re-fetches
+            _cached_top_issues.clear()
+
+    if not display_list:
+        return
     print(f"\n{'=' * 50}")
-    print(f"  Top {len(_cached_top_issues)} issues (sorted by last update, descending, from cache):\n")
-    for idx, issue in enumerate(_cached_top_issues, 1):
+    print(f"  Top {len(display_list)} issues (sorted by last update, descending, from cache):\n")
+    for idx, issue in enumerate(display_list, 1):
         print(f"  {idx}. #{issue['number']}: {issue['title']}")
         print(f"     URL: {colorize_url(issue['url'])}")
         print()

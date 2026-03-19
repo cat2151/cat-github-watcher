@@ -105,3 +105,80 @@ def test_etag_304_filters_cache_when_repo_gains_pr(mocker, capsys):
     # Cache should have been updated to remove repo-a's issues and keep repo-b's
     assert all(i.get("repository", {}).get("name") != "repo-a" for i in display_module._cached_top_issues)
     assert any(i.get("repository", {}).get("name") == "repo-b" for i in display_module._cached_top_issues)
+
+
+def test_display_cached_top_issues_filters_repos_with_prs(mocker, capsys):
+    """display_cached_top_issues must exclude issues from repos that now have open PRs.
+
+    Scenario (skip path in iteration_runner):
+    - Cache contains issues from repo-a and repo-b.
+    - repos_with_prs is passed and contains repo-a (it now has an open PR).
+    - Expected: repo-a's issues are NOT shown; repo-b's issues ARE shown.
+    - Expected: cache is cleared entirely (so next full iteration re-fetches).
+    """
+    stale_cache = [
+        {
+            "title": "Issue from repo-a",
+            "url": "https://github.com/testuser/repo-a/issues/1",
+            "number": 1,
+            "repository": {"owner": "testuser", "name": "repo-a"},
+        },
+        {
+            "title": "Issue from repo-b",
+            "url": "https://github.com/testuser/repo-b/issues/2",
+            "number": 2,
+            "repository": {"owner": "testuser", "name": "repo-b"},
+        },
+    ]
+    mocker.patch.object(display_module, "_cached_top_issues", list(stale_cache))
+
+    repos_with_prs = [{"owner": "testuser", "name": "repo-a"}]
+    display_cached_top_issues(repos_with_prs)
+
+    out = capsys.readouterr().out
+    # repo-b's issue should appear
+    assert "Issue from repo-b" in out
+    # repo-a now has a PR — its issue must NOT appear
+    assert "Issue from repo-a" not in out
+    # Cache must be fully cleared so the next non-skip iteration re-fetches
+    assert display_module._cached_top_issues == []
+
+
+def test_display_cached_top_issues_no_filter_when_no_prs(mocker, capsys):
+    """display_cached_top_issues shows all cached issues when repos_with_prs is empty."""
+    cached = [
+        {
+            "title": "Issue from repo-a",
+            "url": "https://github.com/testuser/repo-a/issues/1",
+            "number": 1,
+            "repository": {"owner": "testuser", "name": "repo-a"},
+        },
+    ]
+    mocker.patch.object(display_module, "_cached_top_issues", list(cached))
+
+    display_cached_top_issues([])
+
+    out = capsys.readouterr().out
+    assert "Issue from repo-a" in out
+    # Cache should be unchanged
+    assert len(display_module._cached_top_issues) == 1
+
+
+def test_display_cached_top_issues_no_filter_when_repos_with_prs_not_provided(mocker, capsys):
+    """display_cached_top_issues shows all cached issues when repos_with_prs is not provided."""
+    cached = [
+        {
+            "title": "Issue from repo-a",
+            "url": "https://github.com/testuser/repo-a/issues/1",
+            "number": 1,
+            "repository": {"owner": "testuser", "name": "repo-a"},
+        },
+    ]
+    mocker.patch.object(display_module, "_cached_top_issues", list(cached))
+
+    display_cached_top_issues()
+
+    out = capsys.readouterr().out
+    assert "Issue from repo-a" in out
+    # Cache should be unchanged
+    assert len(display_module._cached_top_issues) == 1

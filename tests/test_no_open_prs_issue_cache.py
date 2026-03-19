@@ -44,6 +44,7 @@ def test_display_issues_populates_cache(mocker):
     mocker.patch.object(display_module, "_cached_top_issues", [])
     mock_get_repos = mocker.patch("src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues")
     mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    mocker.patch("src.gh_pr_phase_monitor.ui.display.check_issues_etag_changed", return_value=True)
     mock_get_repos.return_value = [{"name": "test-repo", "owner": "testuser", "openIssueCount": 1}]
     fetched_issues = [
         {"title": "Issue A", "url": "https://github.com/testuser/test-repo/issues/1", "number": 1},

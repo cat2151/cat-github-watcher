@@ -66,7 +66,12 @@ OCR_BUTTON_PADDING = 20  # Pixels to add around detected text to account for but
 
 
 def _get_button_target_texts(button_name: str) -> list[str]:
-    """Return acceptable OCR labels for a logical button name."""
+    """Return acceptable OCR labels for a logical button name.
+
+    Returns a non-empty list for known buttons, such as
+    ``["Assign to Copilot", "Fix with Copilot"]`` for ``assign_to_copilot``.
+    Returns an empty list for unknown button names.
+    """
     button_text_map = {
         "assign_to_copilot": ["Assign to Copilot", "Fix with Copilot"],
         "assign": ["Assign"],
@@ -260,6 +265,7 @@ def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:
         n_boxes = len(data["text"])
         found_regions = []
 
+        match_found = False
         for i in range(n_boxes):
             text = data["text"][i].lower().strip()
             if not text:
@@ -303,7 +309,11 @@ def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:
                         "bottom": min(screenshot.height, bottom + OCR_BUTTON_PADDING),
                     }
                     found_regions.append(region)
+                    match_found = True
                     break
+
+            if match_found:
+                break
 
         if not found_regions:
             print(f"  ✗ None of the texts {target_texts} were found using OCR")

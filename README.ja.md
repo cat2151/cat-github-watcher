@@ -259,7 +259,7 @@ cat-github-watcher/
    **必要なスクリーンショット:**
    
    issueの自動割り当て用（`assign_to_copilot` 機能）:
-   - `assign_to_copilot.png` - "Assign to Copilot" または "Fix with Copilot" ボタンのスクリーンショット
+   - `assign_to_copilot.png` - "Assign to Copilot" ボタンのスクリーンショット
    - `assign.png` - "Assign" ボタンのスクリーンショット
    
    PRの自動マージ用（`phase3_merge` 機能で `automated = true` の場合）:
@@ -296,7 +296,7 @@ cat-github-watcher/
    
    **フォールバック方式（画像認識が失敗した場合）:**
    - **OCR検出（デフォルト有効）**: pytesseractを使用してボタンのテキストを検出
-     - 「Assign to Copilot」や「Fix with Copilot」などのテキストを画面上から直接検出
+     - 「Assign to Copilot」などのテキストを画面上から直接検出
      - サブピクセルレンダリングの違いに対して頑健
      - 必須: tesseract-ocrのインストール（システムレベル）
      - 無効化: `enable_ocr_detection = false`

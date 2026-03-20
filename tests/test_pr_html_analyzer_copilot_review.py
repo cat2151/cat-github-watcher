@@ -26,6 +26,16 @@ class TestCopilotReviewHasNoInlineComments:
         "<p>Copilot reviewed 3 out of 3 changed files and generated no comments.</p>"
         "</div>"
     )
+    _REVIEWER_BLOCK_FIX_WITH_COPILOT = (
+        '<div class="TimelineItem-body">'
+        '<a data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer">Copilot</a>'
+        " reviewed"
+        "<button>Fix with Copilot</button>"
+        "</div>"
+    )
+    _REVIEWER_BLOCK_FIX_ALL_WITH_COPILOT = _REVIEWER_BLOCK_FIX_WITH_COPILOT.replace(
+        "Fix with Copilot", "Fix all with Copilot"
+    )
 
     def test_returns_true_for_generated_no_comments(self):
         assert _copilot_review_has_no_inline_comments(self._REVIEWER_BLOCK_NO_COMMENTS) is True
@@ -61,6 +71,14 @@ class TestCopilotReviewHasNoInlineComments:
         )
         assert _copilot_review_has_no_inline_comments(html) is False
 
+    def test_returns_false_for_fix_with_copilot_action(self):
+        """The single-comment review action means inline comments exist."""
+        assert _copilot_review_has_no_inline_comments(self._REVIEWER_BLOCK_FIX_WITH_COPILOT) is False
+
+    def test_returns_false_for_fix_all_with_copilot_action(self):
+        """The multi-comment review action also means inline comments exist."""
+        assert _copilot_review_has_no_inline_comments(self._REVIEWER_BLOCK_FIX_ALL_WITH_COPILOT) is False
+
     def test_returns_false_when_phrase_in_separate_unrelated_block(self):
         """'generated no comments' in a non-reviewer block must not trigger True.
 
@@ -92,6 +110,11 @@ class TestCopilotReviewHasNoInlineComments:
 
     def test_returns_false_for_empty_html(self):
         assert _copilot_review_has_no_inline_comments("") is False
+
+    def test_returns_false_when_latest_reviewer_block_has_fix_action(self):
+        """A later actionable review must override an earlier no-comments review block."""
+        html = self._REVIEWER_BLOCK_NO_COMMENTS + self._REVIEWER_BLOCK_FIX_WITH_COPILOT
+        assert _copilot_review_has_no_inline_comments(html) is False
 
 
 class TestCopilotReviewedExtraction:
@@ -175,6 +198,27 @@ class TestCopilotReviewedExtraction:
         html = self._REVIEWED_HTML_NO_COMMENTS.replace(
             "generated no comments", "generated 3 comments"
         )
+        result = analyze_pr_html(html, "https://github.com/owner/repo/pull/1")
+        assert result["status"] == PHASE2A_REVIEW_COMPLETED
+
+    def test_latest_actionable_review_block_prevents_phase3a_upgrade(self):
+        """A newer review with Fix with Copilot must not be overridden by an older no-comments review."""
+        latest_actionable_review = (
+            '<div class="TimelineItem-body d-flex flex-column flex-md-row flex-justify-start">'
+            '<div class="flex-auto flex-md-self-center">'
+            "<strong>"
+            '<a class="author Link--primary text-bold css-overflow-wrap-anywhere"'
+            ' data-hovercard-type="copilot"'
+            ' data-hovercard-url="/copilot/hovercard?bot=copilot-pull-request-reviewer"'
+            ' href="/apps/copilot-pull-request-reviewer">Copilot</a>'
+            '<span class="Label Label--secondary">AI</span>'
+            "</strong>"
+            "reviewed"
+            "<button>Fix with Copilot</button>"
+            "</div>"
+            "</div>"
+        )
+        html = self._REVIEWED_HTML_NO_COMMENTS + latest_actionable_review
         result = analyze_pr_html(html, "https://github.com/owner/repo/pull/1")
         assert result["status"] == PHASE2A_REVIEW_COMPLETED
 

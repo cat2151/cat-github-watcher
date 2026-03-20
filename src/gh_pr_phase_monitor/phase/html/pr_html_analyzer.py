@@ -54,6 +54,8 @@ _DRAFT_PATTERNS = [
 
 # Matches GitHub Copilot's review summary when it left no inline code comments.
 _NO_INLINE_COMMENTS_PATTERN = re.compile(r"generated\s+(?:no|0)\s+comments?", re.IGNORECASE)
+# Matches the Copilot review-response actions shown when inline review comments exist.
+_INLINE_COMMENT_ACTION_PATTERN = re.compile(r"fix(?:\s+all)?\s+with\s+copilot", re.IGNORECASE)
 # Lookahead that splits HTML at the start of each TimelineItem-body div boundary.
 _TIMELINE_ITEM_BODY_SPLIT_PATTERN = re.compile(r"(?=<div[^>]*TimelineItem-body[^>]*>)", re.IGNORECASE)
 
@@ -101,28 +103,37 @@ def _extract_title_from_html(html: str) -> Optional[str]:
 def _copilot_review_has_no_inline_comments(html: str) -> bool:
     """Return True when the Copilot PR reviewer's review body explicitly states no inline comments.
 
-    Scopes the search to HTML blocks that contain the copilot-pull-request-reviewer marker
-    (i.e. the TimelineItem-body div for the Copilot reviewer's event) to prevent false
-    positives from arbitrary PR comment text that happens to quote the phrase.
+    Scopes the search to the latest HTML block that contains the
+    ``copilot-pull-request-reviewer`` marker (i.e. the current TimelineItem-body div for
+    the Copilot reviewer's event) to prevent false positives from arbitrary PR comment text
+    or stale earlier review cycles.
 
     GitHub Copilot's review body contains text like
     "generated no comments" or "generated 0 comments" when the review found no issues
-    and left no inline code comments.
+    and left no inline code comments. Conversely, action labels such as
+    "Fix with Copilot" / "Fix all with Copilot" indicate that inline review comments do
+    exist, so they must not be treated as a no-comments review.
 
     Returns False when the pattern is absent — this preserves the default PHASE2A
     behaviour for cases where the review body format is unknown or different.
     """
     if not html:
         return False
-    # Split at TimelineItem-body boundaries so the "generated no/0 comments" phrase is only
-    # matched within the same reviewer block as the copilot-pull-request-reviewer marker.
-    # This prevents a user comment that quotes the phrase from triggering a false-positive
-    # PHASE2A → PHASE3A upgrade.
+
+    # Split at TimelineItem-body boundaries so status text is only matched within the same
+    # reviewer block as the copilot-pull-request-reviewer marker. Using the latest reviewer
+    # block avoids stale earlier review cycles incorrectly upgrading a newer actionable
+    # review to PHASE3A.
     blocks = _TIMELINE_ITEM_BODY_SPLIT_PATTERN.split(html)
-    return any(
-        "copilot-pull-request-reviewer" in block and _NO_INLINE_COMMENTS_PATTERN.search(block)
-        for block in blocks
-    )
+    reviewer_blocks = [block for block in blocks if "copilot-pull-request-reviewer" in block]
+    if not reviewer_blocks:
+        return False
+
+    latest_reviewer_block = reviewer_blocks[-1]
+    if _INLINE_COMMENT_ACTION_PATTERN.search(latest_reviewer_block):
+        return False
+
+    return bool(_NO_INLINE_COMMENTS_PATTERN.search(latest_reviewer_block))
 
 
 def _is_review_still_in_progress(llm_statuses: list[str]) -> bool:

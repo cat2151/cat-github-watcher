@@ -65,6 +65,7 @@ class TestOCRFallback:
         mock_pyautogui.click.assert_called_once()
 
     def test_ocr_finds_and_clicks_fix_with_copilot_button(self, mocker):
+        """Test that OCR detection finds and clicks the renamed Fix with Copilot button."""
         mock_pytesseract = mocker.patch("src.gh_pr_phase_monitor.browser.button_clicker.pytesseract")
         mock_pyautogui = mocker.patch("src.gh_pr_phase_monitor.browser.button_clicker.pyautogui")
         mocker.patch("src.gh_pr_phase_monitor.browser.button_clicker.PYAUTOGUI_AVAILABLE", True)

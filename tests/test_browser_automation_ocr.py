@@ -64,6 +64,32 @@ class TestOCRFallback:
         # Verify click was called (center of the found region with padding)
         mock_pyautogui.click.assert_called_once()
 
+    def test_ocr_finds_and_clicks_fix_with_copilot_button(self, mocker):
+        mock_pytesseract = mocker.patch("src.gh_pr_phase_monitor.browser.button_clicker.pytesseract")
+        mock_pyautogui = mocker.patch("src.gh_pr_phase_monitor.browser.button_clicker.pyautogui")
+        mocker.patch("src.gh_pr_phase_monitor.browser.button_clicker.PYAUTOGUI_AVAILABLE", True)
+        mocker.patch("src.gh_pr_phase_monitor.browser.button_clicker.PYTESSERACT_AVAILABLE", True)
+        from src.gh_pr_phase_monitor.browser.browser_automation import _click_button_with_ocr
+
+        mock_screenshot = mocker.MagicMock()
+        mock_screenshot.width = 1920
+        mock_screenshot.height = 1080
+        mock_pyautogui.screenshot.return_value = mock_screenshot
+
+        mock_pytesseract.image_to_data.return_value = {
+            "text": ["", "Fix", "with", "Copilot", ""],
+            "left": [0, 100, 150, 210, 0],
+            "top": [0, 50, 50, 50, 0],
+            "width": [0, 35, 35, 50, 0],
+            "height": [0, 20, 20, 20, 0],
+        }
+        mock_pytesseract.Output.DICT = 0
+
+        result = _click_button_with_ocr("assign_to_copilot", {})
+
+        assert result is True
+        mock_pyautogui.click.assert_called_once()
+
 
 class TestEnhancedDebugInfo:
     """Tests for enhanced debug information with candidate detection"""

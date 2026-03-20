@@ -65,6 +65,18 @@ DEBUG_MAX_CANDIDATES = 3  # Maximum number of candidate regions to save for debu
 OCR_BUTTON_PADDING = 20  # Pixels to add around detected text to account for button borders
 
 
+def _get_button_target_texts(button_name: str) -> list[str]:
+    """Return acceptable OCR labels for a logical button name."""
+    button_text_map = {
+        "assign_to_copilot": ["Assign to Copilot", "Fix with Copilot"],
+        "assign": ["Assign"],
+        "merge_pull_request": ["Merge pull request"],
+        "confirm_merge": ["Confirm merge"],
+        "delete_branch": ["Delete branch"],
+    }
+    return button_text_map.get(button_name, [])
+
+
 def _log_error(message: str, exc: Exception | BaseException | None = None) -> None:
     """Append an error entry to logs/error.log without raising further exceptions."""
     try:
@@ -230,22 +242,13 @@ def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:
         print("  ℹ OCR-based detection is disabled")
         return False
 
-    # Map button names to the text we're looking for
-    button_text_map = {
-        "assign_to_copilot": "Assign to Copilot",
-        "assign": "Assign",
-        "merge_pull_request": "Merge pull request",
-        "confirm_merge": "Confirm merge",
-        "delete_branch": "Delete branch",
-    }
-
-    target_text = button_text_map.get(button_name)
-    if not target_text:
+    target_texts = _get_button_target_texts(button_name)
+    if not target_texts:
         print(f"  ⚠ Unknown button name '{button_name}' for OCR detection")
         return False
 
     try:
-        print(f"  → Attempting OCR-based detection for '{target_text}' button...")
+        print(f"  → Attempting OCR-based detection for {target_texts}...")
 
         # Take a screenshot
         screenshot = pyautogui.screenshot()
@@ -257,16 +260,16 @@ def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:
         n_boxes = len(data["text"])
         found_regions = []
 
-        # Look for consecutive words that match our target text
-        target_words = target_text.lower().split()
-
         for i in range(n_boxes):
             text = data["text"][i].lower().strip()
             if not text:
                 continue
 
-            # Check if we found the start of our target phrase
-            if text == target_words[0]:
+            for target_text in target_texts:
+                target_words = target_text.lower().split()
+                if text != target_words[0]:
+                    continue
+
                 # Try to match all consecutive words
                 matches = [i]
                 for j, target_word in enumerate(target_words[1:], start=1):
@@ -300,9 +303,10 @@ def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:
                         "bottom": min(screenshot.height, bottom + OCR_BUTTON_PADDING),
                     }
                     found_regions.append(region)
+                    break
 
         if not found_regions:
-            print(f"  ✗ Text '{target_text}' not found using OCR")
+            print(f"  ✗ None of the texts {target_texts} were found using OCR")
             return False
 
         # Use the first found region (or could use heuristics to pick the best one)
@@ -310,12 +314,12 @@ def _click_button_with_ocr(button_name: str, config: Dict[str, Any]) -> bool:
         center_x = int((region["left"] + region["right"]) / 2)
         center_y = int((region["top"] + region["bottom"]) / 2)
 
-        print(f"  → Found '{target_text}' at position ({center_x}, {center_y})")
+        print(f"  → Found one of {target_texts} at position ({center_x}, {center_y})")
 
         # Click the button
         time.sleep(0.5)  # Brief pause before clicking
         pyautogui.click(center_x, center_y)
-        print(f"  ✓ Clicked '{target_text}' button using OCR detection")
+        print("  ✓ Clicked matching button using OCR detection")
 
         return True
 

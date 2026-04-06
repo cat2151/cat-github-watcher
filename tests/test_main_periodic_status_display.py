@@ -29,6 +29,7 @@ def _setup_common_main_mocks(monkeypatch, wait_kwargs):
 def test_main_passes_periodic_status_callback_when_open_prs_exist(monkeypatch):
     wait_kwargs = {}
     _setup_common_main_mocks(monkeypatch, wait_kwargs)
+    display_calls = []
 
     monkeypatch.setattr(
         main_module,
@@ -47,6 +48,11 @@ def test_main_passes_periodic_status_callback_when_open_prs_exist(monkeypatch):
         ),
     )
     monkeypatch.setattr(main_module, "get_last_pr_snapshot", lambda: None)
+    monkeypatch.setattr(
+        main_module,
+        "display_status_summary",
+        lambda *args, **kwargs: display_calls.append((args, kwargs)),
+    )
 
     try:
         main_module.main()
@@ -55,6 +61,11 @@ def test_main_passes_periodic_status_callback_when_open_prs_exist(monkeypatch):
 
     assert callable(wait_kwargs["status_display_callback"])
     assert wait_kwargs["status_display_interval_seconds"] == 60
+    wait_kwargs["status_display_callback"]()
+    assert len(display_calls) == 2
+    assert display_calls[1][0][0][0]["title"] == "Open PR"
+    assert display_calls[1][0][1][0]["name"] == "repo"
+    assert display_calls[1][1]["no_change"] is True
 
 
 def test_main_skips_periodic_status_callback_when_no_open_prs(monkeypatch):

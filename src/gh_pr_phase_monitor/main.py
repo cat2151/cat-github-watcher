@@ -196,11 +196,13 @@ def main():
 
         periodic_status_display_callback = None
         if display_prs:
-            def periodic_status_display_callback():
+            def redisplay_cached_open_prs():
                 snapshot = get_last_pr_snapshot()
                 cached_prs, cached_repos = snapshot if snapshot is not None else (display_prs, display_repos)
                 if cached_prs:
                     display_status_summary(cached_prs, cached_repos, config, no_change=True)
+
+            periodic_status_display_callback = redisplay_cached_open_prs
 
         # Check if PR state has not changed for too long and switch to reduced frequency mode
         try:

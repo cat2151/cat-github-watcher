@@ -194,7 +194,7 @@ def main():
         except Exception as summary_error:
             log_error_to_file("Failed to display status summary", summary_error)
 
-        repos_for_cached_issue_display = list(display_repos)
+        repos_for_cached_issue_display = [dict(repo) for repo in display_repos]
 
         def redisplay_cached_issues() -> None:
             display_cached_top_issues(repos_for_cached_issue_display)

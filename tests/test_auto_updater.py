@@ -177,6 +177,25 @@ def test_skips_when_worktree_dirty(monkeypatch):
     assert auto_updater.maybe_self_update(repo_root=auto_updater.REPO_ROOT) is False
 
 
+def test_detects_update_without_pulling_when_apply_update_disabled(monkeypatch, capsys):
+    calls = {"pulled": False, "restarted": False}
+
+    monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
+    monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo, phase="current": "abc")
+    monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "def")
+    monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
+    monkeypatch.setattr(auto_updater, "_pull_fast_forward", lambda *_args, **_kwargs: calls.update(pulled=True) or True)
+    monkeypatch.setattr(auto_updater, "restart_application", lambda: calls.update(restarted=True))
+
+    assert auto_updater.maybe_self_update(repo_root=auto_updater.REPO_ROOT, apply_update=False) is False
+
+    captured = capsys.readouterr()
+    assert "update available, but auto-update is disabled" in captured.out
+    assert calls["pulled"] is False
+    assert calls["restarted"] is False
+
+
 def test_updates_and_restarts_when_remote_is_newer(monkeypatch):
     calls = {"restarted": False}
     debug_messages = []
@@ -241,7 +260,7 @@ def test_concurrent_calls_do_not_double_update(monkeypatch):
 
 def test_run_startup_self_update_foreground_prints_and_no_update(monkeypatch, capsys):
     """run_startup_self_update_foreground() がアップデートなしの場合に起動チェックメッセージを表示することを確認。"""
-    monkeypatch.setattr(auto_updater, "maybe_self_update", lambda repo_root=None: False)
+    monkeypatch.setattr(auto_updater, "maybe_self_update", lambda repo_root=None, apply_update=True: False)
 
     auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
 
@@ -249,6 +268,25 @@ def test_run_startup_self_update_foreground_prints_and_no_update(monkeypatch, ca
     assert re.search(r"\[auto-update debug \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] 起動した", captured.out)
     assert "Auto-update" in captured.out
     assert "check complete" in captured.out
+
+
+def test_run_startup_self_update_foreground_skips_pull_when_disabled(monkeypatch, capsys):
+    called = {}
+
+    def fake_maybe_self_update(repo_root=None, apply_update=True):
+        called["repo_root"] = repo_root
+        called["apply_update"] = apply_update
+        return False
+
+    monkeypatch.setattr(auto_updater, "maybe_self_update", fake_maybe_self_update)
+
+    auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT, apply_update=False)
+
+    captured = capsys.readouterr()
+    assert "Auto-update" in captured.out
+    assert "check complete" in captured.out
+    assert called["repo_root"] == auto_updater.REPO_ROOT
+    assert called["apply_update"] is False
 
 
 def test_run_startup_self_update_foreground_prints_and_update_applied(monkeypatch, capsys):

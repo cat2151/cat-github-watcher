@@ -87,8 +87,10 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    # 起動直後に自己リポジトリのアップデートチェックを実行（常に実行）
-    run_startup_self_update_foreground()
+    # 起動直後に自己リポジトリのアップデート有無を確認する
+    run_startup_self_update_foreground(
+        apply_update=config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE)
+    )
 
     # Infinite monitoring loop
     iteration = 0

@@ -29,7 +29,7 @@ def _debug_self_update_log(message: str) -> None:
 
 
 def _format_command(args: list[str]) -> str:
-    """Format a command for human-readable debug logging."""
+    """Format a command as a shell-escaped string for safe debug logging."""
     return " ".join(shlex.quote(arg) for arg in args)
 
 

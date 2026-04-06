@@ -24,6 +24,7 @@ _THREAD_TIMEOUT = 3
 
 
 def _make_head_sha_getter(head_sha_state):
+    """Create a mock HEAD getter backed by mutable state for pull/update tests."""
     return lambda _repo, phase="current": head_sha_state["value"]
 
 

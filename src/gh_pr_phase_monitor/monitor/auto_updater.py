@@ -150,6 +150,14 @@ def maybe_self_update(repo_root: Path | None = None) -> bool:
         if not _pull_fast_forward(repo_root, remote_name, branch):
             return False
 
+        updated_local_sha = _get_local_head_sha(repo_root)
+        if not updated_local_sha:
+            print("Auto-update skipped: failed to verify updated HEAD after git pull.")
+            return False
+        if updated_local_sha == local_sha:
+            print("Auto-update skipped: git pull completed but HEAD did not change.")
+            return False
+
         print(f"{Colors.GREEN}Auto-update: update detected! Restarting application to apply the latest code...{Colors.RESET}", flush=True)
         restart_application()
         return True

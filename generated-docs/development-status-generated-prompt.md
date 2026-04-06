@@ -1,4 +1,4 @@
-Last updated: 2026-03-20
+Last updated: 2026-04-07
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -108,6 +108,8 @@ Last updated: 2026-03-20
 - .github/actions-tmp/.github/workflows/call-check-large-files.yml
 - .github/actions-tmp/.github/workflows/call-daily-project-summary.yml
 - .github/actions-tmp/.github/workflows/call-issue-note.yml
+- .github/actions-tmp/.github/workflows/call-rust-fmt-commit.yml
+- .github/actions-tmp/.github/workflows/call-rust-windows-cargo-check.yml
 - .github/actions-tmp/.github/workflows/call-rust-windows-check.yml
 - .github/actions-tmp/.github/workflows/call-translate-readme.yml
 - .github/actions-tmp/.github/workflows/callgraph.yml
@@ -115,6 +117,8 @@ Last updated: 2026-03-20
 - .github/actions-tmp/.github/workflows/check-recent-human-commit.yml
 - .github/actions-tmp/.github/workflows/daily-project-summary.yml
 - .github/actions-tmp/.github/workflows/issue-note.yml
+- .github/actions-tmp/.github/workflows/rust-fmt-commit.yml
+- .github/actions-tmp/.github/workflows/rust-windows-cargo-check.yml
 - .github/actions-tmp/.github/workflows/rust-windows-check.yml
 - .github/actions-tmp/.github/workflows/translate-readme.yml
 - .github/actions-tmp/.github_automation/callgraph/codeql-queries/callgraph.ql
@@ -158,6 +162,7 @@ Last updated: 2026-03-20
 - .github/actions-tmp/.github_automation/translate/scripts/translate-readme.cjs
 - .github/actions-tmp/.gitignore
 - .github/actions-tmp/.vscode/settings.json
+- .github/actions-tmp/AGENTS.md
 - .github/actions-tmp/LICENSE
 - .github/actions-tmp/README.ja.md
 - .github/actions-tmp/README.md
@@ -198,7 +203,8 @@ Last updated: 2026-03-20
 - .github/actions-tmp/issue-notes/4.md
 - .github/actions-tmp/issue-notes/40.md
 - .github/actions-tmp/issue-notes/44.md
-- .github/actions-tmp/issue-notes/52.md
+- .github/actions-tmp/issue-notes/57.md
+- .github/actions-tmp/issue-notes/67.md
 - .github/actions-tmp/issue-notes/7.md
 - .github/actions-tmp/issue-notes/8.md
 - .github/actions-tmp/issue-notes/9.md
@@ -326,6 +332,7 @@ Last updated: 2026-03-20
 - tests/test_local_repo_git.py
 - tests/test_local_repo_watcher.py
 - tests/test_local_repo_watcher_background.py
+- tests/test_main_auto_update.py
 - tests/test_max_llm_working_parallel.py
 - tests/test_no_change_timeout.py
 - tests/test_no_open_prs_issue_cache.py
@@ -359,45 +366,169 @@ Last updated: 2026-03-20
 - tests/test_wait_handler_callback.py
 
 ## 現在のオープンIssues
-オープン中のIssueはありません
+## [Issue #439](../issue-notes/439.md): Redisplay cached open issues every minute during long waits
+The issue list could disappear from the terminal for long stretches when the monitor entered reduced-frequency or throttled waits. This updates the wait path so the cached open issue list is always re-shown every minute without increasing GitHub query consumption.
+
+- **What changed**
+  - Added a per...
+ラベル: 
+--- issue-notes/439.md の内容 ---
+
+```markdown
+
+```
+
+## [Issue #438](../issue-notes/438.md): Fetching top 10 issues from these repositories...が表示されず不便なことがあった。issuesは1分ごとに必ず表示とする。クエリ消費が増えないよう適宜cache利用をする
+
+ラベル: 
+--- issue-notes/438.md の内容 ---
+
+```markdown
+
+```
 
 ## ドキュメントで言及されているファイルの内容
+### .github/actions-tmp/issue-notes/38.md
+```md
+{% raw %}
+# issue PR 36 と PR 37 を取り込んだあと、存在しないissueでワークフローがエラー終了してしまった #38
+[issues #38](https://github.com/cat2151/github-actions/issues/38)
 
+# URL
+
+- https://github.com/cat2151/wavlpf/actions/runs/21907996164/job/63253441830
+
+# 実現したいこと
+
+- issueが存在しないのは想定したことであるから、エラー終了にはしない。可用性を維持する。
+  - それはそれとして、想定しないできごとが発生した場合は、fail fastする
+    - 今回は「想定したできごとなので、fail fastしない」
+
+{% endraw %}
+```
+
+### .github/actions-tmp/issue-notes/8.md
+```md
+{% raw %}
+# issue 関数コールグラフhtmlビジュアライズ生成の対象ソースファイルを、呼び出し元ymlで指定できるようにする #8
+[issues #8](https://github.com/cat2151/github-actions/issues/8)
+
+# これまでの課題
+- 以下が決め打ちになっていた
+```
+  const allowedFiles = [
+    'src/main.js',
+    'src/mml2json.js',
+    'src/play.js'
+  ];
+```
+
+# 対策
+- 呼び出し元ymlで指定できるようにする
+
+# agent
+- agentにやらせることができれば楽なので、初手agentを試した
+- 失敗
+    - ハルシネーションしてscriptを大量破壊した
+- 分析
+    - 修正対象scriptはagentが生成したもの
+    - 低品質な生成結果でありソースが巨大
+    - ハルシネーションで破壊されやすいソース
+    - AIの生成したソースは、必ずしもAIフレンドリーではない
+
+# 人力リファクタリング
+- 低品質コードを、最低限agentが扱えて、ハルシネーションによる大量破壊を防止できる内容、にする
+- 手短にやる
+    - そもそもビジュアライズは、agentに雑に指示してやらせたもので、
+    - 今後別のビジュアライザを選ぶ可能性も高い
+    - 今ここで手間をかけすぎてコンコルド効果（サンクコストバイアス）を増やすのは、project群をトータルで俯瞰して見たとき、損
+- 対象
+    - allowedFiles のあるソース
+        - callgraph-utils.cjs
+            - たかだか300行未満のソースである
+            - この程度でハルシネーションされるのは予想外
+            - やむなし、リファクタリングでソース分割を進める
+
+# agentに修正させる
+## prompt
+```
+allowedFilesを引数で受け取るようにしたいです。
+ないならエラー。
+最終的に呼び出し元すべてに波及して修正したいです。
+
+呼び出し元をたどってエントリポイントも見つけて、
+エントリポイントにおいては、
+引数で受け取ったjsonファイル名 allowedFiles.js から
+jsonファイル allowedFiles.jsonの内容をreadして
+変数 allowedFilesに格納、
+後続処理に引き渡す、としたいです。
+
+まずplanしてください。
+planにおいては、修正対象のソースファイル名と関数名を、呼び出し元を遡ってすべて特定し、listしてください。
+```
+
+# 修正が順調にできた
+- コマンドライン引数から受け取る作りになっていなかったので、そこだけ指示して修正させた
+- yml側は人力で修正した
+
+# 他のリポジトリから呼び出した場合にバグらないよう修正する
+- 気付いた
+    - 共通ワークフローとして他のリポジトリから使った場合はバグるはず。
+        - ymlから、共通ワークフロー側リポジトリのcheckoutが漏れているので。
+- 他のyml同様に修正する
+- あわせて全体にymlをリファクタリングし、修正しやすくし、今後のyml読み書きの学びにしやすくする
+
+# local WSL + act : test green
+
+# closeとする
+- もし生成されたhtmlがNGの場合は、別issueとするつもり
+
+{% endraw %}
+```
+
+### .github/actions-tmp/issue-notes/9.md
+```md
+{% raw %}
+# issue 関数コールグラフhtmlビジュアライズが0件なので、原因を可視化する #9
+[issues #9](https://github.com/cat2151/github-actions/issues/9)
+
+# agentに修正させたり、人力で修正したりした
+- agentがハルシネーションし、いろいろ根の深いバグにつながる、エラー隠蔽などを仕込んでいたため、検知が遅れた
+- 詳しくはcommit logを参照のこと
+- WSL + actの環境を少し変更、act起動時のコマンドライン引数を変更し、generated-docsをmountする（ほかはデフォルト挙動であるcpだけにする）ことで、デバッグ情報をコンテナ外に出力できるようにし、デバッグを効率化した
+
+# test green
+
+# closeとする
+
+{% endraw %}
+```
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-12c8031 Merge pull request #429 from cat2151/copilot/update-cache-behavior-for-issues
-9a49250 fix: add needs_refresh flag to bypass ETag-304 stall after cache clear
-71aa4a8 feat: filter issue cache when repos gain PRs in skip path
-f2cd34c Initial plan
-585029b Merge pull request #427 from cat2151/copilot/refactor-large-file-test-no-open-prs
-477eabb fix: mock check_issues_etag_changed in test_display_issues_populates_cache for hermetic test
-d18cea7 refactor: split test_no_open_prs_issue_display.py into display + cache test files
-f129ffc Initial plan
-c7776cf Update project summaries (overview & development status) [auto]
-8d77fec Merge pull request #425 from cat2151/copilot/split-large-source-file
+048863e Auto-translate README.ja.md to README.md [auto]
+55fe13f Merge pull request #437 from cat2151/copilot/enable-auto-update-debug-log-condition
+be7cfcc Update section headers and PR language instructions
+874ccdb fix: address review comments on auto-update debug log PR
+0d78a53 feat: gate auto-update debug logs behind config flag
+c9d1cdf Initial plan
+9f9d9ea Auto-translate README.ja.md to README.md [auto]
+1ba8fff Merge pull request #435 from cat2151/copilot/fix-auto-update-logic
+7b903c2 Add section for pull request guidelines in Japanese
+c1b4900 chore: plan readme review fix
 
 ### 変更されたファイル:
+.github/copilot-instructions.md
+README.ja.md
 README.md
-generated-docs/development-status-generated-prompt.md
-generated-docs/development-status.md
-generated-docs/project-overview-generated-prompt.md
-generated-docs/project-overview.md
-src/gh_pr_phase_monitor/actions/pr_actions.py
-src/gh_pr_phase_monitor/browser/browser_automation.py
-src/gh_pr_phase_monitor/browser/issue_assigner.py
+config.toml.example
 src/gh_pr_phase_monitor/core/config.py
-src/gh_pr_phase_monitor/core/config_ruleset.py
-src/gh_pr_phase_monitor/github/github_client.py
-src/gh_pr_phase_monitor/monitor/iteration_runner.py
-src/gh_pr_phase_monitor/phase/html/html_status_processor.py
-src/gh_pr_phase_monitor/ui/display.py
-tests/test_browser_automation.py
-tests/test_browser_automation_window.py
-tests/test_check_process_before_autoraise.py
-tests/test_no_open_prs_issue_cache.py
-tests/test_no_open_prs_issue_display.py
+src/gh_pr_phase_monitor/main.py
+src/gh_pr_phase_monitor/monitor/auto_updater.py
+tests/test_auto_update_config.py
+tests/test_auto_updater.py
+tests/test_main_auto_update.py
 
 
 ---
-Generated at: 2026-03-20 07:03:07 JST
+Generated at: 2026-04-07 07:06:46 JST

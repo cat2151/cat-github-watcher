@@ -1,51 +1,50 @@
-Last updated: 2026-03-20
+Last updated: 2026-04-07
 
 # Development Status
 
 ## 現在のIssues
-オープン中のIssueはありません。
-現在のリポジトリには、対応が必要なアクティブなタスクやバグ報告は存在しません。
-直近のコミットは、Issueキャッシュの挙動改善やテストのリファクタリングに焦点を当てています。
+- [Issue #439](../issue-notes/439.md)および[Issue #438](../issue-notes/438.md)は、長時間の待機中にオープンなissueリストがターミナルから消えてしまう問題を解決することを目指しています。
+- この機能により、GitHub APIの追加クエリ消費を増やすことなく、キャッシュされたオープンissueリストが1分ごとに再表示されるようになります。
+- ユーザーは、GitHubのクエリ消費が増えないように適切にキャッシュを利用しつつ、常に最新のissue状況を確認できるようになります。
 
 ## 次の一手候補
-1. Issue #430: 自動生成される開発状況レポートのAgent実行プロンプト品質向上
-   - 最初の小さな一歩: 現在の`DevelopmentStatusGenerator.cjs`が`Agent実行プロンプト`をどのように生成しているか、そのロジックを把握する。
-   - Agent実行プロンプト:
+1. 長時間待機時のオープンIssueリスト再表示機能のテストとデプロイ [Issue #439](../issue-notes/439.md)
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/monitor/monitor.py` 内のissue表示ロジックが、待機中に1分ごとにキャッシュされたissueを表示しているか確認するためのテストケースを追加する。
+   - Agent実行プロンプ:
      ```
-     対象ファイル: .github/actions-tmp/.github_automation/project_summary/scripts/development/DevelopmentStatusGenerator.cjs
+     対象ファイル: src/gh_pr_phase_monitor/monitor/monitor.py, src/gh_pr_phase_monitor/ui/display.py, tests/test_notification.py (参考)
 
-     実行内容: `DevelopmentStatusGenerator.cjs`内の、出力フォーマットの「Agent実行プロンプト」セクションを生成するコードブロックを特定し、そのロジックを詳細に分析してください。特に、このセクションで「必須要素」ガイドライン（対象ファイル、実行内容、確認事項、期待する出力）がどのように満たされているか、または改善の余地があるかを調査してください。
+     実行内容: `monitor.py` 内で、長時間の待機中にキャッシュされたオープンissueリストが1分ごとに再表示されるロジック（[Issue #439](../issue-notes/439.md)および[Issue #438](../issue-notes/438.md)で言及されている機能）が正しく実装されていることを確認するテストケースを追加してください。特に、GitHub APIへの追加呼び出しなしに、キャッシュデータのみで表示が更新されることを検証するテストケースを記述してください。
 
-     確認事項: `ProjectSummaryCoordinator.cjs`や`development-status-prompt.md`との連携、および他の生成モジュールとの依存関係を確認してください。現在の生成プロセスが「ハルシネーションの温床」とならないための防御策も考慮してください。
+     確認事項: `monitor.py`の`_display_open_prs_and_issues_if_needed`や関連する表示ロジック、`IssueTracker.py`のキャッシュ利用方法、既存のテストフレームワーク（pytest）と整合性を確認してください。
 
-     期待する出力: 識別されたコードブロックとそのロジックをMarkdown形式で記述し、現在の実装が「Agent実行プロンプト」生成ガイドラインの必須要素をどの程度満たしているか、具体的な改善点とともに分析レポートとして出力してください。
-     ```
-
-2. Issue #431: PRがない場合のIssue表示のUX改善と追加情報表示
-   - 最初の小さな一歩: PRがない状態でIssueが表示されるシナリオを想定し、現在の`display.py`におけるIssue情報の表示方法を確認する。
-   - Agent実行プロンプト:
-     ```
-     対象ファイル: src/gh_pr_phase_monitor/ui/display.py, src/gh_pr_phase_monitor/github/issue_fetcher.py, tests/test_no_open_prs_issue_display.py
-
-     実行内容: PRが存在しない場合に`display.py`がIssue情報をどのように取得し、表示しているかを分析してください。特に、ユーザーがIssueのコンテキスト（例: 誰がアサインされているか、最後の更新日時、関連するPRがない理由など）をより良く理解できるよう、表示できる追加情報について検討してください。また、`test_no_open_prs_issue_display.py`でカバーされているシナリオを確認し、UX改善のためのテストケースの追加が必要か評価してください。
-
-     確認事項: `issue_fetcher.py`からのデータ取得能力、GitHub APIのレート制限への影響、既存のUIレイアウトとの整合性を確認してください。
-
-     期待する出力: 現在のIssue表示の課題と、UXを改善するための具体的な追加情報表示の提案（例: アサイニー、ステータス、最終更新日時など）をMarkdown形式で記述してください。また、関連するテストファイルの改善案も併せて提示してください。
+     期待する出力: 新しいテストファイル`tests/test_issue_redisplay_during_wait.py`、または既存のテストファイルに追記されたテストコード（`pytest`形式）をmarkdown形式で出力してください。テストコードは、長時間の待機をシミュレートし、issue表示が定期的に更新されることをアサートする内容としてください。
      ```
 
-3. Issue #432: Issue ETagキャッシュの`needs_refresh`フラグ挙動の包括的なテスト
-   - 最初の小さな一歩: コミット`9a49250`で追加された`needs_refresh`フラグが`issue_etag_checker.py`と`github_client.py`でどのように利用されているかを確認する。
-   - Agent実行プロンプト:
+2. 自動更新デバッグログ機能の動作確認とドキュメント更新 [関連する最近の変更]
+   - 最初の小さな一歩: `config.toml.example` を参考に、`auto_update` のデバッグログを有効化する設定を加え、`src/gh_pr_phase_monitor/monitor/auto_updater.py` がログを正しく出力するか手動で検証する。
+   - Agent実行プロンプ:
      ```
-     対象ファイル: src/gh_pr_phase_monitor/github/issue_etag_checker.py, src/gh_pr_phase_monitor/github/github_client.py, src/gh_pr_phase_monitor/monitor/iteration_runner.py, tests/test_issue_etag_checker.py
+     対象ファイル: config.toml.example, src/gh_pr_phase_monitor/core/config.py, src/gh_pr_phase_monitor/monitor/auto_updater.py, README.md
 
-     実行内容: `needs_refresh`フラグがETag-304応答のバイパスにどのように機能するか、特にキャッシュがクリアされた後の挙動について、上記ファイルを横断的に分析してください。既存の`test_issue_etag_checker.py`に、この`needs_refresh`フラグが期待通りに機能し、ETag-304による更新 stalling を適切に回避できることを検証するテストケースが十分に含まれているか評価してください。
+     実行内容: 最新のコミット履歴で追加された`auto-update`のデバッグログ機能について、`config.toml.example`に新しい設定項目が正しく反映されているかを確認し、`src/gh_pr_phase_monitor/core/config.py`がその設定を適切にパースできるか検証してください。その後、`src/gh_pr_phase_monitor/monitor/auto_updater.py`が設定値に基づいてデバッグログの出力を制御するかを検証し、この設定の利用方法を`README.md`の適切なセクション（例: 設定ガイド）に追記してください。
 
-     確認事項: ETagヘッダーの正しい処理、APIレート制限への影響、そして複数回のリフレッシュ試行における安定性を確認してください。キャッシュの整合性が損なわれないことを保証してください。
+     確認事項: `config.py`が新しい設定をどのようにパースしているか、`auto_updater.py`がその設定値に基づいてログレベルを調整しているか、`README.md`の既存の構成と整合性を保ちながら追記することを確認してください。
 
-     期待する出力: `needs_refresh`フラグに関連するコードパスの詳細な説明と、現在のテストスイートの評価結果をMarkdown形式で出力してください。もしテストが不足している場合、新しいテストケースの具体的な提案（テスト対象のシナリオ、期待される結果、模擬する必要があるGitHub APIの応答など）を含めてください。
+     期待する出力: `auto_update`のデバッグログ設定の動作確認結果をmarkdown形式で報告し、`README.md`に追記すべき設定の説明をmarkdown形式で出力してください。もし必要であれば、`config.toml.example`の提案された変更も含むものとします。
      ```
+
+3. 開発状況レポートのIssue要約・次の一手生成ロジックの改善に向けた分析 [新規または関連する開発状況生成プロンプト]
+   - 最初の小さな一歩: `ProjectSummaryCoordinator.cjs` と `DevelopmentStatusGenerator.cjs` のスクリプトが、現在の生成プロンプトの要件（3行要約、3つの候補、小さな一歩、Agent実行プロンプト）をどのように処理しているかを分析する。
+   - Agent実行プロンプ:
+     ```
+     対象ファイル: .github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md, .github/actions-tmp/.github_automation/project_summary/scripts/development/DevelopmentStatusGenerator.cjs, .github/actions-tmp/.github_automation/project_summary/scripts/ProjectSummaryCoordinator.cjs
+
+     実行内容: 現在の開発状況生成プロンプト（このプロンプト自体）が、上記のCJSスクリプトによってどのように処理され、Issueの要約や次のステップ候補が生成されているかを分析してください。特に、「現在のIssues」の3行要約、「次の一手候補」のリストとその「最初の小さな一歩」、および「Agent実行プロンプト」の各要素が、これらのスクリプト内でIssue情報とプロンプトを組み合わせて結果を生成する際にどのように活用され、出力に反映されているかを確認してください。
+
+     確認事項: `DevelopmentStatusGenerator.cjs`がIssue情報（タイトル、本文、ラベル）をどのようにパースし、プロンプトに組み込んでいるか。また、`ProjectSummaryCoordinator.cjs`が`DevelopmentStatusGenerator.cjs`をどのように呼び出し、最終的なレポートを生成しているかを確認してください。現在の生成プロンプトの要件がスクリプトでどのように扱われているか、改善の余地があるかも検討してください。
+
+     期待する出力: 現在のCJSスクリプトとプロンプトの連携に関する分析結果をmarkdown形式で出力してください。具体的には、Issue要約、次のステップ候補、最初の小さな一歩、Agent実行プロンプト生成の各要件がスクリプト内でどのように実装されているかを詳細に説明し、潜在的な改善点や効率化の提案も含むものとします。
 
 ---
-Generated at: 2026-03-20 07:03:24 JST
+Generated at: 2026-04-07 07:07:07 JST

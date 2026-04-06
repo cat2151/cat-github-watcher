@@ -160,8 +160,8 @@ def restart_application() -> None:
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
-def maybe_self_update(repo_root: Path | None = None) -> bool:
-    """Check for repository updates and restart the app if new commits are available."""
+def maybe_self_update(repo_root: Path | None = None, apply_update: bool = True) -> bool:
+    """Check for repository updates and optionally pull/restart when new commits are available."""
     global _last_check_time
 
     # ロック取得前に簡易チェックしてロック競合を最小化
@@ -201,6 +201,10 @@ def maybe_self_update(repo_root: Path | None = None) -> bool:
             "local_source=git_rev_parse_HEAD remote_source=gh_api_branches_endpoint"
         )
 
+        if not apply_update:
+            print("Auto-update: update available, but auto-update is disabled. Skipping pull/restart.", flush=True)
+            return False
+
         if not _is_worktree_clean(repo_root):
             print("Auto-update skipped: local changes detected.")
             return False
@@ -221,16 +225,16 @@ def maybe_self_update(repo_root: Path | None = None) -> bool:
         return True
 
 
-def run_startup_self_update_foreground(repo_root: Path | None = None) -> None:
+def run_startup_self_update_foreground(repo_root: Path | None = None, apply_update: bool = True) -> None:
     """起動時の自動アップデートをメインスレッドで明示的にprintしながら実行する。
 
     ユーザーが起動直後にアップデートの状況を把握できるよう、主要なステップを標準出力に出力する。
-    更新が見つかった場合は maybe_self_update() 内でアプリを再起動する。
+    apply_update=False の場合は更新の有無だけ表示し、pull/restart は行わない。
     """
     _debug_self_update_log("起動した")
     print("Auto-update: checking for updates...", flush=True)
     try:
-        updated = maybe_self_update(repo_root=repo_root)
+        updated = maybe_self_update(repo_root=repo_root, apply_update=apply_update)
         if not updated:
             print("Auto-update: check complete (no update applied).", flush=True)
     except Exception as e:

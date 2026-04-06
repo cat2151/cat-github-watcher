@@ -3,6 +3,7 @@
 import src.gh_pr_phase_monitor.ui.wait_handler as wait_handler
 from src.gh_pr_phase_monitor.ui.wait_handler import wait_with_countdown
 
+
 def _patch_time(monkeypatch, start=0.0):
     current = {"value": start}
 

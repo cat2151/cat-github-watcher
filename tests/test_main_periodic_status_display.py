@@ -2,7 +2,6 @@
 
 import importlib
 
-
 main_module = importlib.import_module("src.gh_pr_phase_monitor.main")
 
 

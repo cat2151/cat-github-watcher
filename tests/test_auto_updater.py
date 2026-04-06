@@ -22,6 +22,10 @@ auto_updater = importlib.import_module("src.gh_pr_phase_monitor.monitor.auto_upd
 _THREAD_TIMEOUT = 3
 
 
+def _make_head_sha_getter(head_sha_state):
+    return lambda _repo: head_sha_state["value"]
+
+
 @pytest.fixture(autouse=True)
 def reset_module_state():
     original_last_check_time = getattr(auto_updater, "_last_check_time", 0.0)
@@ -138,18 +142,18 @@ def test_skips_when_worktree_dirty(monkeypatch):
 
 def test_updates_and_restarts_when_remote_is_newer(monkeypatch):
     calls = {"restarted": False}
-    head_sha = {"value": "abc"}
+    head_sha_state = {"value": "abc"}
+
+    def mock_pull(*_args, **_kwargs):
+        head_sha_state["value"] = "def"
+        return True
 
     monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
     monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
-    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: head_sha["value"])
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", _make_head_sha_getter(head_sha_state))
     monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "def")
     monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
-    monkeypatch.setattr(
-        auto_updater,
-        "_pull_fast_forward",
-        lambda *_args, **_kwargs: head_sha.update(value="def") or True,
-    )
+    monkeypatch.setattr(auto_updater, "_pull_fast_forward", mock_pull)
     monkeypatch.setattr(auto_updater, "restart_application", lambda: calls.update(restarted=True))
 
     assert auto_updater.maybe_self_update(repo_root=auto_updater.REPO_ROOT) is True
@@ -178,16 +182,16 @@ def test_concurrent_calls_do_not_double_update(monkeypatch):
     """ロックにより maybe_self_update が並行実行されても git pull が1回しか行われないことを確認。"""
     pull_count = {"n": 0}
     start_event = threading.Event()
-    head_sha = {"value": "abc"}
+    head_sha_state = {"value": "abc"}
 
     def counting_pull(*_args, **_kwargs):
         pull_count["n"] += 1
-        head_sha["value"] = "def"
+        head_sha_state["value"] = "def"
         return True
 
     monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
     monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
-    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: head_sha["value"])
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", _make_head_sha_getter(head_sha_state))
     monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "def")
     monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
     monkeypatch.setattr(auto_updater, "_pull_fast_forward", counting_pull)
@@ -222,17 +226,18 @@ def test_run_startup_self_update_foreground_prints_and_no_update(monkeypatch, ca
 def test_run_startup_self_update_foreground_prints_and_update_applied(monkeypatch, capsys):
     """run_startup_self_update_foreground() がアップデートありの場合にチェックメッセージを表示することを確認。"""
     restarted = []
-    head_sha = {"value": "abc"}
+    head_sha_state = {"value": "abc"}
+
+    def mock_pull(*_args, **_kwargs):
+        head_sha_state["value"] = "def"
+        return True
+
     monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
     monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
-    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: head_sha["value"])
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", _make_head_sha_getter(head_sha_state))
     monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "def")
     monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
-    monkeypatch.setattr(
-        auto_updater,
-        "_pull_fast_forward",
-        lambda *_args, **_kwargs: head_sha.update(value="def") or True,
-    )
+    monkeypatch.setattr(auto_updater, "_pull_fast_forward", mock_pull)
     monkeypatch.setattr(auto_updater, "restart_application", lambda: restarted.append(True))
 
     auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)

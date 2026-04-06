@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import subprocess
 import sys
 import threading
@@ -25,6 +26,32 @@ def _debug_self_update_log(message: str) -> None:
     """Print debug-only startup/update diagnostics with a human-readable timestamp."""
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     print(f"[auto-update debug {timestamp}] {message}", flush=True)
+
+
+def _format_command(args: list[str]) -> str:
+    """Format a command for human-readable debug logging."""
+    return " ".join(shlex.quote(arg) for arg in args)
+
+
+def _compact_output(value: str) -> str:
+    """Convert command output to a single-line debug-friendly string."""
+    stripped = value.strip()
+    return stripped.replace("\n", "\\n") if stripped else "-"
+
+
+def _sha_lookup_status(returncode: int, sha: str | None) -> str:
+    """Classify the result of a SHA lookup for debug logs."""
+    if returncode != 0:
+        return "command_failed"
+    if not sha:
+        return "empty_response"
+    return "success"
+
+
+def _is_rate_limit_error(*messages: str) -> bool:
+    """Detect likely API rate limit failures from command output."""
+    combined = " ".join(messages).lower()
+    return "rate limit" in combined or "secondary rate limit" in combined
 
 
 def _run_command(args: list[str], cwd: Path | str | None = None) -> subprocess.CompletedProcess[str]:
@@ -72,24 +99,37 @@ def _get_remote_repo(repo_root: Path, remote_name: str) -> Optional[Tuple[str, s
     return parsed
 
 
-def _get_local_head_sha(repo_root: Path) -> Optional[str]:
+def _get_local_head_sha(repo_root: Path, phase: str = "current") -> Optional[str]:
     """Return the current HEAD SHA."""
-    result = _run_command(["git", "-C", str(repo_root), "rev-parse", "HEAD"])
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip() or None
-
-
-def _get_remote_latest_sha(owner: str, repo: str, branch: str, cwd: Path) -> Optional[str]:
-    """Fetch the latest SHA for the remote branch via gh api."""
-    result = _run_command(
-        ["gh", "api", f"repos/{owner}/{repo}/branches/{branch}", "--jq", ".commit.sha"],
-        cwd=cwd,
+    args = ["git", "-C", str(repo_root), "rev-parse", "HEAD"]
+    result = _run_command(args)
+    sha = result.stdout.strip() or None if result.returncode == 0 else None
+    _debug_self_update_log(
+        "local hash取得 "
+        f"phase={phase} result={_sha_lookup_status(result.returncode, sha)} "
+        f"working_dir={repo_root} source=git command={_format_command(args)} "
+        f"returncode={result.returncode} hash={sha or '-'} "
+        f"stdout={_compact_output(result.stdout)} stderr={_compact_output(result.stderr)}"
     )
-    if result.returncode != 0:
-        return None
+    return sha
+
+
+def _get_remote_latest_sha(owner: str, repo: str, branch: str, cwd: Path, phase: str = "current") -> Optional[str]:
+    """Fetch the latest SHA for the remote branch via gh api."""
+    endpoint = f"repos/{owner}/{repo}/branches/{branch}"
+    args = ["gh", "api", endpoint, "--jq", ".commit.sha"]
+    result = _run_command(args, cwd=cwd)
     sha = result.stdout.strip()
-    return sha if sha and sha != "null" else None
+    resolved_sha = sha if result.returncode == 0 and sha and sha != "null" else None
+    _debug_self_update_log(
+        "remote hash取得 "
+        f"phase={phase} result={_sha_lookup_status(result.returncode, resolved_sha)} "
+        f"working_dir={cwd} source=gh-api endpoint={endpoint} jq=.commit.sha "
+        f"command={_format_command(args)} returncode={result.returncode} "
+        f"hash={resolved_sha or '-'} rate_limit_detected={'yes' if _is_rate_limit_error(result.stderr, result.stdout) else 'no'} "
+        f"stdout={_compact_output(result.stdout)} stderr={_compact_output(result.stderr)}"
+    )
+    return resolved_sha
 
 
 def _is_worktree_clean(repo_root: Path) -> bool:
@@ -100,7 +140,13 @@ def _is_worktree_clean(repo_root: Path) -> bool:
 
 def _pull_fast_forward(repo_root: Path, remote_name: str, branch: str) -> bool:
     """Attempt a fast-forward pull; return True on success."""
-    result = _run_command(["git", "-C", str(repo_root), "pull", "--ff-only", remote_name, branch])
+    args = ["git", "-C", str(repo_root), "pull", "--ff-only", remote_name, branch]
+    result = _run_command(args)
+    _debug_self_update_log(
+        "git pull実行結果 "
+        f"working_dir={repo_root} source=git command={_format_command(args)} "
+        f"returncode={result.returncode} stdout={_compact_output(result.stdout)} stderr={_compact_output(result.stderr)}"
+    )
     if result.returncode != 0:
         message = result.stderr.strip() or result.stdout.strip()
         print(f"Auto-update skipped: git pull failed ({message}).")
@@ -141,16 +187,18 @@ def maybe_self_update(repo_root: Path | None = None) -> bool:
             return False
         owner, repo = remote_repo
 
-        local_sha = _get_local_head_sha(repo_root)
+        local_sha = _get_local_head_sha(repo_root, phase="before-pull")
         if not local_sha:
             return False
 
-        remote_sha = _get_remote_latest_sha(owner, repo, branch, repo_root)
+        remote_sha = _get_remote_latest_sha(owner, repo, branch, repo_root, phase="before-pull")
         if not remote_sha or remote_sha == local_sha:
             return False
 
         _debug_self_update_log(
-            f"update検知した local={local_sha[:7]} remote={remote_sha[:7]} branch={remote_name}/{branch}"
+            "update検知した "
+            f"local_hash={local_sha} remote_hash={remote_sha} branch={remote_name}/{branch} "
+            "local_source=git_rev_parse_HEAD remote_source=gh_api_branches_endpoint"
         )
 
         if not _is_worktree_clean(repo_root):
@@ -160,9 +208,15 @@ def maybe_self_update(repo_root: Path | None = None) -> bool:
         if not _pull_fast_forward(repo_root, remote_name, branch):
             return False
 
-        _debug_self_update_log(f"pullした remote={remote_name} branch={branch}")
+        updated_local_sha = _get_local_head_sha(repo_root, phase="after-pull")
+        _debug_self_update_log(
+            f"pullした remote={remote_name} branch={branch} local_hash_after_pull={updated_local_sha or '-'}"
+        )
         print(f"{Colors.GREEN}Auto-update: update detected! Restarting application to apply the latest code...{Colors.RESET}", flush=True)
-        _debug_self_update_log("再起動する")
+        _debug_self_update_log(
+            f"再起動する local_hash_before_pull={local_sha} remote_hash_before_pull={remote_sha} "
+            f"local_hash_after_pull={updated_local_sha or '-'}"
+        )
         restart_application()
         return True
 

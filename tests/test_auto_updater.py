@@ -23,6 +23,10 @@ auto_updater = importlib.import_module("src.gh_pr_phase_monitor.monitor.auto_upd
 _THREAD_TIMEOUT = 3
 
 
+def _make_head_sha_getter(head_sha_state):
+    return lambda _repo, phase="current": head_sha_state["value"]
+
+
 @pytest.fixture(autouse=True)
 def reset_module_state():
     original_last_check_time = getattr(auto_updater, "_last_check_time", 0.0)
@@ -79,30 +83,65 @@ def test_get_remote_latest_sha_uses_branches_api(monkeypatch):
     assert "--raw-field" not in cmd
 
 
-def test_get_remote_latest_sha_returns_none_on_failure(monkeypatch):
-    """_get_remote_latest_sha は API 呼び出し失敗時に None を返すことを確認。"""
+def test_get_local_head_sha_logs_command_details(monkeypatch):
+    debug_messages = []
 
     def fake_run_command(args, cwd=None):
-        return types.SimpleNamespace(returncode=1, stdout="", stderr="error")
+        return types.SimpleNamespace(returncode=0, stdout="abc123\n", stderr="")
 
     monkeypatch.setattr(auto_updater, "_run_command", fake_run_command)
+    monkeypatch.setattr(auto_updater, "_debug_self_update_log", debug_messages.append)
+
+    sha = auto_updater._get_local_head_sha(auto_updater.REPO_ROOT, phase="before-pull")
+
+    assert sha == "abc123"
+    assert debug_messages == [
+        f"local hash取得 phase=before-pull result=success working_dir={auto_updater.REPO_ROOT} "
+        f"source=git command=git -C {auto_updater.REPO_ROOT} rev-parse HEAD "
+        "returncode=0 hash=abc123 stdout=abc123 stderr=-"
+    ]
+
+
+def test_get_remote_latest_sha_returns_none_on_failure(monkeypatch):
+    """_get_remote_latest_sha は API 呼び出し失敗時に None を返すことを確認。"""
+    debug_messages = []
+
+    def fake_run_command(args, cwd=None):
+        return types.SimpleNamespace(returncode=1, stdout="", stderr="API rate limit exceeded")
+
+    monkeypatch.setattr(auto_updater, "_run_command", fake_run_command)
+    monkeypatch.setattr(auto_updater, "_debug_self_update_log", debug_messages.append)
 
     sha = auto_updater._get_remote_latest_sha("owner", "repo", "main", auto_updater.REPO_ROOT)
 
     assert sha is None
+    assert debug_messages == [
+        f"remote hash取得 phase=current result=command_failed working_dir={auto_updater.REPO_ROOT} "
+        "source=gh-api endpoint=repos/owner/repo/branches/main jq=.commit.sha "
+        "command=gh api repos/owner/repo/branches/main --jq .commit.sha returncode=1 "
+        "hash=- rate_limit_detected=yes stdout=- stderr=API rate limit exceeded"
+    ]
 
 
 def test_get_remote_latest_sha_returns_none_for_null_response(monkeypatch):
     """_get_remote_latest_sha は jq が 'null' を返した場合に None を返すことを確認。"""
+    debug_messages = []
 
     def fake_run_command(args, cwd=None):
         return types.SimpleNamespace(returncode=0, stdout="null\n", stderr="")
 
     monkeypatch.setattr(auto_updater, "_run_command", fake_run_command)
+    monkeypatch.setattr(auto_updater, "_debug_self_update_log", debug_messages.append)
 
     sha = auto_updater._get_remote_latest_sha("owner", "repo", "main", auto_updater.REPO_ROOT)
 
     assert sha is None
+    assert debug_messages == [
+        f"remote hash取得 phase=current result=empty_response working_dir={auto_updater.REPO_ROOT} "
+        "source=gh-api endpoint=repos/owner/repo/branches/main jq=.commit.sha "
+        "command=gh api repos/owner/repo/branches/main --jq .commit.sha returncode=0 "
+        "hash=- rate_limit_detected=no stdout=null stderr=-"
+    ]
 
 
 def test_skips_when_remote_matches_local(monkeypatch):
@@ -110,7 +149,7 @@ def test_skips_when_remote_matches_local(monkeypatch):
 
     monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
     monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
-    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: "abc")
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo, phase="current": "abc")
     monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "abc")
     monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
     monkeypatch.setattr(auto_updater, "_pull_fast_forward", lambda *_args, **_kwargs: calls.update(pulled=True) or True)
@@ -124,7 +163,7 @@ def test_skips_when_remote_matches_local(monkeypatch):
 def test_skips_when_worktree_dirty(monkeypatch):
     monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
     monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
-    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: "abc")
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo, phase="current": "abc")
     monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "def")
     monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: False)
 
@@ -140,23 +179,31 @@ def test_skips_when_worktree_dirty(monkeypatch):
 def test_updates_and_restarts_when_remote_is_newer(monkeypatch):
     calls = {"restarted": False}
     debug_messages = []
+    head_sha_state = {"value": "abc"}
+
+    def mock_pull(*_args, **_kwargs):
+        head_sha_state["value"] = "def"
+        return True
 
     monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
     monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
-    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: "abc")
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", _make_head_sha_getter(head_sha_state))
     monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "def")
     monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
-    monkeypatch.setattr(auto_updater, "_pull_fast_forward", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(auto_updater, "_pull_fast_forward", mock_pull)
     monkeypatch.setattr(auto_updater, "restart_application", lambda: calls.update(restarted=True))
     monkeypatch.setattr(auto_updater, "_debug_self_update_log", debug_messages.append)
 
     assert auto_updater.maybe_self_update(repo_root=auto_updater.REPO_ROOT) is True
     assert calls["restarted"] is True
-    assert debug_messages == [
-        "update検知した local=abc remote=def branch=origin/main",
-        "pullした remote=origin branch=main",
-        "再起動する",
-    ]
+    assert debug_messages[0] == (
+        "update検知した local_hash=abc remote_hash=def branch=origin/main "
+        "local_source=git_rev_parse_HEAD remote_source=gh_api_branches_endpoint"
+    )
+    assert debug_messages[1] == "pullした remote=origin branch=main local_hash_after_pull=def"
+    assert debug_messages[2] == (
+        "再起動する local_hash_before_pull=abc remote_hash_before_pull=def local_hash_after_pull=def"
+    )
 
 
 def test_concurrent_calls_do_not_double_update(monkeypatch):
@@ -170,7 +217,7 @@ def test_concurrent_calls_do_not_double_update(monkeypatch):
 
     monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
     monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
-    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: "abc")
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo, phase="current": "abc")
     monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "def")
     monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
     monkeypatch.setattr(auto_updater, "_pull_fast_forward", counting_pull)
@@ -206,12 +253,18 @@ def test_run_startup_self_update_foreground_prints_and_no_update(monkeypatch, ca
 def test_run_startup_self_update_foreground_prints_and_update_applied(monkeypatch, capsys):
     """run_startup_self_update_foreground() がアップデートありの場合にチェックメッセージを表示することを確認。"""
     restarted = []
+    head_sha_state = {"value": "abc"}
+
+    def mock_pull(*_args, **_kwargs):
+        head_sha_state["value"] = "def"
+        return True
+
     monkeypatch.setattr(auto_updater, "_get_tracking_branch", lambda _repo: ("origin", "main"))
     monkeypatch.setattr(auto_updater, "_get_remote_repo", lambda _repo, _remote: ("owner", "repo"))
-    monkeypatch.setattr(auto_updater, "_get_local_head_sha", lambda _repo: "abc")
+    monkeypatch.setattr(auto_updater, "_get_local_head_sha", _make_head_sha_getter(head_sha_state))
     monkeypatch.setattr(auto_updater, "_get_remote_latest_sha", lambda *_args, **_kwargs: "def")
     monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
-    monkeypatch.setattr(auto_updater, "_pull_fast_forward", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(auto_updater, "_pull_fast_forward", mock_pull)
     monkeypatch.setattr(auto_updater, "restart_application", lambda: restarted.append(True))
 
     auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
@@ -222,6 +275,9 @@ def test_run_startup_self_update_foreground_prints_and_update_applied(monkeypatc
     pull_index = captured.out.index("pullした")
     restart_index = captured.out.index("再起動する")
     assert startup_index < detect_index < pull_index < restart_index
+    assert "local_hash=abc" in captured.out
+    assert "remote_hash=def" in captured.out
+    assert "local_hash_after_pull=def" in captured.out
     assert "Auto-update" in captured.out
     assert "update detected" in captured.out
     assert restarted, "restart_application should have been called"

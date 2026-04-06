@@ -2,6 +2,7 @@
 
 import importlib
 import os
+import re
 import sys
 import threading
 import time
@@ -151,9 +152,11 @@ def test_updates_and_restarts_when_remote_is_newer(monkeypatch):
 
     assert auto_updater.maybe_self_update(repo_root=auto_updater.REPO_ROOT) is True
     assert calls["restarted"] is True
-    assert any("update検知した" in message for message in debug_messages)
-    assert any("pullした" in message for message in debug_messages)
-    assert any("再起動する" in message for message in debug_messages)
+    assert debug_messages == [
+        "update検知した local=abc remote=def branch=origin/main",
+        "pullした remote=origin branch=main",
+        "再起動する",
+    ]
 
 
 def test_concurrent_calls_do_not_double_update(monkeypatch):
@@ -195,7 +198,7 @@ def test_run_startup_self_update_foreground_prints_and_no_update(monkeypatch, ca
     auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
 
     captured = capsys.readouterr()
-    assert "起動した" in captured.out
+    assert re.search(r"\[auto-update debug \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] 起動した", captured.out)
     assert "Auto-update" in captured.out
     assert "check complete" in captured.out
 
@@ -214,10 +217,11 @@ def test_run_startup_self_update_foreground_prints_and_update_applied(monkeypatc
     auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
 
     captured = capsys.readouterr()
-    assert "起動した" in captured.out
-    assert "update検知した" in captured.out
-    assert "pullした" in captured.out
-    assert "再起動する" in captured.out
+    startup_index = captured.out.index("起動した")
+    detect_index = captured.out.index("update検知した")
+    pull_index = captured.out.index("pullした")
+    restart_index = captured.out.index("再起動する")
+    assert startup_index < detect_index < pull_index < restart_index
     assert "Auto-update" in captured.out
     assert "update detected" in captured.out
     assert restarted, "restart_application should have been called"
@@ -234,6 +238,6 @@ def test_run_startup_self_update_foreground_swallows_exceptions(monkeypatch, cap
     auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
 
     captured = capsys.readouterr()
-    assert "起動した" in captured.out
+    assert re.search(r"\[auto-update debug \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] 起動した", captured.out)
     assert "Auto-update" in captured.out
     assert "failed" in captured.out

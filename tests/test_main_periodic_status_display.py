@@ -1,4 +1,4 @@
-"""Tests for periodic cached PR status display wiring in main()."""
+"""Tests for periodic cached issue display wiring in main()."""
 
 from src.gh_pr_phase_monitor import main as main_module
 
@@ -24,10 +24,10 @@ def _setup_common_main_mocks(monkeypatch, wait_kwargs):
     monkeypatch.setattr(main_module, "wait_with_countdown", fake_wait_with_countdown)
 
 
-def test_main_passes_periodic_status_callback_when_open_prs_exist(monkeypatch):
+def test_main_periodic_issue_callback_filters_current_pr_repos(monkeypatch):
     wait_kwargs = {}
     _setup_common_main_mocks(monkeypatch, wait_kwargs)
-    display_calls = []
+    issue_display_calls = []
 
     monkeypatch.setattr(
         main_module,
@@ -45,11 +45,10 @@ def test_main_passes_periodic_status_callback_when_open_prs_exist(monkeypatch):
             False,
         ),
     )
-    monkeypatch.setattr(main_module, "get_last_pr_snapshot", lambda: None)
     monkeypatch.setattr(
         main_module,
-        "display_status_summary",
-        lambda *args, **kwargs: display_calls.append((args, kwargs)),
+        "display_cached_top_issues",
+        lambda repos_with_prs=None: issue_display_calls.append(repos_with_prs),
     )
 
     try:
@@ -60,25 +59,27 @@ def test_main_passes_periodic_status_callback_when_open_prs_exist(monkeypatch):
     assert callable(wait_kwargs["status_display_callback"])
     assert wait_kwargs["status_display_interval_seconds"] == 60
     wait_kwargs["status_display_callback"]()
-    assert len(display_calls) == 2
-    callback_args, callback_kwargs = display_calls[1]
-    prs_arg = callback_args[0]
-    repos_arg = callback_args[1]
-    assert prs_arg[0]["title"] == "Open PR"
-    assert repos_arg[0]["name"] == "repo"
-    assert callback_kwargs["no_change"] is True
+    assert issue_display_calls == [[{"name": "repo", "owner": "owner", "openPRCount": 1}]]
 
 
-def test_main_skips_periodic_status_callback_when_no_open_prs(monkeypatch):
+def test_main_periodic_issue_callback_is_still_available_without_open_prs(monkeypatch):
     wait_kwargs = {}
     _setup_common_main_mocks(monkeypatch, wait_kwargs)
+    issue_display_calls = []
 
     monkeypatch.setattr(main_module, "run_one_iteration", lambda _config, _iteration: ([], [], False))
+    monkeypatch.setattr(
+        main_module,
+        "display_cached_top_issues",
+        lambda repos_with_prs=None: issue_display_calls.append(repos_with_prs),
+    )
 
     try:
         main_module.main()
     except KeyboardInterrupt:
         pass
 
-    assert wait_kwargs["status_display_callback"] is None
+    assert callable(wait_kwargs["status_display_callback"])
     assert wait_kwargs["status_display_interval_seconds"] == 60
+    wait_kwargs["status_display_callback"]()
+    assert issue_display_calls == [[]]

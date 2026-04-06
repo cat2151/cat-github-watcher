@@ -31,7 +31,7 @@ from .monitor.error_logger import log_error_to_file
 from .monitor.iteration_runner import run_one_iteration
 from .monitor.monitor import check_no_state_change_timeout, determine_current_interval
 from .monitor.state_tracker import get_last_pr_snapshot
-from .ui.display import display_status_summary
+from .ui.display import display_cached_top_issues, display_status_summary
 from .ui.wait_handler import wait_with_countdown
 
 
@@ -194,20 +194,10 @@ def main():
         except Exception as summary_error:
             log_error_to_file("Failed to display status summary", summary_error)
 
-        periodic_status_display_callback = None
-        if display_prs:
-            fallback_prs = display_prs
-            fallback_repos = display_repos
-            display_config = config
+        repos_for_cached_issue_display = list(display_repos)
 
-            def redisplay_open_prs_status(
-            ):
-                snapshot = get_last_pr_snapshot()
-                cached_prs, cached_repos = snapshot if snapshot is not None else (fallback_prs, fallback_repos)
-                if cached_prs:
-                    display_status_summary(cached_prs, cached_repos, display_config, no_change=True)
-
-            periodic_status_display_callback = redisplay_open_prs_status
+        def redisplay_cached_issues() -> None:
+            display_cached_top_issues(repos_for_cached_issue_display)
 
         # Check if PR state has not changed for too long and switch to reduced frequency mode
         try:
@@ -237,7 +227,7 @@ def main():
                 if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE)
                 else None,
                 self_update_interval_seconds=UPDATE_CHECK_INTERVAL_SECONDS,
-                status_display_callback=periodic_status_display_callback,
+                status_display_callback=redisplay_cached_issues,
                 status_display_interval_seconds=60,
             )
         except Exception as wait_error:

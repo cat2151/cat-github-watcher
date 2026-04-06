@@ -63,9 +63,11 @@ def test_main_passes_periodic_status_callback_when_open_prs_exist(monkeypatch):
     assert wait_kwargs["status_display_interval_seconds"] == 60
     wait_kwargs["status_display_callback"]()
     assert len(display_calls) == 2
-    assert display_calls[1][0][0][0]["title"] == "Open PR"
-    assert display_calls[1][0][1][0]["name"] == "repo"
-    assert display_calls[1][1]["no_change"] is True
+    callback_args, callback_kwargs = display_calls[1]
+    prs_arg, repos_arg = callback_args[:2]
+    assert prs_arg[0]["title"] == "Open PR"
+    assert repos_arg[0]["name"] == "repo"
+    assert callback_kwargs["no_change"] is True
 
 
 def test_main_skips_periodic_status_callback_when_no_open_prs(monkeypatch):

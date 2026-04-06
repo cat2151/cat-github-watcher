@@ -196,11 +196,15 @@ def main():
 
         periodic_status_display_callback = None
         if display_prs:
-            def redisplay_cached_open_prs():
+            def redisplay_cached_open_prs(
+                fallback_prs=display_prs,
+                fallback_repos=display_repos,
+                display_config=config,
+            ):
                 snapshot = get_last_pr_snapshot()
-                cached_prs, cached_repos = snapshot if snapshot is not None else (display_prs, display_repos)
+                cached_prs, cached_repos = snapshot if snapshot is not None else (fallback_prs, fallback_repos)
                 if cached_prs:
-                    display_status_summary(cached_prs, cached_repos, config, no_change=True)
+                    display_status_summary(cached_prs, cached_repos, display_config, no_change=True)
 
             periodic_status_display_callback = redisplay_cached_open_prs
 

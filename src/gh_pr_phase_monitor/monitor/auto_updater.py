@@ -21,6 +21,12 @@ _update_lock = threading.Lock()
 _REMOTE_PATTERN = re.compile(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?$")
 
 
+def _debug_self_update_log(message: str) -> None:
+    """Print debug-only startup/update diagnostics with a human-readable timestamp."""
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[auto-update debug {timestamp}] {message}", flush=True)
+
+
 def _run_command(args: list[str], cwd: Path | str | None = None) -> subprocess.CompletedProcess[str]:
     """Run a command and return the completed process without raising on error."""
     return subprocess.run(
@@ -143,6 +149,10 @@ def maybe_self_update(repo_root: Path | None = None) -> bool:
         if not remote_sha or remote_sha == local_sha:
             return False
 
+        _debug_self_update_log(
+            f"update検知した local={local_sha[:7]} remote={remote_sha[:7]} branch={remote_name}/{branch}"
+        )
+
         if not _is_worktree_clean(repo_root):
             print("Auto-update skipped: local changes detected.")
             return False
@@ -150,15 +160,9 @@ def maybe_self_update(repo_root: Path | None = None) -> bool:
         if not _pull_fast_forward(repo_root, remote_name, branch):
             return False
 
-        updated_local_sha = _get_local_head_sha(repo_root)
-        if not updated_local_sha:
-            print("Auto-update skipped: failed to verify updated HEAD after git pull.")
-            return False
-        if updated_local_sha == local_sha:
-            print("Auto-update skipped: git pull completed but HEAD did not change.")
-            return False
-
+        _debug_self_update_log(f"pullした remote={remote_name} branch={branch}")
         print(f"{Colors.GREEN}Auto-update: update detected! Restarting application to apply the latest code...{Colors.RESET}", flush=True)
+        _debug_self_update_log("再起動する")
         restart_application()
         return True
 
@@ -169,6 +173,7 @@ def run_startup_self_update_foreground(repo_root: Path | None = None) -> None:
     ユーザーが起動直後にアップデートの状況を把握できるよう、主要なステップを標準出力に出力する。
     更新が見つかった場合は maybe_self_update() 内でアプリを再起動する。
     """
+    _debug_self_update_log("起動した")
     print("Auto-update: checking for updates...", flush=True)
     try:
         updated = maybe_self_update(repo_root=repo_root)

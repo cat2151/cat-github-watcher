@@ -339,7 +339,7 @@ def test_run_startup_self_update_foreground_prints_and_update_applied(monkeypatc
 def test_run_startup_self_update_foreground_swallows_exceptions(monkeypatch, capsys):
     """run_startup_self_update_foreground() が例外をキャッチして出力し、クラッシュしないことを確認。"""
 
-    def raise_error(repo_root=None):
+    def raise_error(repo_root=None, apply_update=True):
         raise RuntimeError("simulated error")
 
     monkeypatch.setattr(auto_updater, "maybe_self_update", raise_error)

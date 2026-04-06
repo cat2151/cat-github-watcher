@@ -1,8 +1,6 @@
 """Tests for periodic cached PR status display wiring in main()."""
 
-import importlib
-
-main_module = importlib.import_module("src.gh_pr_phase_monitor.main")
+from src.gh_pr_phase_monitor import main as main_module
 
 
 def _setup_common_main_mocks(monkeypatch, wait_kwargs):
@@ -64,7 +62,8 @@ def test_main_passes_periodic_status_callback_when_open_prs_exist(monkeypatch):
     wait_kwargs["status_display_callback"]()
     assert len(display_calls) == 2
     callback_args, callback_kwargs = display_calls[1]
-    prs_arg, repos_arg = callback_args[:2]
+    prs_arg = callback_args[0]
+    repos_arg = callback_args[1]
     assert prs_arg[0]["title"] == "Open PR"
     assert repos_arg[0]["name"] == "repo"
     assert callback_kwargs["no_change"] is True

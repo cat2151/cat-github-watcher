@@ -196,10 +196,11 @@ def main():
 
         periodic_status_display_callback = None
         if display_prs:
+            fallback_prs = display_prs
+            fallback_repos = display_repos
+            display_config = config
+
             def redisplay_open_prs_status(
-                fallback_prs=display_prs,
-                fallback_repos=display_repos,
-                display_config=config,
             ):
                 snapshot = get_last_pr_snapshot()
                 cached_prs, cached_repos = snapshot if snapshot is not None else (fallback_prs, fallback_repos)

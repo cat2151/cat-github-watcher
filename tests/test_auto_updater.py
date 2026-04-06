@@ -31,11 +31,14 @@ def _make_head_sha_getter(head_sha_state):
 @pytest.fixture(autouse=True)
 def reset_module_state():
     original_last_check_time = getattr(auto_updater, "_last_check_time", 0.0)
+    original_debug_log_enabled = getattr(auto_updater, "_auto_update_debug_log_enabled", False)
     auto_updater._last_check_time = 0.0
+    auto_updater.set_auto_update_debug_log_enabled(False)
     try:
         yield
     finally:
         auto_updater._last_check_time = original_last_check_time
+        auto_updater.set_auto_update_debug_log_enabled(original_debug_log_enabled)
 
 
 def test_repo_root_points_to_actual_repo_root():
@@ -265,9 +268,19 @@ def test_run_startup_self_update_foreground_prints_and_no_update(monkeypatch, ca
     auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
 
     captured = capsys.readouterr()
-    assert re.search(r"\[auto-update debug \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] 起動した", captured.out)
     assert "Auto-update" in captured.out
     assert "check complete" in captured.out
+    assert "[auto-update debug " not in captured.out
+
+
+def test_run_startup_self_update_foreground_prints_debug_log_only_when_enabled(monkeypatch, capsys):
+    monkeypatch.setattr(auto_updater, "maybe_self_update", lambda repo_root=None, apply_update=True: False)
+    auto_updater.set_auto_update_debug_log_enabled(True)
+
+    auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
+
+    captured = capsys.readouterr()
+    assert re.search(r"\[auto-update debug \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] 起動した", captured.out)
 
 
 def test_run_startup_self_update_foreground_skips_pull_when_disabled(monkeypatch, capsys):
@@ -305,6 +318,7 @@ def test_run_startup_self_update_foreground_prints_and_update_applied(monkeypatc
     monkeypatch.setattr(auto_updater, "_is_worktree_clean", lambda _repo: True)
     monkeypatch.setattr(auto_updater, "_pull_fast_forward", mock_pull)
     monkeypatch.setattr(auto_updater, "restart_application", lambda: restarted.append(True))
+    auto_updater.set_auto_update_debug_log_enabled(True)
 
     auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
 
@@ -325,7 +339,7 @@ def test_run_startup_self_update_foreground_prints_and_update_applied(monkeypatc
 def test_run_startup_self_update_foreground_swallows_exceptions(monkeypatch, capsys):
     """run_startup_self_update_foreground() が例外をキャッチして出力し、クラッシュしないことを確認。"""
 
-    def raise_error(repo_root=None):
+    def raise_error(repo_root=None, apply_update=True):
         raise RuntimeError("simulated error")
 
     monkeypatch.setattr(auto_updater, "maybe_self_update", raise_error)
@@ -333,6 +347,6 @@ def test_run_startup_self_update_foreground_swallows_exceptions(monkeypatch, cap
     auto_updater.run_startup_self_update_foreground(repo_root=auto_updater.REPO_ROOT)
 
     captured = capsys.readouterr()
-    assert re.search(r"\[auto-update debug \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] 起動した", captured.out)
     assert "Auto-update" in captured.out
     assert "failed" in captured.out
+    assert "[auto-update debug " not in captured.out

@@ -19,11 +19,20 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 _last_check_time: float = 0.0
 _update_lock = threading.Lock()
+_auto_update_debug_log_enabled = False
 _REMOTE_PATTERN = re.compile(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?$")
+
+
+def set_auto_update_debug_log_enabled(enabled: bool) -> None:
+    """Enable or disable verbose auto-update debug logging."""
+    global _auto_update_debug_log_enabled
+    _auto_update_debug_log_enabled = enabled
 
 
 def _debug_self_update_log(message: str) -> None:
     """Print debug-only startup/update diagnostics with a human-readable timestamp."""
+    if not _auto_update_debug_log_enabled:
+        return
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     print(f"[auto-update debug {timestamp}] {message}", flush=True)
 

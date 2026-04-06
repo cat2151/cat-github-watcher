@@ -194,6 +194,14 @@ def main():
         except Exception as summary_error:
             log_error_to_file("Failed to display status summary", summary_error)
 
+        periodic_status_display_callback = None
+        if display_prs:
+            def periodic_status_display_callback():
+                snapshot = get_last_pr_snapshot()
+                cached_prs, cached_repos = snapshot if snapshot is not None else (display_prs, display_repos)
+                if cached_prs:
+                    display_status_summary(cached_prs, cached_repos, config, no_change=True)
+
         # Check if PR state has not changed for too long and switch to reduced frequency mode
         try:
             use_reduced_frequency = check_no_state_change_timeout(all_prs, config)
@@ -222,6 +230,8 @@ def main():
                 if config.get("enable_auto_update", DEFAULT_ENABLE_AUTO_UPDATE)
                 else None,
                 self_update_interval_seconds=UPDATE_CHECK_INTERVAL_SECONDS,
+                status_display_callback=periodic_status_display_callback,
+                status_display_interval_seconds=60,
             )
         except Exception as wait_error:
             log_error_to_file("wait_with_countdown failed; falling back to sleep", wait_error)

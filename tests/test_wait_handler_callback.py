@@ -66,6 +66,42 @@ def test_self_update_callback_exception_is_logged(monkeypatch):
     assert errors and "boom" in errors[0]
 
 
+def test_status_display_callback_invoked_every_minute(monkeypatch):
+    calls = []
+    _patch_time(monkeypatch, start=0.0)
+
+    wait_handler.wait_with_countdown(
+        125,
+        "125s",
+        status_display_callback=lambda: calls.append("refresh"),
+        status_display_interval_seconds=60,
+    )
+
+    assert calls == ["refresh", "refresh"]
+
+
+def test_status_display_callback_errors_are_logged(monkeypatch):
+    _patch_time(monkeypatch, start=0.0)
+    errors = []
+
+    def fake_logger(exc: Exception):
+        errors.append(str(exc))
+
+    monkeypatch.setattr(wait_handler, "_log_status_display_error", fake_logger)
+
+    def failing_callback():
+        raise RuntimeError("status boom")
+
+    wait_handler.wait_with_countdown(
+        61,
+        "61s",
+        status_display_callback=failing_callback,
+        status_display_interval_seconds=60,
+    )
+
+    assert errors and "status boom" in errors[0]
+
+
 class TestWaitWithCountdownDisplay:
     """Test the terminal countdown display of wait_with_countdown()"""
 

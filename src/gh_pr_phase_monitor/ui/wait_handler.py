@@ -25,6 +25,16 @@ def _log_self_update_error(exc: Exception) -> None:
         pass
 
 
+def _log_status_display_error(exc: Exception) -> None:
+    """Log periodic status display errors without raising."""
+    try:
+        from ..monitor.error_logger import log_error_to_file
+
+        log_error_to_file("Status display callback failed during wait", exc)
+    except Exception:
+        pass
+
+
 def wait_with_countdown(
     interval_seconds: int,
     interval_str: str,
@@ -32,6 +42,8 @@ def wait_with_countdown(
     last_config_mtime: float = 0.0,
     self_update_callback: Callable[[], None] | None = None,
     self_update_interval_seconds: int = 60,
+    status_display_callback: Callable[[], None] | None = None,
+    status_display_interval_seconds: int = 60,
 ) -> Tuple[Dict[str, Any], int, str, float]:
     """Wait for the specified interval with a live countdown display and hot reload support
 
@@ -48,6 +60,9 @@ def wait_with_countdown(
         last_config_mtime: Last known modification time of the config file
         self_update_callback: Optional callback invoked periodically during wait (e.g., auto-update)
         self_update_interval_seconds: Minimum seconds between callback invocations
+        status_display_callback: Optional callback invoked periodically during wait to
+            re-display cached status without making API calls
+        status_display_interval_seconds: Minimum seconds between status re-display callbacks
 
     Returns:
         Tuple of (config, interval_seconds, interval_str, new_config_mtime)
@@ -65,6 +80,7 @@ def wait_with_countdown(
     # Track actual elapsed time from the start of wait
     wait_start_time = time.time()
     last_update_check = wait_start_time
+    last_status_display = wait_start_time
 
     # Display countdown with updates every second using ANSI escape sequences
     while True:
@@ -89,6 +105,13 @@ def wait_with_countdown(
             except Exception as exc:
                 _log_self_update_error(exc)
             last_update_check = time.time()
+
+        if status_display_callback and time.time() - last_status_display >= status_display_interval_seconds:
+            try:
+                status_display_callback()
+            except Exception as exc:
+                _log_status_display_error(exc)
+            last_status_display = time.time()
 
         # Check if config file has been modified (only if config_path is provided)
         # Note: This check happens every second as per hot reload requirements

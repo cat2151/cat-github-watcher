@@ -73,6 +73,9 @@ DEFAULT_DISPLAY_LLM_STATUS_TIMELINE = False
 # Default setting for auto-update (disabled by default for safety)
 DEFAULT_ENABLE_AUTO_UPDATE = False
 
+# Default setting for verbose auto-update debug logs (disabled by default)
+DEFAULT_ENABLE_AUTO_UPDATE_DEBUG_LOG = False
+
 # Default setting for saving pr_phase_snapshots (disabled by default for safety/privacy)
 DEFAULT_ENABLE_PR_PHASE_SNAPSHOTS = False
 
@@ -287,6 +290,16 @@ def load_config(config_path: str = "config.toml") -> Dict[str, Any]:
             config["enable_auto_update"] = DEFAULT_ENABLE_AUTO_UPDATE
     else:
         config["enable_auto_update"] = DEFAULT_ENABLE_AUTO_UPDATE
+    if "enable_auto_update_debug_log" in config:
+        try:
+            config["enable_auto_update_debug_log"] = _validate_boolean_flag(
+                config["enable_auto_update_debug_log"], "enable_auto_update_debug_log"
+            )
+        except ValueError as e:
+            print(f"Warning: {e}. Using default value: {DEFAULT_ENABLE_AUTO_UPDATE_DEBUG_LOG}")
+            config["enable_auto_update_debug_log"] = DEFAULT_ENABLE_AUTO_UPDATE_DEBUG_LOG
+    else:
+        config["enable_auto_update_debug_log"] = DEFAULT_ENABLE_AUTO_UPDATE_DEBUG_LOG
     if "auto_git_pull" in config:
         try:
             config["auto_git_pull"] = _validate_boolean_flag(config["auto_git_pull"], "auto_git_pull")
@@ -334,6 +347,5 @@ def print_repo_execution_config(*args, **kwargs):
     from . import config_printer
 
     return config_printer.print_repo_execution_config(*args, **kwargs)
-
 
 

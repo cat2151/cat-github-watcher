@@ -9,6 +9,7 @@ import traceback
 
 from .core.config import (
     DEFAULT_ENABLE_AUTO_UPDATE,
+    DEFAULT_ENABLE_AUTO_UPDATE_DEBUG_LOG,
     get_config_mtime,
     load_config,
     parse_interval,
@@ -24,6 +25,7 @@ from .monitor.auto_updater import (
     UPDATE_CHECK_INTERVAL_SECONDS,
     maybe_self_update,
     run_startup_self_update_foreground,
+    set_auto_update_debug_log_enabled,
 )
 from .monitor.error_logger import log_error_to_file
 from .monitor.iteration_runner import run_one_iteration
@@ -59,6 +61,10 @@ def main():
         print("Expected format:")
         print('interval = "1m"  # Check interval (e.g., "30s", "1m", "5m")')
         print()
+
+    set_auto_update_debug_log_enabled(
+        config.get("enable_auto_update_debug_log", DEFAULT_ENABLE_AUTO_UPDATE_DEBUG_LOG)
+    )
 
     # Get interval
     normal_interval_str = config.get("interval", "1m")
@@ -227,6 +233,9 @@ def main():
         config_reloaded = new_config_mtime != config_mtime
         if config_reloaded and new_config:
             config = new_config
+            set_auto_update_debug_log_enabled(
+                config.get("enable_auto_update_debug_log", DEFAULT_ENABLE_AUTO_UPDATE_DEBUG_LOG)
+            )
             # Update normal interval only on hot reload (config change).
             # This prevents the normal interval from being contaminated by reduced frequency
             # interval values that may be returned from wait_with_countdown().

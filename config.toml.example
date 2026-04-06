@@ -78,6 +78,10 @@ display_llm_status_timeline = false
 # Default: false (disabled). Enable only when you need detailed snapshots for troubleshooting.
 enable_pr_phase_snapshots = false
 
+# Show verbose self-update debug logs such as SHA lookups and pull diagnostics
+# Default: false
+enable_auto_update_debug_log = false
+
 # Local repository auto-pull setting
 # Default (false): Detects and displays pullable repositories in the parent directory (Dry-run)
 # If set to true: Automatically git pull pullable repositories (executes git fetch every 5 minutes)

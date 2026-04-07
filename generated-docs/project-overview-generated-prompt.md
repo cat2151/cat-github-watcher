@@ -1,4 +1,4 @@
-Last updated: 2026-04-07
+Last updated: 2026-04-08
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -629,6 +629,7 @@ MIT License - 詳細はLICENSEファイルを参照してください
   📄 test_local_repo_watcher.py
   📄 test_local_repo_watcher_background.py
   📄 test_main_auto_update.py
+  📄 test_main_periodic_status_display.py
   📄 test_max_llm_working_parallel.py
   📄 test_no_change_timeout.py
   📄 test_no_open_prs_issue_cache.py
@@ -685,4 +686,4 @@ docs/window-activation-feature.md
 
 
 ---
-Generated at: 2026-04-07 07:06:45 JST
+Generated at: 2026-04-08 07:09:27 JST

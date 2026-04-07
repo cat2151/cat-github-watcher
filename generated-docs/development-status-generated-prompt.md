@@ -1,4 +1,4 @@
-Last updated: 2026-04-07
+Last updated: 2026-04-08
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -333,6 +333,7 @@ Last updated: 2026-04-07
 - tests/test_local_repo_watcher.py
 - tests/test_local_repo_watcher_background.py
 - tests/test_main_auto_update.py
+- tests/test_main_periodic_status_display.py
 - tests/test_max_llm_working_parallel.py
 - tests/test_no_change_timeout.py
 - tests/test_no_open_prs_issue_cache.py
@@ -366,169 +367,45 @@ Last updated: 2026-04-07
 - tests/test_wait_handler_callback.py
 
 ## 現在のオープンIssues
-## [Issue #439](../issue-notes/439.md): Redisplay cached open issues every minute during long waits
-The issue list could disappear from the terminal for long stretches when the monitor entered reduced-frequency or throttled waits. This updates the wait path so the cached open issue list is always re-shown every minute without increasing GitHub query consumption.
-
-- **What changed**
-  - Added a per...
-ラベル: 
---- issue-notes/439.md の内容 ---
-
-```markdown
-
-```
-
-## [Issue #438](../issue-notes/438.md): Fetching top 10 issues from these repositories...が表示されず不便なことがあった。issuesは1分ごとに必ず表示とする。クエリ消費が増えないよう適宜cache利用をする
-
-ラベル: 
---- issue-notes/438.md の内容 ---
-
-```markdown
-
-```
+オープン中のIssueはありません
 
 ## ドキュメントで言及されているファイルの内容
-### .github/actions-tmp/issue-notes/38.md
-```md
-{% raw %}
-# issue PR 36 と PR 37 を取り込んだあと、存在しないissueでワークフローがエラー終了してしまった #38
-[issues #38](https://github.com/cat2151/github-actions/issues/38)
 
-# URL
-
-- https://github.com/cat2151/wavlpf/actions/runs/21907996164/job/63253441830
-
-# 実現したいこと
-
-- issueが存在しないのは想定したことであるから、エラー終了にはしない。可用性を維持する。
-  - それはそれとして、想定しないできごとが発生した場合は、fail fastする
-    - 今回は「想定したできごとなので、fail fastしない」
-
-{% endraw %}
-```
-
-### .github/actions-tmp/issue-notes/8.md
-```md
-{% raw %}
-# issue 関数コールグラフhtmlビジュアライズ生成の対象ソースファイルを、呼び出し元ymlで指定できるようにする #8
-[issues #8](https://github.com/cat2151/github-actions/issues/8)
-
-# これまでの課題
-- 以下が決め打ちになっていた
-```
-  const allowedFiles = [
-    'src/main.js',
-    'src/mml2json.js',
-    'src/play.js'
-  ];
-```
-
-# 対策
-- 呼び出し元ymlで指定できるようにする
-
-# agent
-- agentにやらせることができれば楽なので、初手agentを試した
-- 失敗
-    - ハルシネーションしてscriptを大量破壊した
-- 分析
-    - 修正対象scriptはagentが生成したもの
-    - 低品質な生成結果でありソースが巨大
-    - ハルシネーションで破壊されやすいソース
-    - AIの生成したソースは、必ずしもAIフレンドリーではない
-
-# 人力リファクタリング
-- 低品質コードを、最低限agentが扱えて、ハルシネーションによる大量破壊を防止できる内容、にする
-- 手短にやる
-    - そもそもビジュアライズは、agentに雑に指示してやらせたもので、
-    - 今後別のビジュアライザを選ぶ可能性も高い
-    - 今ここで手間をかけすぎてコンコルド効果（サンクコストバイアス）を増やすのは、project群をトータルで俯瞰して見たとき、損
-- 対象
-    - allowedFiles のあるソース
-        - callgraph-utils.cjs
-            - たかだか300行未満のソースである
-            - この程度でハルシネーションされるのは予想外
-            - やむなし、リファクタリングでソース分割を進める
-
-# agentに修正させる
-## prompt
-```
-allowedFilesを引数で受け取るようにしたいです。
-ないならエラー。
-最終的に呼び出し元すべてに波及して修正したいです。
-
-呼び出し元をたどってエントリポイントも見つけて、
-エントリポイントにおいては、
-引数で受け取ったjsonファイル名 allowedFiles.js から
-jsonファイル allowedFiles.jsonの内容をreadして
-変数 allowedFilesに格納、
-後続処理に引き渡す、としたいです。
-
-まずplanしてください。
-planにおいては、修正対象のソースファイル名と関数名を、呼び出し元を遡ってすべて特定し、listしてください。
-```
-
-# 修正が順調にできた
-- コマンドライン引数から受け取る作りになっていなかったので、そこだけ指示して修正させた
-- yml側は人力で修正した
-
-# 他のリポジトリから呼び出した場合にバグらないよう修正する
-- 気付いた
-    - 共通ワークフローとして他のリポジトリから使った場合はバグるはず。
-        - ymlから、共通ワークフロー側リポジトリのcheckoutが漏れているので。
-- 他のyml同様に修正する
-- あわせて全体にymlをリファクタリングし、修正しやすくし、今後のyml読み書きの学びにしやすくする
-
-# local WSL + act : test green
-
-# closeとする
-- もし生成されたhtmlがNGの場合は、別issueとするつもり
-
-{% endraw %}
-```
-
-### .github/actions-tmp/issue-notes/9.md
-```md
-{% raw %}
-# issue 関数コールグラフhtmlビジュアライズが0件なので、原因を可視化する #9
-[issues #9](https://github.com/cat2151/github-actions/issues/9)
-
-# agentに修正させたり、人力で修正したりした
-- agentがハルシネーションし、いろいろ根の深いバグにつながる、エラー隠蔽などを仕込んでいたため、検知が遅れた
-- 詳しくはcommit logを参照のこと
-- WSL + actの環境を少し変更、act起動時のコマンドライン引数を変更し、generated-docsをmountする（ほかはデフォルト挙動であるcpだけにする）ことで、デバッグ情報をコンテナ外に出力できるようにし、デバッグを効率化した
-
-# test green
-
-# closeとする
-
-{% endraw %}
-```
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-048863e Auto-translate README.ja.md to README.md [auto]
-55fe13f Merge pull request #437 from cat2151/copilot/enable-auto-update-debug-log-condition
-be7cfcc Update section headers and PR language instructions
-874ccdb fix: address review comments on auto-update debug log PR
-0d78a53 feat: gate auto-update debug logs behind config flag
-c9d1cdf Initial plan
-9f9d9ea Auto-translate README.ja.md to README.md [auto]
-1ba8fff Merge pull request #435 from cat2151/copilot/fix-auto-update-logic
-7b903c2 Add section for pull request guidelines in Japanese
-c1b4900 chore: plan readme review fix
+357d3b5 Merge pull request #441 from cat2151/copilot/fix-issue-list-display-bug
+f28fe9a test: assert cold cache precondition for etag regression
+4d19c77 fix: fetch issues when cold cache hits etag 304
+0cea814 Initial plan
+de7a3e3 Merge pull request #439 from cat2151/copilot/ensure-open-pr-display
+1d7f68e Revise feature addition checklist and commit practices
+fd11bff Update project summaries (overview & development status) [auto]
+02ad61c refactor: snapshot repo filters for cached issue redisplay
+2bdad8c fix: redisplay cached issues during long waits
+1f0ebf4 test: simplify periodic status display assertions
 
 ### 変更されたファイル:
 .github/copilot-instructions.md
 README.ja.md
 README.md
 config.toml.example
+generated-docs/development-status-generated-prompt.md
+generated-docs/development-status.md
+generated-docs/project-overview-generated-prompt.md
+generated-docs/project-overview.md
 src/gh_pr_phase_monitor/core/config.py
 src/gh_pr_phase_monitor/main.py
 src/gh_pr_phase_monitor/monitor/auto_updater.py
+src/gh_pr_phase_monitor/ui/display.py
+src/gh_pr_phase_monitor/ui/wait_handler.py
 tests/test_auto_update_config.py
 tests/test_auto_updater.py
 tests/test_main_auto_update.py
+tests/test_main_periodic_status_display.py
+tests/test_no_open_prs_issue_cache.py
+tests/test_wait_handler_callback.py
 
 
 ---
-Generated at: 2026-04-07 07:06:46 JST
+Generated at: 2026-04-08 07:09:28 JST

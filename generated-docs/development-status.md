@@ -1,50 +1,49 @@
-Last updated: 2026-04-07
+Last updated: 2026-04-08
 
 # Development Status
 
 ## 現在のIssues
-- [Issue #439](../issue-notes/439.md)および[Issue #438](../issue-notes/438.md)は、長時間の待機中にオープンなissueリストがターミナルから消えてしまう問題を解決することを目指しています。
-- この機能により、GitHub APIの追加クエリ消費を増やすことなく、キャッシュされたオープンissueリストが1分ごとに再表示されるようになります。
-- ユーザーは、GitHubのクエリ消費が増えないように適切にキャッシュを利用しつつ、常に最新のissue状況を確認できるようになります。
+オープン中のIssueはありません。
 
 ## 次の一手候補
-1. 長時間待機時のオープンIssueリスト再表示機能のテストとデプロイ [Issue #439](../issue-notes/439.md)
-   - 最初の小さな一歩: `src/gh_pr_phase_monitor/monitor/monitor.py` 内のissue表示ロジックが、待機中に1分ごとにキャッシュされたissueを表示しているか確認するためのテストケースを追加する。
-   - Agent実行プロンプ:
+1. Issue表示ロジック（キャッシュとETag処理）のコードレビューと安定性向上 (新規タスク)
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/ui/display.py` および `src/gh_pr_phase_monitor/github/issue_etag_checker.py` の関連部分を読み、最近の修正が意図通りに動作しているかコードベースで確認する。
+   - Agent実行プロンプト:
      ```
-     対象ファイル: src/gh_pr_phase_monitor/monitor/monitor.py, src/gh_pr_phase_monitor/ui/display.py, tests/test_notification.py (参考)
+     対象ファイル: src/gh_pr_phase_monitor/ui/display.py, src/gh_pr_phase_monitor/main.py, src/gh_pr_phase_monitor/github/etag_checker.py, src/gh_pr_phase_monitor/github/issue_etag_checker.py, tests/test_issue_etag_checker.py, tests/test_no_open_prs_issue_cache.py, tests/test_main_periodic_status_display.py
 
-     実行内容: `monitor.py` 内で、長時間の待機中にキャッシュされたオープンissueリストが1分ごとに再表示されるロジック（[Issue #439](../issue-notes/439.md)および[Issue #438](../issue-notes/438.md)で言及されている機能）が正しく実装されていることを確認するテストケースを追加してください。特に、GitHub APIへの追加呼び出しなしに、キャッシュデータのみで表示が更新されることを検証するテストケースを記述してください。
+     実行内容: 最近の「issue-list-display-bug」および「cached issues redisplay」に関連するコミット (357d3b5, f28fe9a, 4d19c77, 02ad61c, 2bdad8c, 1f0ebf4) の変更内容を考慮し、現在のIssue表示ロジック（特にキャッシュ、ETag、およびUI表示の連携）のコードレビューを実施してください。この機能に対するテストカバレッジが十分であるかを確認し、不足している場合はその点を指摘してください。
 
-     確認事項: `monitor.py`の`_display_open_prs_and_issues_if_needed`や関連する表示ロジック、`IssueTracker.py`のキャッシュ利用方法、既存のテストフレームワーク（pytest）と整合性を確認してください。
+     確認事項: これらのファイル間の依存関係、特にETagベースのキャッシュ無効化とUI更新のトリガーロジックに注目してください。
 
-     期待する出力: 新しいテストファイル`tests/test_issue_redisplay_during_wait.py`、または既存のテストファイルに追記されたテストコード（`pytest`形式）をmarkdown形式で出力してください。テストコードは、長時間の待機をシミュレートし、issue表示が定期的に更新されることをアサートする内容としてください。
-     ```
-
-2. 自動更新デバッグログ機能の動作確認とドキュメント更新 [関連する最近の変更]
-   - 最初の小さな一歩: `config.toml.example` を参考に、`auto_update` のデバッグログを有効化する設定を加え、`src/gh_pr_phase_monitor/monitor/auto_updater.py` がログを正しく出力するか手動で検証する。
-   - Agent実行プロンプ:
-     ```
-     対象ファイル: config.toml.example, src/gh_pr_phase_monitor/core/config.py, src/gh_pr_phase_monitor/monitor/auto_updater.py, README.md
-
-     実行内容: 最新のコミット履歴で追加された`auto-update`のデバッグログ機能について、`config.toml.example`に新しい設定項目が正しく反映されているかを確認し、`src/gh_pr_phase_monitor/core/config.py`がその設定を適切にパースできるか検証してください。その後、`src/gh_pr_phase_monitor/monitor/auto_updater.py`が設定値に基づいてデバッグログの出力を制御するかを検証し、この設定の利用方法を`README.md`の適切なセクション（例: 設定ガイド）に追記してください。
-
-     確認事項: `config.py`が新しい設定をどのようにパースしているか、`auto_updater.py`がその設定値に基づいてログレベルを調整しているか、`README.md`の既存の構成と整合性を保ちながら追記することを確認してください。
-
-     期待する出力: `auto_update`のデバッグログ設定の動作確認結果をmarkdown形式で報告し、`README.md`に追記すべき設定の説明をmarkdown形式で出力してください。もし必要であれば、`config.toml.example`の提案された変更も含むものとします。
+     期待する出力: レビュー結果と、潜在的な改善点または追加テストが必要な領域をmarkdown形式で出力してください。
      ```
 
-3. 開発状況レポートのIssue要約・次の一手生成ロジックの改善に向けた分析 [新規または関連する開発状況生成プロンプト]
-   - 最初の小さな一歩: `ProjectSummaryCoordinator.cjs` と `DevelopmentStatusGenerator.cjs` のスクリプトが、現在の生成プロンプトの要件（3行要約、3つの候補、小さな一歩、Agent実行プロンプト）をどのように処理しているかを分析する。
-   - Agent実行プロンプ:
+2. 開発状況生成プロンプトの明確性と網羅性のレビューと改善 (新規タスク)
+   - 最初の小さな一歩: 現在の `.github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md` の内容を読み、改善の余地がないか検討する。
+   - Agent実行プロンプト:
      ```
-     対象ファイル: .github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md, .github/actions-tmp/.github_automation/project_summary/scripts/development/DevelopmentStatusGenerator.cjs, .github/actions-tmp/.github_automation/project_summary/scripts/ProjectSummaryCoordinator.cjs
+     対象ファイル: .github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md, generated-docs/development-status-generated-prompt.md
 
-     実行内容: 現在の開発状況生成プロンプト（このプロンプト自体）が、上記のCJSスクリプトによってどのように処理され、Issueの要約や次のステップ候補が生成されているかを分析してください。特に、「現在のIssues」の3行要約、「次の一手候補」のリストとその「最初の小さな一歩」、および「Agent実行プロンプト」の各要素が、これらのスクリプト内でIssue情報とプロンプトを組み合わせて結果を生成する際にどのように活用され、出力に反映されているかを確認してください。
+     実行内容: .github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md が、今回生成される`Development Status`の内容をどれだけ適切に指示できているかレビューしてください。特に、「生成するもの」「生成しないもの」「Agent実行プロンプト生成ガイドライン」「出力フォーマット」の各セクションが明確で、モデルが意図通りの出力を生成するために十分な情報を提供しているか評価してください。曖昧な表現や、ハルシネーションを誘発する可能性のある箇所を特定し、改善案を提案してください。
 
-     確認事項: `DevelopmentStatusGenerator.cjs`がIssue情報（タイトル、本文、ラベル）をどのようにパースし、プロンプトに組み込んでいるか。また、`ProjectSummaryCoordinator.cjs`が`DevelopmentStatusGenerator.cjs`をどのように呼び出し、最終的なレポートを生成しているかを確認してください。現在の生成プロンプトの要件がスクリプトでどのように扱われているか、改善の余地があるかも検討してください。
+     確認事項: このプロンプトが「ハルシネーションの温床なので生成しない」という制約をモデルに正確に伝達できているかを確認してください。
 
-     期待する出力: 現在のCJSスクリプトとプロンプトの連携に関する分析結果をmarkdown形式で出力してください。具体的には、Issue要約、次のステップ候補、最初の小さな一歩、Agent実行プロンプト生成の各要件がスクリプト内でどのように実装されているかを詳細に説明し、潜在的な改善点や効率化の提案も含むものとします。
+     期待する出力: レビュー結果と、プロンプトをより堅牢にするための具体的な修正提案をmarkdown形式で出力してください。
+     ```
+
+3. `config.toml.example` の最新化と設定ガイドの拡充 (新規タスク)
+   - 最初の小さな一歩: `config.toml.example` を開き、最近のコミットで変更された `src/gh_pr_phase_monitor/core/config.py` と比較して、新しい設定項目が追加されているか、既存の設定が変更されているかを確認する。
+   - Agent実行プロンプト:
+     ```
+     対象ファイル: config.toml.example, src/gh_pr_phase_monitor/core/config.py
+
+     実行内容: `src/gh_pr_phase_monitor/core/config.py` の最新バージョンと `config.toml.example` を比較し、`config.toml.example` がすべての現行設定を反映しているか確認してください。特に、新しい設定項目が追加されている場合はそれを `config.toml.example` に追加し、各設定項目についてその目的、可能な値、デフォルト値（もしあれば）を説明するコメントを追記または更新してください。
+
+     確認事項: ユーザーがこの例ファイルだけで、基本的な設定を迷いなく行えるレベルの詳細度があるか。また、非推奨になった設定がないか確認してください。
+
+     期待する出力: 更新された `config.toml.example` の内容をmarkdownコードブロックで出力してください。変更点の説明も加えてください。
+     ```
 
 ---
-Generated at: 2026-04-07 07:07:07 JST
+Generated at: 2026-04-08 07:10:04 JST

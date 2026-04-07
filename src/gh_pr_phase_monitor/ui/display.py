@@ -243,10 +243,11 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
             issue_limit = config.get("issue_display_limit", 10) if config else 10
 
             # ETag pre-check: skip GraphQL if no issues changed (HTTP 304 Not Modified).
-            # Bypass this optimisation when the cache was explicitly invalidated (a cached
-            # repo gained an open PR) to avoid showing nothing indefinitely.
+            # Bypass this optimisation when the cache is empty or was explicitly
+            # invalidated (a cached repo gained an open PR) to avoid showing nothing
+            # indefinitely.
             etag_result = check_issues_etag_changed(repos_with_issues)
-            if etag_result is False and not _issue_cache_state["needs_refresh"]:
+            if etag_result is False and _cached_top_issues and not _issue_cache_state["needs_refresh"]:
                 print("  ETag: 全リポジトリ 304 Not Modified → issue変化なし (GraphQL スキップ)")
                 # Filter cache to exclude repos that have gained open PRs since the last fetch.
                 # repos_with_issues only contains repos with openPRCount == 0, so any cached

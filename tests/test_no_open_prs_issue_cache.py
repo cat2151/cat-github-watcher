@@ -54,6 +54,37 @@ def test_display_issues_populates_cache(mocker):
     assert list(display_module._cached_top_issues) == fetched_issues
 
 
+def test_empty_cache_bypasses_etag_304_and_fetches_issues(mocker, capsys):
+    """A cold start must fetch issues even when the issue ETag says 304."""
+    mocker.patch.object(display_module, "_cached_top_issues", [])
+    mocker.patch.object(display_module, "_issue_cache_state", {"needs_refresh": False})
+    assert display_module._cached_top_issues == []
+
+    mock_get_repos = mocker.patch(
+        "src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues"
+    )
+    mock_get_repos.return_value = [{"name": "repo-b", "owner": "testuser", "openIssueCount": 1}]
+
+    mocker.patch("src.gh_pr_phase_monitor.ui.display.check_issues_etag_changed", return_value=False)
+    mock_get_issues = mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories")
+    fetched_issues = [
+        {
+            "title": "Fresh Issue B",
+            "url": "https://github.com/testuser/repo-b/issues/5",
+            "number": 5,
+            "repository": {"owner": "testuser", "name": "repo-b"},
+        }
+    ]
+    mock_get_issues.return_value = fetched_issues
+
+    display_issues_from_repos_without_prs(None)
+
+    mock_get_issues.assert_called_once()
+    out = capsys.readouterr().out
+    assert "Fresh Issue B" in out
+    assert list(display_module._cached_top_issues) == fetched_issues
+
+
 def test_etag_304_filters_cache_when_repo_gains_pr(mocker, capsys):
     """Regression: ETag 304 path must not display cached issues from repos that now have open PRs.
 

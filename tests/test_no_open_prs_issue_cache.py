@@ -58,6 +58,7 @@ def test_empty_cache_bypasses_etag_304_and_fetches_issues(mocker, capsys):
     """A cold start must fetch issues even when the issue ETag says 304."""
     mocker.patch.object(display_module, "_cached_top_issues", [])
     mocker.patch.object(display_module, "_issue_cache_state", {"needs_refresh": False})
+    assert display_module._cached_top_issues == []
 
     mock_get_repos = mocker.patch(
         "src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues"

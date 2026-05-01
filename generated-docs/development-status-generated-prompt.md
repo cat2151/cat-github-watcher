@@ -1,4 +1,4 @@
-Last updated: 2026-04-08
+Last updated: 2026-05-02
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -104,6 +104,7 @@ Last updated: 2026-04-08
 
 ## プロジェクトのファイル一覧
 - .editorconfig
+- .github/actions-tmp/.gitattributes
 - .github/actions-tmp/.github/workflows/call-callgraph.yml
 - .github/actions-tmp/.github/workflows/call-check-large-files.yml
 - .github/actions-tmp/.github/workflows/call-daily-project-summary.yml
@@ -141,6 +142,7 @@ Last updated: 2026-04-08
 - .github/actions-tmp/.github_automation/check-large-files/README.md
 - .github/actions-tmp/.github_automation/check-large-files/check-large-files.toml.default
 - .github/actions-tmp/.github_automation/check-large-files/scripts/check_large_files.py
+- .github/actions-tmp/.github_automation/check-large-files/scripts/test_check_large_files.py
 - .github/actions-tmp/.github_automation/check_recent_human_commit/scripts/check-recent-human-commit.cjs
 - .github/actions-tmp/.github_automation/project_summary/docs/daily-summary-setup.md
 - .github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md
@@ -204,7 +206,7 @@ Last updated: 2026-04-08
 - .github/actions-tmp/issue-notes/40.md
 - .github/actions-tmp/issue-notes/44.md
 - .github/actions-tmp/issue-notes/57.md
-- .github/actions-tmp/issue-notes/67.md
+- .github/actions-tmp/issue-notes/69.md
 - .github/actions-tmp/issue-notes/7.md
 - .github/actions-tmp/issue-notes/8.md
 - .github/actions-tmp/issue-notes/9.md
@@ -374,38 +376,22 @@ Last updated: 2026-04-08
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-357d3b5 Merge pull request #441 from cat2151/copilot/fix-issue-list-display-bug
-f28fe9a test: assert cold cache precondition for etag regression
-4d19c77 fix: fetch issues when cold cache hits etag 304
-0cea814 Initial plan
-de7a3e3 Merge pull request #439 from cat2151/copilot/ensure-open-pr-display
-1d7f68e Revise feature addition checklist and commit practices
-fd11bff Update project summaries (overview & development status) [auto]
-02ad61c refactor: snapshot repo filters for cached issue redisplay
-2bdad8c fix: redisplay cached issues during long waits
-1f0ebf4 test: simplify periodic status display assertions
+ef10d7b issue一覧取得準備中は、その旨をprintすることでUX改善
 
 ### 変更されたファイル:
 .github/copilot-instructions.md
-README.ja.md
 README.md
-config.toml.example
 generated-docs/development-status-generated-prompt.md
 generated-docs/development-status.md
 generated-docs/project-overview-generated-prompt.md
 generated-docs/project-overview.md
-src/gh_pr_phase_monitor/core/config.py
 src/gh_pr_phase_monitor/main.py
-src/gh_pr_phase_monitor/monitor/auto_updater.py
 src/gh_pr_phase_monitor/ui/display.py
 src/gh_pr_phase_monitor/ui/wait_handler.py
-tests/test_auto_update_config.py
-tests/test_auto_updater.py
-tests/test_main_auto_update.py
 tests/test_main_periodic_status_display.py
 tests/test_no_open_prs_issue_cache.py
 tests/test_wait_handler_callback.py
 
 
 ---
-Generated at: 2026-04-08 07:09:28 JST
+Generated at: 2026-05-02 07:13:26 JST

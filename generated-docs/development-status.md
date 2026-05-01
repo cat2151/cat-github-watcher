@@ -1,49 +1,51 @@
-Last updated: 2026-04-08
+Last updated: 2026-05-02
 
 # Development Status
 
 ## 現在のIssues
-オープン中のIssueはありません。
+- 現在、オープン中のPull RequestやIssueは存在しません。
+- プロジェクトは安定した状態にあり、次の開発サイクルへの準備が整っています。
+- 既存の機能改善や将来に向けた基盤強化に注力する良い機会です。
 
 ## 次の一手候補
-1. Issue表示ロジック（キャッシュとETag処理）のコードレビューと安定性向上 (新規タスク)
-   - 最初の小さな一歩: `src/gh_pr_phase_monitor/ui/display.py` および `src/gh_pr_phase_monitor/github/issue_etag_checker.py` の関連部分を読み、最近の修正が意図通りに動作しているかコードベースで確認する。
-   - Agent実行プロンプト:
+1. オープン中のIssuesがない場合のUI/UXを改善する [Issue #None]
+   - 最初の小さな一歩: `src/gh_pr_phase_monitor/ui/display.py` 内で、オープン中のPRやIssueがない場合のメッセージ表示ロジックを確認し、より明確でユーザーフレンドリーな表示方法を検討する。
+   - Agent実行プロンプ:
      ```
-     対象ファイル: src/gh_pr_phase_monitor/ui/display.py, src/gh_pr_phase_monitor/main.py, src/gh_pr_phase_monitor/github/etag_checker.py, src/gh_pr_phase_monitor/github/issue_etag_checker.py, tests/test_issue_etag_checker.py, tests/test_no_open_prs_issue_cache.py, tests/test_main_periodic_status_display.py
+     対象ファイル: src/gh_pr_phase_monitor/ui/display.py, src/gh_pr_phase_monitor/main.py, tests/test_main_periodic_status_display.py, tests/test_no_open_prs_issue_cache.py
 
-     実行内容: 最近の「issue-list-display-bug」および「cached issues redisplay」に関連するコミット (357d3b5, f28fe9a, 4d19c77, 02ad61c, 2bdad8c, 1f0ebf4) の変更内容を考慮し、現在のIssue表示ロジック（特にキャッシュ、ETag、およびUI表示の連携）のコードレビューを実施してください。この機能に対するテストカバレッジが十分であるかを確認し、不足している場合はその点を指摘してください。
+     実行内容: `src/gh_pr_phase_monitor/ui/display.py`におけるPRやIssueリストが空の場合の表示処理を分析し、ユーザーに次の行動を促すような情報（例: 設定を確認する、あるいは他のPRを待つなど）を追加可能か検討する。また、`main.py`での呼び出し方と、関連するテストケース`test_main_periodic_status_display.py`や`test_no_open_prs_issue_cache.py`との整合性を確認する。
 
-     確認事項: これらのファイル間の依存関係、特にETagベースのキャッシュ無効化とUI更新のトリガーロジックに注目してください。
+     確認事項: 既存の表示ロジック、`main.py`からの`display`モジュールへのデータ渡し方、および関連するテストがどのような表示状態を想定しているか。特に、最近のコミット`ef10d7b`によるUX改善の意図との合致を確認する。
 
-     期待する出力: レビュー結果と、潜在的な改善点または追加テストが必要な領域をmarkdown形式で出力してください。
-     ```
-
-2. 開発状況生成プロンプトの明確性と網羅性のレビューと改善 (新規タスク)
-   - 最初の小さな一歩: 現在の `.github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md` の内容を読み、改善の余地がないか検討する。
-   - Agent実行プロンプト:
-     ```
-     対象ファイル: .github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md, generated-docs/development-status-generated-prompt.md
-
-     実行内容: .github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md が、今回生成される`Development Status`の内容をどれだけ適切に指示できているかレビューしてください。特に、「生成するもの」「生成しないもの」「Agent実行プロンプト生成ガイドライン」「出力フォーマット」の各セクションが明確で、モデルが意図通りの出力を生成するために十分な情報を提供しているか評価してください。曖昧な表現や、ハルシネーションを誘発する可能性のある箇所を特定し、改善案を提案してください。
-
-     確認事項: このプロンプトが「ハルシネーションの温床なので生成しない」という制約をモデルに正確に伝達できているかを確認してください。
-
-     期待する出力: レビュー結果と、プロンプトをより堅牢にするための具体的な修正提案をmarkdown形式で出力してください。
+     期待する出力: `src/gh_pr_phase_monitor/ui/display.py`の修正案を提案するMarkdown形式のドキュメント。特に、`display_status_summary`関数内の`no_open_issues_message`や`no_open_prs_message`の改善に焦点を当てる。
      ```
 
-3. `config.toml.example` の最新化と設定ガイドの拡充 (新規タスク)
-   - 最初の小さな一歩: `config.toml.example` を開き、最近のコミットで変更された `src/gh_pr_phase_monitor/core/config.py` と比較して、新しい設定項目が追加されているか、既存の設定が変更されているかを確認する。
-   - Agent実行プロンプト:
+2. 開発状況生成プロンプトの「次の一手候補」自動生成ロジックを強化する [Issue #None]
+   - 最初の小さな一歩: `.github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md`と、これを処理すると思われるスクリプト（`ProjectSummaryCoordinator.cjs`, `DevelopmentStatusGenerator.cjs`など）を確認し、"オープン中のIssueがありません"の状況下で、「次の一手候補」がどのように生成されるべきかの要件を明確にする。
+   - Agent実行プロンプ:
      ```
-     対象ファイル: config.toml.example, src/gh_pr_phase_monitor/core/config.py
+     対象ファイル: .github/actions-tmp/.github_automation/project_summary/prompts/development-status-prompt.md, .github/actions-tmp/.github_automation/project_summary/scripts/ProjectSummaryCoordinator.cjs, .github/actions-tmp/.github_automation/project_summary/scripts/development/DevelopmentStatusGenerator.cjs
 
-     実行内容: `src/gh_pr_phase_monitor/core/config.py` の最新バージョンと `config.toml.example` を比較し、`config.toml.example` がすべての現行設定を反映しているか確認してください。特に、新しい設定項目が追加されている場合はそれを `config.toml.example` に追加し、各設定項目についてその目的、可能な値、デフォルト値（もしあれば）を説明するコメントを追記または更新してください。
+     実行内容: `development-status-prompt.md`のガイドラインと、`DevelopmentStatusGenerator.cjs`が「次の一手候補」を生成する際のロジック（特にオープンIssueがない場合）を分析する。現在の「生成しないもの」の制約を維持しつつ、プロジェクトの健全性維持や将来の機能開発に繋がるような、ハルシネーションではない現実的な提案を生成するための改善点を洗い出す。
 
-     確認事項: ユーザーがこの例ファイルだけで、基本的な設定を迷いなく行えるレベルの詳細度があるか。また、非推奨になった設定がないか確認してください。
+     確認事項: `DevelopmentStatusGenerator.cjs`がIssue情報をどのように取得・利用しているか、および「生成しないもの」として挙げられているハルシネーション防止策が現在の実装でどのように担保されているか。プロンプト自身が自身の「次の一手候補」を生成するロジックを改善するための、具体的なヒントや情報源を探す。
 
-     期待する出力: 更新された `config.toml.example` の内容をmarkdownコードブロックで出力してください。変更点の説明も加えてください。
+     期待する出力: 「次の一手候補」の自動生成ロジックを強化するための提案をMarkdown形式で出力。具体的には、`development-status-prompt.md`の修正案、または`DevelopmentStatusGenerator.cjs`の処理ロジックに関する推奨事項を含む。
+     ```
+
+3. Issue Noteの自動生成とリンクの仕組みを改善する [Issue #None]
+   - 最初の小さな一歩: 現在のIssue Note (`issue-notes/` ディレクトリ内のファイル) がどのように作成され、プロジェクト内で参照されているか（特に今回のプロンプトでのリンク形式 `[Issue #番号](../issue-notes/番号.md)`）を確認する。
+   - Agent実行プロンプ:
+     ```
+     対象ファイル: issue-notes/ ディレクトリ内の既存のissue noteファイル（例: issue-notes/10.md）, .github/workflows/call-issue-note.yml, .github/actions-tmp/.github_automation/project_summary/scripts/development/IssueTracker.cjs (もし関連があれば)
+
+     実行内容: 新しいIssueが作成された際に、対応するissue noteが自動的に生成されるワークフロー(`.github/workflows/call-issue-note.yml`など)を分析し、現在の開発状況生成プロンプトで要求されているMarkdownリンク形式（`[Issue #番号](../issue-notes/番号.md)`）と整合性が取れているかを確認する。Issue Noteのテンプレート化や、既存Issueへのリンク作成の自動化を検討する。
+
+     確認事項: `call-issue-note.yml`がissue noteをどのように生成しているか、既存のissue noteファイル名と内容のパターン、そして開発状況生成プロンプトがissue noteへのリンクをどのように生成しているか（またはそのための情報源）。
+
+     期待する出力: Issue Noteの生成、更新、そしてプロジェクト内での参照（特に開発状況レポートからのリンク）をより効率的かつ堅牢にするための改善提案をMarkdown形式で記述。ワークフローやスクリプトの修正案を含む。
      ```
 
 ---
-Generated at: 2026-04-08 07:10:04 JST
+Generated at: 2026-05-02 07:13:43 JST

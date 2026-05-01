@@ -2,10 +2,11 @@
 Display and UI functions for status summary and issues
 """
 
+import threading
 import time
 import traceback
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, TypeVar
 
 from ..core.colors import colorize_phase, colorize_url
 from ..core.config import (
@@ -17,9 +18,12 @@ from ..core.time_utils import format_elapsed_time
 from ..github import github_client
 from ..github.github_client import assign_issue_to_copilot, get_issues_from_repositories
 from ..github.issue_etag_checker import check_issues_etag_changed
+from ..github.issue_fetcher import REPOSITORIES_BATCH_SIZE
 from ..monitor.state_tracker import cleanup_old_pr_states, get_pr_state_time, set_pr_state_time
 from ..phase.html.llm_status_extractor import get_latest_activity_timestamp
 from ..phase.phase_detector import PHASE_LLM_WORKING, get_llm_working_progress_label, is_llm_working
+
+_T = TypeVar("_T")
 
 # Module-level cache for the most recently fetched top issues
 _cached_top_issues: List[Dict[str, Any]] = []
@@ -29,6 +33,29 @@ _cached_top_issues: List[Dict[str, Any]] = []
 # on the next call so that a full GraphQL fetch repopulates the cache.
 # Using a dict to allow mutation without a `global` statement.
 _issue_cache_state: Dict[str, bool] = {"needs_refresh": False}
+
+
+def _run_with_elapsed_progress(
+    message: str,
+    operation: Callable[[], _T],
+    interval_seconds: float = 1.0,
+) -> _T:
+    """Run a blocking operation while printing elapsed progress once per interval."""
+    stop_event = threading.Event()
+    started_at = time.monotonic()
+
+    def progress_loop() -> None:
+        while not stop_event.wait(interval_seconds):
+            elapsed = int(time.monotonic() - started_at)
+            print(f"  {message}... {elapsed}秒経過", flush=True)
+
+    progress_thread = threading.Thread(target=progress_loop, daemon=True)
+    progress_thread.start()
+    try:
+        return operation()
+    finally:
+        stop_event.set()
+        progress_thread.join(timeout=0.2)
 
 
 def display_cached_top_issues(repos_with_prs: Optional[List[Dict[str, Any]]] = None) -> None:
@@ -241,12 +268,23 @@ def display_issues_from_repos_without_prs(config: Optional[Dict[str, Any]] = Non
 
             # Fetch top issues early to detect assigned work and reuse for display
             issue_limit = config.get("issue_display_limit", 10) if config else 10
+            batch_count = (len(repos_with_issues) + REPOSITORIES_BATCH_SIZE - 1) // REPOSITORIES_BATCH_SIZE
+            first_batch_size = min(REPOSITORIES_BATCH_SIZE, len(repos_with_issues))
+            print(
+                "  Issue一覧取得を準備中: ETag確認で必要なら、"
+                f"GraphQL Issue一覧取得 (バッチ1: {first_batch_size}リポジトリ) を開始します "
+                f"(全{batch_count}バッチ, 表示上限{issue_limit}件)",
+                flush=True,
+            )
 
             # ETag pre-check: skip GraphQL if no issues changed (HTTP 304 Not Modified).
             # Bypass this optimisation when the cache is empty or was explicitly
             # invalidated (a cached repo gained an open PR) to avoid showing nothing
             # indefinitely.
-            etag_result = check_issues_etag_changed(repos_with_issues)
+            etag_result = _run_with_elapsed_progress(
+                f"Issue一覧取得前のETag確認中 ({len(repos_with_issues)}リポジトリ対象)",
+                lambda: check_issues_etag_changed(repos_with_issues),
+            )
             if etag_result is False and _cached_top_issues and not _issue_cache_state["needs_refresh"]:
                 print("  ETag: 全リポジトリ 304 Not Modified → issue変化なし (GraphQL スキップ)")
                 # Filter cache to exclude repos that have gained open PRs since the last fetch.

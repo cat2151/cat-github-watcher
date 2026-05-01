@@ -54,6 +54,31 @@ def test_display_issues_populates_cache(mocker):
     assert list(display_module._cached_top_issues) == fetched_issues
 
 
+def test_display_issues_announces_issue_fetch_after_repo_list(mocker, capsys):
+    """After listing repositories, announce the upcoming Issue GraphQL fetch before the ETag pre-check."""
+    mocker.patch.object(display_module, "_cached_top_issues", [])
+    mocker.patch.object(display_module, "_issue_cache_state", {"needs_refresh": False})
+
+    repos = [
+        {"name": f"repo-{idx}", "owner": "testuser", "openIssueCount": 1}
+        for idx in range(1, 12)
+    ]
+    mock_get_repos = mocker.patch(
+        "src.gh_pr_phase_monitor.github.github_client.get_repositories_with_no_prs_and_open_issues"
+    )
+    mock_get_repos.return_value = repos
+    mocker.patch("src.gh_pr_phase_monitor.ui.display.check_issues_etag_changed", return_value=True)
+    mocker.patch("src.gh_pr_phase_monitor.ui.display.get_issues_from_repositories", return_value=[])
+
+    display_issues_from_repos_without_prs(None)
+
+    out = capsys.readouterr().out
+    assert "Issue一覧取得を準備中" in out
+    assert "GraphQL Issue一覧取得 (バッチ1: 10リポジトリ) を開始します" in out
+    assert "全2バッチ" in out
+    assert out.index("    - repo-11: 1 open issue(s)") < out.index("  Issue一覧取得を準備中")
+
+
 def test_empty_cache_bypasses_etag_304_and_fetches_issues(mocker, capsys):
     """A cold start must fetch issues even when the issue ETag says 304."""
     mocker.patch.object(display_module, "_cached_top_issues", [])

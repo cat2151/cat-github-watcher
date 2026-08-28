@@ -1,5 +1,9 @@
 # cat-github-watcher
 
+**archiveします**
+
+現在私はこれを利用していません。Claude CodeとCodex CLIを利用しています。かつてこのアプリで実現していたこと（そしてGitHubとCopilotが仕様変更するたびにメンテ作業をすることでなんとか実現できていたこと）は、すべてClaude CodeとCodex CLIが、より手軽に、より高品質に実現できるようになりました。
+
 **GitHub Copilotによる自動実装フェーズのPR監視ツール**
 
 <p align="left">
